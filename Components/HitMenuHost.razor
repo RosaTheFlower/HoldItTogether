@@ -1,0 +1,91 @@
+@using HoldItTogether.Services.HitMenus
+@using HoldItTogether.Services.Settings
+@inject HitMenuCatalog Catalog
+@inject HitSettingsService Settings
+
+<div class="hit-menu-host">
+    <div class="hit-menu-measure">
+        @if (Catalog.Menus.Count == 0)
+        {
+            <div class="hit-menu-empty">Nenhum menu disponível.</div>
+        }
+        else
+        {
+            @for (var index = 0; index < Catalog.Menus.Count; index++)
+            {
+                var menu = Catalog.Menus[index];
+                var active = index == _navigation.SelectedIndex;
+                @if (_visited.Contains(index))
+                {
+                    <section @key="menu.Id" class="hit-menu-panel"
+                             hidden="@(!active)" inert="@(!active)"
+                             aria-hidden="@(!active ? "true" : "false")"
+                             aria-label="@menu.Name" data-hit-menu="@menu.Id">
+                        <CascadingValue Name="HitMenu" Value="@(new HitMenuContext(active, OnCloseRequested))">
+                            <DynamicComponent Type="@menu.ComponentType" />
+                        </CascadingValue>
+                    </section>
+                }
+            }
+        }
+    </div>
+
+    @if (Catalog.Menus.Count > 0)
+    {
+        <nav class="hit-menu-pagination" aria-label="Menus do HIT" data-no-drag
+             @onclick:stopPropagation="true"
+             @onkeydown="HandlePaginationKey" @onkeydown:stopPropagation="true">
+            @for (var index = 0; index < Catalog.Menus.Count; index++)
+            {
+                var menuIndex = index;
+                var menu = Catalog.Menus[index];
+                var active = index == _navigation.SelectedIndex;
+                <button type="button" class="hit-menu-dot @(active ? "is-current" : "")"
+                        aria-label="@($"Menu {index + 1} de {Catalog.Menus.Count}: {menu.Name}")"
+                        aria-current="@(active ? "page" : null)" title="@menu.Name"
+                        @onclick="() => SelectMenuAsync(menuIndex)">
+                    <span aria-hidden="true"></span>
+                </button>
+            }
+        </nav>
+    }
+</div>
+
+@code {
+    [Parameter] public EventCallback OnCloseRequested { get; set; }
+    [Parameter] public EventCallback<string> OnTitleChanged { get; set; }
+    private string CurrentTitle => Catalog.Menus.Count > 0 ? Catalog.Menus[_navigation.SelectedIndex].Name : "HIT";
+    private HitMenuNavigator _navigation = new(0);
+    private readonly HashSet<int> _visited = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        _navigation = new HitMenuNavigator(Catalog.Menus.Count);
+        if (Catalog.Menus.Count > 0) _visited.Add(0);
+        await OnTitleChanged.InvokeAsync(CurrentTitle);
+    }
+
+    public async Task HandleWheelAsync(WheelEventArgs args)
+    {
+        if (_navigation.Scroll(args.DeltaX, args.DeltaY, args.DeltaMode, args.CtrlKey,
+                               Environment.TickCount64, Settings.Current))
+        {
+            _visited.Add(_navigation.SelectedIndex);
+            await OnTitleChanged.InvokeAsync(CurrentTitle);
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private async Task SelectMenuAsync(int index)
+    {
+        if (_navigation.Select(index))
+        {
+            _visited.Add(index);
+            await OnTitleChanged.InvokeAsync(CurrentTitle);
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private Task HandlePaginationKey(KeyboardEventArgs args) =>
+        args.Key == "Escape" ? OnCloseRequested.InvokeAsync() : Task.CompletedTask;
+}

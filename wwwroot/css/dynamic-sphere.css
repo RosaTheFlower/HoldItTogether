@@ -1,0 +1,333 @@
+/* Dynamic Sphere: public geometry, interaction surface and fallback motion. */
+
+@property --sphere-prism-angle {
+    syntax: "<angle>";
+    initial-value: 205deg;
+    inherits: false;
+}
+
+.sphere-area {
+    display: inline-grid;
+    width: max-content;
+    padding: 24px;
+    vertical-align: top;
+    line-height: normal;
+}
+.dynamic-sphere {
+
+    position: relative;
+    isolation: isolate;
+    width: 56px;
+    height: 56px;
+    border-radius: 28px;
+    overflow: hidden;
+    color: var(--sphere-text);
+    background: var(--hit-background, rgba(12, 13, 17, 0.94));
+    background-image: linear-gradient(155deg, rgba(255, 255, 255, 0.045), transparent 58%);
+    box-shadow:
+        0 12px 22px -14px rgba(0, 0, 0, 0.56),
+        0 3px 8px -5px rgba(0, 0, 0, 0.32),
+        inset 0 1px 0 rgba(255, 255, 255, 0.12),
+        inset 0 -1px 0 rgba(255, 255, 255, 0.025);
+    outline: none;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition:
+        width 780ms var(--sphere-ease),
+        height 820ms var(--sphere-ease),
+        border-radius 860ms var(--sphere-settle),
+        background-color 650ms ease,
+        box-shadow 700ms ease;
+}
+
+/* Soft internal reflections: no transforms on the native hit-test surface. */
+.dynamic-sphere::before {
+    content: "";
+    position: absolute;
+    z-index: 0;
+    inset: -45%;
+    pointer-events: none;
+    background:
+        radial-gradient(ellipse at 30% 18%, rgba(223, 231, 255, 0.16), transparent 42%),
+        radial-gradient(ellipse at 86% 80%, rgba(149, 168, 208, 0.065), transparent 46%),
+        linear-gradient(118deg, transparent 38%, rgba(255, 255, 255, 0.035) 48%, transparent 58%);
+    opacity: 0.7;
+    transform: translate3d(0, 0, 0);
+    transition: opacity 600ms ease;
+}
+
+/* The spectral rim is only a highlight; it never intercepts input. */
+.dynamic-sphere::after {
+    content: "";
+    position: absolute;
+    z-index: 2;
+    inset: 0;
+    padding: 1px;
+    border-radius: inherit;
+    pointer-events: none;
+    background: conic-gradient(
+        from var(--sphere-prism-angle),
+        rgba(255, 255, 255, 0.6),
+        rgba(126, 220, 255, 0.7) 14%,
+        rgba(137, 150, 255, 0.5) 27%,
+        rgba(244, 152, 223, 0.7) 40%,
+        rgba(255, 217, 177, 0.45) 52%,
+        rgba(255, 255, 255, 0.12) 66%,
+        rgba(142, 204, 255, 0.45) 82%,
+        rgba(255, 255, 255, 0.6)
+    );
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    opacity: 0.18;
+    transition: opacity 650ms ease;
+}
+
+.dynamic-sphere:focus-visible {
+    /*outline: 2px solid rgba(199, 217, 255, 0.85);*/
+    outline-offset: 5px;
+}
+
+.dynamic-sphere.is-idle {
+    width: 28px;
+    height: 28px;
+    border-radius: 14px;
+    background-color: var(--hit-idle-background, rgba(16, 18, 25, 0.5));
+    backdrop-filter: blur(18px) saturate(125%);
+    -webkit-backdrop-filter: blur(18px) saturate(125%);
+    box-shadow:
+        0 5px 12px -8px rgba(0, 0, 0, 0.32),
+        inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.dynamic-sphere.is-idle::before {
+    animation: sphere-rest-reflection 7s ease-in-out infinite;
+}
+
+.dynamic-sphere.is-idle::after {
+    opacity: 0.1;
+}
+
+.dynamic-sphere.is-hovered,
+.dynamic-sphere.is-away {
+    width: 56px;
+    height: 56px;
+    border-radius: 28px;
+}
+
+.dynamic-sphere.is-hovered::before {
+    opacity: 1;
+}
+
+.dynamic-sphere.is-hovered::after {
+    opacity: 0.45;
+}
+
+.dynamic-sphere.is-open {
+    width: var(--sphere-open-width, 360px);
+    height: var(--sphere-open-height, 220px);
+    border-radius: var(--hit-open-radius, 15px);
+    background-color: var(--hit-open-background, rgba(10, 11, 15, 0.965));
+    cursor: default;
+    box-shadow:
+        0 14px 24px -15px rgba(0, 0, 0, 0.6),
+        0 4px 10px -6px rgba(0, 0, 0, 0.3),
+        inset 0 1px 0 rgba(255, 255, 255, 0.14),
+        inset 0 -1px 0 rgba(255, 255, 255, 0.035);
+}
+
+.dynamic-sphere.is-open::before {
+    animation: sphere-liquid-reflection 1350ms var(--sphere-settle) both;
+}
+
+.dynamic-sphere.is-open::after {
+    animation: sphere-prism-reveal 1150ms var(--sphere-settle) both;
+}
+
+.dynamic-sphere.is-away {
+    transition-duration: 620ms, 660ms, 740ms, 650ms, 700ms;
+}
+
+.sphere-content {
+    position: absolute;
+    z-index: 1;
+    inset: 0;
+    min-width: 0;
+    opacity: 0;
+    filter: blur(5px);
+    transform: translate3d(var(--sphere-enter-x, 0px), var(--sphere-enter-y, 0px), 0) scale(0.975);
+    transform-origin: var(--sphere-origin-x, 50%) var(--sphere-origin-y, 50%);
+    pointer-events: none;
+    transition:
+        opacity 130ms ease,
+        filter 160ms ease,
+        transform 280ms var(--sphere-ease);
+}
+
+.is-open .sphere-content {
+    opacity: 1;
+    filter: blur(0);
+    transform: translate3d(0, 0, 0) scale(1);
+    pointer-events: auto;
+    transition:
+        opacity 380ms ease 100ms,
+        filter 620ms var(--sphere-ease) 70ms,
+        transform 760ms var(--sphere-ease) 60ms;
+}
+
+/* Fast refractive separation resolves into a quiet, sharp neutral surface. */
+@keyframes sphere-prism-reveal {
+    0% {
+        --sphere-prism-angle: 155deg;
+        opacity: 0.1;
+        filter: blur(0.7px) saturate(1.5);
+    }
+    18% {
+        opacity: 0.95;
+    }
+    48% {
+        opacity: 0.58;
+        filter: blur(0.25px) saturate(1.25);
+    }
+    100% {
+        --sphere-prism-angle: 330deg;
+        opacity: 0.22;
+        filter: blur(0) saturate(0.8);
+    }
+}
+
+@keyframes sphere-liquid-reflection {
+    0% {
+        opacity: 0.45;
+        transform: translate3d(-14%, 8%, 0) scale(0.9);
+    }
+    28% {
+        opacity: 1;
+    }
+    100% {
+        opacity: 0.55;
+        transform: translate3d(7%, -4%, 0) scale(1.08);
+    }
+}
+
+@keyframes sphere-rest-reflection {
+    0%, 100% {
+        opacity: 0.35;
+        transform: translate3d(-3%, 2%, 0);
+    }
+    50% {
+        opacity: 0.7;
+        transform: translate3d(3%, -2%, 0);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .dynamic-sphere,
+    .dynamic-sphere.is-away,
+    .dynamic-sphere.is-open::before,
+    .dynamic-sphere.is-open::after,
+    .dynamic-sphere.is-idle::before,
+    .dynamic-sphere::before,
+    .dynamic-sphere::after,
+    .sphere-content,
+    .is-open .sphere-content {
+        animation: none;
+        transition-duration: 0ms;
+        transition-delay: 0ms;
+    }
+
+    .is-open .sphere-content {
+        opacity: 1;
+        filter: none;
+        transform: none;
+    }
+}
+/* Drag only from the sphere surface; menu controls keep their own input. */
+.dynamic-sphere {
+    touch-action: none;
+}
+
+/* HIT is an application surface, including its nested labels and SVG icons. */
+.dynamic-sphere,
+.dynamic-sphere * {
+    -webkit-user-select: none !important;
+    user-select: none !important;
+    -webkit-user-drag: none;
+}
+
+.dynamic-sphere.is-dragging,
+.dynamic-sphere.is-dragging * {
+    cursor: grabbing;
+}
+/* Menu actions stay separate from the draggable surface and item area. */
+.sphere-actions {
+    position: absolute;
+    z-index: 3;
+    top: 16px;
+    right: 16px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.sphere-action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 30px;
+    width: 30px;
+    height: 30px;
+    padding: 0;
+    border: 0;
+    border-radius: 10px;
+    color: rgba(255, 255, 255, 0.72);
+    background: rgba(255, 255, 255, 0.06);
+    cursor: pointer;
+    transition: color 180ms ease, background-color 180ms ease;
+}
+
+.sphere-action svg {
+    width: 17px;
+    height: 17px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.7;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    pointer-events: none;
+}
+
+.sphere-action-pin {
+    color: rgba(255, 255, 255, 0.72);
+    background: rgba(255, 255, 255, 0.06);
+}
+
+.sphere-action-pin.is-active {
+    color: #fff;
+    background: rgba(255, 255, 255, 0.12);
+}
+
+    .sphere-action-pin:hover {
+        background: rgba(255, 255, 255, 0.14);
+    }
+
+    .sphere-action-pin.is-active:hover {
+        background: rgba(255, 255, 255, 0.14);
+    }
+
+.sphere-action-close:hover {
+    color: #fff;
+    background: rgba(255, 255, 255, 0.14);
+}
+
+.sphere-action:focus-visible {
+    outline: 2px solid rgba(199, 217, 255, 0.85);
+    outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .sphere-action {
+        transition: none;
+    }
+}

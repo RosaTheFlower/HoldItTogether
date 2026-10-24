@@ -1,0 +1,194 @@
+/*
+   HIT / OBSIDIAN EYES — formato de tema v1.
+   Grafite, branco, tipografia discreta. Sem arquivos externos.
+   Requer a versao do HIT com suporte a --hit-track-pointer.
+   Os olhos usam ::before e ::after e ficam apenas na esfera recolhida.
+   "Remover animacoes" desativa piscadas/transicoes; a direcao continua atualizada.
+*/
+@layer sphere {
+    :root {
+        --hit-track-pointer: 1;
+        --hit-font: "Segoe UI Variable", "Segoe UI", sans-serif;
+        --hit-mono-font: "Cascadia Mono", "Consolas", monospace;
+        --hit-background: #191b20;
+        --hit-open-background: #17191e;
+        --hit-idle-background: #1b1d22;
+        --hit-open-radius: 22px;
+        --hit-text: #f1f2f4;
+        --hit-muted: #949aa5;
+        --hit-accent: #dce2ec;
+        --sphere-text: #f1f2f4;
+        --sphere-ease: cubic-bezier(0.16, 1, 0.3, 1);
+        --sphere-settle: cubic-bezier(0.22, 1, 0.36, 1);
+    }
+    .dynamic-sphere {
+        --hit-eye-size: 8px;
+        --hit-eye-gap: 8px;
+        background-image: linear-gradient(150deg, #ffffff05, transparent 65%);
+        box-shadow: inset 0 1px 0 #ffffff14, inset 0 0 0 1px #ffffff06,
+                    0 10px 20px -12px #00000090;
+        transition: width 620ms var(--sphere-ease), height 700ms var(--sphere-ease),
+                    border-radius 720ms var(--sphere-settle), background-color 350ms ease;
+    }
+    .dynamic-sphere.is-idle {
+        --hit-eye-size: 5px;
+        --hit-eye-gap: 5px;
+        width: 32px;
+        height: 32px;
+        border-radius: 16px;
+        background: #1b1d22;
+        box-shadow: inset 0 1px 0 #ffffff12, 0 5px 12px -7px #00000090;
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
+    }
+    .dynamic-sphere.is-away, .dynamic-sphere.is-hovered {
+        width: 56px;
+        height: 56px;
+        border-radius: 28px;
+    }
+    .dynamic-sphere.is-hovered { --hit-eye-size: 9px; }
+    .dynamic-sphere.is-open {
+        background-color: #17191e;
+        box-shadow: inset 0 1px 0 #ffffff14, inset 0 0 0 1px #ffffff08,
+                    0 14px 24px -15px #000000b0;
+    }
+
+    /* Replaces the original reflection/rim with exactly two solid white eyes. */
+    .dynamic-sphere::before, .dynamic-sphere::after {
+        content: "";
+        position: absolute;
+        z-index: 2;
+        inset: auto;
+        top: calc(50% + var(--hit-pointer-y, 0) * 3px);
+        width: calc(var(--hit-eye-size) + var(--hit-pointer-abs-x, 0) * 2px);
+        height: calc(var(--hit-eye-size) + var(--hit-pointer-abs-y, 0) * 5px);
+        padding: 0;
+        border: 0;
+        border-radius: 50%;
+        background: #fff;
+        background-image: none;
+        opacity: 1;
+        filter: none;
+        box-shadow: 0 0 8px #ffffff12;
+        -webkit-mask: none;
+        mask: none;
+        -webkit-mask-composite: source-over;
+        mask-composite: add;
+        transform: translate(-50%, -50%) scaleY(1);
+        transform-origin: center;
+        pointer-events: none;
+        transition: left 140ms var(--sphere-settle), top 140ms var(--sphere-settle),
+                    width 200ms var(--sphere-settle), height 200ms var(--sphere-settle),
+                    opacity 100ms ease;
+        animation: obsidian-blink 7.4s linear infinite;
+    }
+    .dynamic-sphere::before {
+        left: calc(50% - var(--hit-eye-gap) + var(--hit-pointer-x, 0) * 3px);
+    }
+    .dynamic-sphere::after {
+        left: calc(50% + var(--hit-eye-gap) + var(--hit-pointer-x, 0) * 3px);
+    }
+    .dynamic-sphere.is-idle::before, .dynamic-sphere.is-idle::after {
+        animation: obsidian-blink 7.4s linear infinite;
+        opacity: 0.92;
+    }
+    .dynamic-sphere.is-hovered::before, .dynamic-sphere.is-hovered::after {
+        height: calc(var(--hit-eye-size) + 4px + var(--hit-pointer-abs-y, 0) * 4px);
+        opacity: 1;
+    }
+    .dynamic-sphere.is-dragging::before, .dynamic-sphere.is-dragging::after {
+        height: calc(var(--hit-eye-size) + 4px);
+        animation: none;
+    }
+    .dynamic-sphere.is-open::before, .dynamic-sphere.is-open::after {
+        opacity: 0;
+        animation: none;
+    }
+
+    .sphere-title {
+        color: #eceef2;
+        font-size: 14px;
+        font-weight: 600;
+        letter-spacing: -0.025em;
+    }
+    .sphere-action {
+        border-radius: 9px;
+        color: #9da4af;
+        background: transparent;
+        box-shadow: none;
+    }
+    .sphere-action:hover { color: #f2f3f5; background: #ffffff08; }
+    .sphere-action-pin.is-active { color: white; background: #ffffff0c; }
+    .sphere-action-pin.is-active:hover { background: #ffffff12; }
+    .sphere-action-close:hover { color: white; background: #ffffff0c; }
+    .sphere-action svg { stroke-width: 1.6; }
+    .sphere-action:focus-visible { outline: 1px solid #adb9cb; outline-offset: 2px; }
+    .hit-menu-dot span { width: 4px; height: 4px; background: #ffffff26; box-shadow: none; }
+    .hit-menu-dot.is-current span, .hit-menu-dot.is-current:hover span { background: #e9edf5; box-shadow: none; }
+    .hit-menu-dot:hover span { background: #ffffff70; }
+
+    @keyframes obsidian-blink {
+        0%, 43%, 47%, 78%, 82%, 100% { transform: translate(-50%, -50%) scaleY(1); }
+        44.5%, 45.5%, 79.5%, 80.5% { transform: translate(-50%, -50%) scaleY(0.12); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+        .dynamic-sphere::before, .dynamic-sphere::after,
+        .dynamic-sphere.is-idle::before, .dynamic-sphere.is-idle::after {
+            animation: none;
+            transition: none;
+        }
+    }
+}
+
+@layer menus {
+    :root {
+        --hit-menu-font: "Segoe UI Variable", "Segoe UI", sans-serif;
+        --hit-menu-text: #e8ebf0;
+        --hit-menu-muted: #9299a5;
+        --hit-accent: #d7dfec;
+    }
+    h1, h2, h3 { color: #eceef3; font-weight: 500; letter-spacing: -0.035em; }
+    .menu-intro-title { font-size: 25px; line-height: 1.2; }
+    p, small { color: #9299a5; }
+    strong { color: #e6eaf1; }
+    .eyebrow { color: #818997; font-size: 9px; font-weight: 500; letter-spacing: 0.14em; }
+    .description { font-size: 12px; line-height: 1.8; color: #9299a5; }
+    .status { color: #a8b0bd; font-size: 10px; }
+    .status span { width: 4px; height: 4px; background: #b6c9be; box-shadow: none; }
+    article {
+        border: 1px solid #ffffff08;
+        border-radius: 12px;
+        background: #ffffff03;
+        box-shadow: none;
+    }
+    article p { color: #9299a5; }
+.summary-grid strong { color: #edf0f5; font-weight: 400; }
+.period, .timeline, .footnote { color: #7f8999; }
+.meter { height: 2px; background: #ffffff09; }
+.setting-row { border-bottom: 1px solid #ffffff07; }
+    .setting-row strong { font-size: 12px; font-weight: 500; color: #e6eaf1; }
+    .setting-row small { color: #858e9c; }
+    .switch { border: 1px solid #ffffff12; background: #ffffff07; }
+    .switch::after { background: #7e8796; }
+    .switch:checked { background: #d7dfec; border-color: transparent; }
+    .switch:checked::after { background: #1b2029; }
+    .memory-row .memory { color: #858e9c; font-size: 10px; }
+    .scroll-settings { border-bottom: 1px solid #ffffff07; }
+    .cooldown-toggle, .range-row > span { color: #858e9c; }
+    .range-row output { color: #b7c3d6; }
+    input[type="range"] { accent-color: #becbdf; }
+    .theme-settings select {
+        color: #dce3ef;
+        background: #20232a;
+        border: 1px solid #ffffff0f;
+        border-radius: 7px;
+    }
+    .theme-buttons button, .theme-button {
+        color: #b9c5d7;
+        background: #ffffff03;
+        border-color: #ffffff0d;
+        border-radius: 7px;
+    }
+    .theme-buttons button:hover:not(:disabled), .theme-button:hover { color: #eef1f7; background: #ffffff08; }
+.settings-error { color: #dfacac; }
+}

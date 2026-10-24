@@ -1,0 +1,33 @@
+<section class="hit-disclosure @CssClass" aria-label="@Title">
+    <div class="disclosure-heading">
+        <strong class="disclosure-title">@Title</strong>
+        <div class="disclosure-primary">@MainControl</div>
+        <button type="button" class="disclosure-toggle"
+                aria-label="@($"{(_expanded ? "Recolher" : "Expandir")} {Title}")"
+                aria-expanded="@(_expanded ? "true" : "false")"
+                aria-controls="@PanelId" @onclick="ToggleAsync">
+            <svg viewBox="0 0 20 20" aria-hidden="true" focusable="false">
+                <path d="m6 8 4 4 4-4" />
+            </svg>
+        </button>
+    </div>
+    <div id="@PanelId" class="disclosure-content" hidden="@(!_expanded)">
+        @ChildContent
+    </div>
+</section>
+
+@code {
+    [Parameter, EditorRequired] public string Title { get; set; } = "";
+    [Parameter, EditorRequired] public string PanelId { get; set; } = "";
+    [Parameter] public string? CssClass { get; set; }
+    [Parameter] public RenderFragment? MainControl { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public EventCallback<bool> ExpandedChanged { get; set; }
+    private bool _expanded;
+
+    private async Task ToggleAsync()
+    {
+        _expanded = !_expanded;
+        await ExpandedChanged.InvokeAsync(_expanded);
+    }
+}

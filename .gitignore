@@ -1,0 +1,21 @@
+# Build and verification outputs
+bin/
+obj/
+artifacts/
+TestResults/
+coverage/
+*.log
+
+# Generated public menu stylesheet index (rebuilt automatically)
+/wwwroot/css/menus.css
+
+# Local IDE state
+.vs/
+.idea/
+*.user
+*.suo
+
+# Operating system metadata
+.DS_Store
+Thumbs.db
+Desktop.ini

@@ -1,0 +1,197 @@
+@using System.Globalization
+@using HoldItTogether.Services.Settings
+@using HoldItTogether.Services.Diagnostics
+@using HoldItTogether.Services.HitMenus
+@implements IAsyncDisposable
+@inject HitSettingsService Settings
+@inject HitMemorySampler Memory
+
+<div class="settings-menu" @onclick:stopPropagation="true"
+     @onkeydown="HandleKey" @onkeydown:stopPropagation="true">
+    <label class="setting-row">
+        <span><strong>Always on Top</strong></span>
+        <input class="switch" type="checkbox" role="switch" aria-label="Always on Top"
+               @bind:get="Settings.Current.AlwaysOnTop" @bind:set="SetAlwaysOnTop" />
+    </label>
+
+    <label class="setting-row">
+        <span><strong>System Tray</strong></span>
+        <input class="switch" type="checkbox" role="switch" aria-label="System Tray"
+               disabled="@(!OperatingSystem.IsWindows())"
+               @bind:get="Settings.Current.SystemTray" @bind:set="SetSystemTray" />
+    </label>
+
+    <label class="setting-row">
+        <span><strong>Remover animações</strong></span>
+        <input class="switch" type="checkbox" role="switch" aria-label="Remover animações"
+               @bind:get="Settings.Current.RemoveAnimations" @bind:set="SetRemoveAnimations" />
+    </label>
+
+    <HitDisclosure Title="Scroll speed" PanelId="scroll-speed-options" CssClass="scroll-settings">
+        <MainControl>
+            <label class="cooldown-toggle">
+                <span>Cooldown</span>
+                <input class="switch" type="checkbox" role="switch" aria-label="Ativar cooldown do scroll"
+                       @bind:get="Settings.Current.ScrollCooldownEnabled" @bind:set="SetCooldown" />
+            </label>
+        </MainControl>
+        <ChildContent>
+            <label class="range-row" @onwheel:stopPropagation="true">
+                <span>Sensibilidade</span>
+                <input type="range" min="0.25" max="3" step="0.25" aria-label="Sensibilidade do scroll"
+                       value="@SensitivityValue" @oninput="PreviewSensitivity" @onchange="ChangeSensitivity" />
+                <output>@SensitivityLabel</output>
+            </label>
+            <label class="range-row" @onwheel:stopPropagation="true">
+                <span>Pausa</span>
+                <input type="range" min="0" max="2000" step="50" aria-label="Tempo de cooldown"
+                       disabled="@(!Settings.Current.ScrollCooldownEnabled)"
+                       value="@CooldownValue" @oninput="PreviewCooldown" @onchange="ChangeCooldownTime" />
+                <output>@(Settings.Current.ScrollCooldownEnabled ? $"{CooldownValue} ms" : "Sem pausa")</output>
+            </label>
+        </ChildContent>
+    </HitDisclosure>
+
+    <div class="setting-row memory-row">
+        <span>RAM em uso</span>
+        <output class="memory" aria-live="off">@MemoryLabel</output>
+    </div>
+
+    <HitThemePicker />
+
+    @if ((_error ?? Settings.RuntimeError) is { } error)
+    {
+        <p class="settings-error" role="alert">@error</p>
+    }
+</div>
+
+@code {
+    [CascadingParameter(Name = "HitMenu")] public HitMenuContext? MenuContext { get; set; }
+
+    private static readonly CultureInfo DisplayCulture = CultureInfo.GetCultureInfo("pt-BR");
+    private CancellationTokenSource? _monitorCts;
+    private Task? _monitorTask;
+    private HitMemoryUsage _usage;
+    private double? _sensitivityPreview;
+    private int? _cooldownPreview;
+    private string? _error;
+    private bool _disposed;
+
+    private string MemoryLabel => _usage.Bytes > 0 ? $"{_usage.Megabytes.ToString("N1", DisplayCulture)} MB" : "—";
+    private double Sensitivity => _sensitivityPreview ?? Settings.Current.ScrollSensitivity;
+    private string SensitivityValue => Sensitivity.ToString(CultureInfo.InvariantCulture);
+    private string SensitivityLabel => $"{Sensitivity.ToString("0.##", DisplayCulture)}×";
+    private int CooldownValue => _cooldownPreview ?? Settings.Current.ScrollCooldownMs;
+
+    protected override void OnInitialized() => Settings.Changed += OnSettingsChanged;
+
+    protected override void OnParametersSet()
+    {
+        var active = MenuContext?.IsActive ?? true;
+        if (active && _monitorCts is null)
+        {
+            _monitorCts = new CancellationTokenSource();
+            _monitorTask = MonitorMemoryAsync(_monitorCts.Token);
+        }
+        else if (!active && _monitorCts is not null)
+        {
+            _monitorCts.Cancel();
+            _monitorCts.Dispose();
+            _monitorCts = null;
+        }
+    }
+
+    private async Task MonitorMemoryAsync(CancellationToken token)
+    {
+        using var timer = new PeriodicTimer(TimeSpan.FromSeconds(1));
+        try
+        {
+            do
+            {
+                var usage = await Task.Run(Memory.Sample, token);
+                await InvokeAsync(() =>
+                {
+                    if (!_disposed && !token.IsCancellationRequested)
+                    {
+                        _usage = usage;
+                        StateHasChanged();
+                    }
+                });
+            }
+            while (await timer.WaitForNextTickAsync(token));
+        }
+        catch (OperationCanceledException)
+        {
+        }
+    }
+
+    private void OnSettingsChanged()
+    {
+        if (!_disposed) _ = InvokeAsync(StateHasChanged);
+    }
+
+    private void Save(Func<HitSettings, HitSettings> update)
+    {
+        _error = null;
+        try { Settings.Update(update); }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException or
+                                      InvalidOperationException or System.ComponentModel.Win32Exception)
+        {
+            _error = "Não foi possível aplicar a alteração. Tente novamente.";
+        }
+    }
+
+    private void SetAlwaysOnTop(bool enabled) =>
+        Save(value => value with { AlwaysOnTop = enabled });
+
+    private void SetSystemTray(bool enabled) =>
+        Save(value => value with { SystemTray = enabled });
+
+    private void SetRemoveAnimations(bool enabled) =>
+        Save(value => value with { RemoveAnimations = enabled });
+
+    private void SetCooldown(bool enabled) =>
+        Save(value => value with { ScrollCooldownEnabled = enabled });
+
+    private void PreviewSensitivity(ChangeEventArgs args)
+    {
+        if (double.TryParse(args.Value?.ToString(), CultureInfo.InvariantCulture, out var value))
+            _sensitivityPreview = Math.Clamp(value, 0.25, 3);
+    }
+
+    private void ChangeSensitivity(ChangeEventArgs args)
+    {
+        PreviewSensitivity(args);
+        var sensitivity = Sensitivity;
+        _sensitivityPreview = null;
+        Save(value => value with { ScrollSensitivity = sensitivity });
+    }
+
+    private void PreviewCooldown(ChangeEventArgs args)
+    {
+        if (int.TryParse(args.Value?.ToString(), out var value))
+            _cooldownPreview = Math.Clamp(value, 0, 2000);
+    }
+
+    private void ChangeCooldownTime(ChangeEventArgs args)
+    {
+        PreviewCooldown(args);
+        var milliseconds = CooldownValue;
+        _cooldownPreview = null;
+        Save(value => value with { ScrollCooldownMs = milliseconds });
+    }
+
+    private Task HandleKey(KeyboardEventArgs args) =>
+        args.Key == "Escape" && MenuContext is { } context
+            ? context.CloseRequested.InvokeAsync()
+            : Task.CompletedTask;
+
+    public async ValueTask DisposeAsync()
+    {
+        _disposed = true;
+        Settings.Changed -= OnSettingsChanged;
+        _monitorCts?.Cancel();
+        if (_monitorTask is not null) await _monitorTask;
+        _monitorCts?.Dispose();
+    }
+}

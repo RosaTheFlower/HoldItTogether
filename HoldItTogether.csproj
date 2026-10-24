@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Photino.Blazor" Version="4.0.13" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Update="wwwroot\**\*" CopyToOutputDirectory="PreserveNewest" />
+    <Content Remove="wwwroot/css/menus.css" />
+    <Content Include="wwwroot/css/menus.css" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <Target Name="GeneratePublicMenuCssIndex" BeforeTargets="BeforeBuild">
+    <ItemGroup>
+      <PublicMenuCss Include="wwwroot/css/menus/*.css" />
+    </ItemGroup>
+    <WriteLinesToFile File="wwwroot/css/menus.css"
+                      Lines="@(PublicMenuCss->'@import url(&quot;menus/%(Filename)%(Extension)&quot;)%3B')"
+                      Overwrite="true" WriteOnlyWhenDifferent="true" />
+  </Target>
+</Project>
