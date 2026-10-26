@@ -1,5 +1,7 @@
 # Menus do HIT
 
+Referência principal: [HIT-MENUS.md](../../HIT-MENUS.md). Pacotes externos futuros: [planejamento](../../Design/MENU-PACKAGES.md).
+
 Cada menu é um componente Razor em Components/HitMenus, com nome
 HitMenu{Nome}.razor. O HIT descobre os componentes compilados automaticamente,
 ordena os menus comuns pelo nome do arquivo e cria as bolinhas de navegação.
@@ -66,7 +68,7 @@ nesse último caso, ajuste data-hit-menu para o nome completo do componente.
   outras regiões que precisem impedir o arraste.
 
 Os componentes podem receber o CascadingParameter chamado HitMenu,
-do tipo HitMenuContext, para consultar IsActive e chamar CloseRequested.
+do tipo HitMenuContext, para consultar IsActive/IsVisible e chamar CloseRequested.
 Configurações usa IsActive para pausar a leitura de RAM quando está oculto.
 
 ## Configurações e temas
@@ -86,3 +88,107 @@ sempre que possível.
 
 A janela permanece fora da barra de tarefas. System Tray disponibiliza
 Mostrar HIT, Ocultar HIT e Sair quando habilitado.
+## Configurações próprias de cada menu
+
+Um menu pode optar por ter configurações ao implementar IHitMenuSettings.
+O host reconhece a interface e encaminha M2 no título para a instância do
+menu selecionado. Também funciona com Shift+F10, tecla de contexto ou Enter
+quando o título está focado. Menus sem a interface não recebem o atalho.
+O menu geral de Configurações não implementa essa interface.
+
+Exemplo mínimo:
+
+    @implements HoldItTogether.Services.HitMenus.IHitMenuSettings
+
+    @if (_settingsOpen) {
+        <section data-no-drag>
+            <button @onclick="CloseSettings">Voltar</button>
+            <!-- Controles próprios do menu -->
+        </section>
+    } else {
+        <p>Conteúdo normal</p>
+    }
+
+    @code {
+        private bool _settingsOpen;
+        public bool IsSettingsOpen => _settingsOpen;
+        public Task OpenSettingsAsync() => InvokeAsync(() => {
+            _settingsOpen = true;
+            StateHasChanged();
+        });
+        private void CloseSettings() => _settingsOpen = false;
+    }
+
+A configuração é uma subtela da mesma instância: não cria outra bolinha nem
+outro arquivo HitMenu dentro desta pasta. Coloque componentes auxiliares em
+Components/{Recurso}, como Components/Audio/AudioSettingsView.razor.
+O menu pode mudar o título comum usando HitMenuContext.TitleRequested.
+M2 no título tem prioridade sobre o gesto de voltar de uma subtela.
+IsSettingsOpen informa ao host que a configuração está aberta: enquanto true,
+a troca de menus por scroll fica bloqueada. Ao voltar, retorne false.
+Áudio também retorna true no painel de personalização da capa.
+
+## Escala e controles após inatividade
+
+HitMenuViewport oferece escala X/Y em porcentagem de 75 a 200 (100 é o padrão).
+O componente mantém uma superfície natural e mede sua versão ampliada para o
+host. Use o mesmo viewport no player e nas letras para preservar as dimensões.
+A tela de configurações de Áudio permanece em 100% para facilitar os ajustes;
+as dimensões escolhidas são aplicadas ao retornar ao player.
+
+O controle compacto de tamanho ajusta X/Y juntos; a seta abre os eixos
+individuais. Alterações são salvas ao soltar o slider ou concluir pelo teclado.
+
+Para optar pela ocultação de ações secundárias, um menu visível pode declarar:
+
+    <div data-hit-hide-controls="true" data-hit-view="player">
+        <div data-hit-idle-controls>Botões secundários</div>
+        <p>Conteúdo que continua visível e interativo.</p>
+    </div>
+
+O HIT oculta o cabeçalho e os elementos marcados depois de cinco segundos
+sem interação, somente enquanto estiver aberto e fixado. Bloqueia foco/cliques nos elementos ocultos e restaura tudo com movimento do
+mouse, entrada do ponteiro, teclado, foco, rolagem ou outros controles.
+Atualizações de mídia não contam como interação. Eventos de hover na mesma
+posição física do mouse, causados pelo redimensionamento, também não contam. Mudar de menu/subtela,
+desfixar ou recolher restaura o cabeçalho. Use data-hit-hide-controls="false"
+nas telas de configuração. data-hit-view identifica mudanças de subtela.
+
+O CSS público correspondente está em wwwroot/css/hit-menus.css. A política
+de inatividade fica em wwwroot/js/hit-menu-chrome.js; a medição de escala,
+em wwwroot/js/hit-menu-viewport.js. Ambos são reutilizáveis por novos menus.
+
+O estado data-hit-idle-view na esfera identifica player ou lyrics durante a
+ocultação. No Áudio, o player remove a faixa de ações secundárias e o espaço
+do cabeçalho para ficar menor. Letras mantém a altura da janela e recupera
+esse espaço para leitura. Reprodução, seek e versos continuam interativos.
+Os temas podem ajustar --hit-menu-padding-top (64px) e
+--hit-menu-idle-padding-top (24px), mantendo a compensação da tela de letras.
+
+O estado de foco é animado por --hit-focus-progress, em 1200ms por padrão.
+Para uma região que deve contrair em qualquer subtela, use
+.hit-idle-collapse > .hit-idle-collapse-content com data-hit-collapse="always".
+As ações dentro dela continuam marcadas com data-hit-idle-controls.
+Não esconda a região com display:none: o grid deve passar de 1fr a 0fr.
+Áudio usa marcadores player/lyrics separados para preservar a medição da leitura.
+
+Todo objeto com menu por M2 declara data-hit-menu-trigger="identificador".
+Alt realça esses objetos por contorno tracejado e sublinhado pontilhado.
+Ações com Ctrl usam data-ctrl-link. Ambos os estados são compartilhados
+pelo shell em hit-modifiers.js; não implemente rastreamento de teclas por menu.
+Esses marcadores só descrevem a interação; o componente implementa seu callback.
+
+Relógio segue o mesmo catálogo e ocupa a segunda bolinha. O contexto agora
+inclui IsPinned e LayoutRequested. Somente a página selecionada pode pedir
+HitMenuLayout.Compact; o host oculta cabeçalho/paginação e mede o mostrador.
+Peça Default ao abrir controles/configuração. O Relógio permite M1 no
+mostrador para controles e M2 para preferências, com dica Alt.
+Para permitir clique e arraste no mesmo controle, o compacto declara
+data-hit-drag-handle. O shell só captura o pointer após seis pixels; M1 simples
+continua abrindo o menu, e soltar um arraste não dispara esse clique.
+Controles internos (botões/campos) continuam excluídos do arraste.
+
+Listas roláveis devem preferir HitScrollRegion para preservar a rolagem nativa
+sem acionar a navegação do HIT. O uso de Clock, fusos e prazos está em
+[Services/Clock/README.md](../../Services/Clock/README.md); as classes públicas
+estão em [CLOCK-THEMES.md](../../Design/CLOCK-THEMES.md).

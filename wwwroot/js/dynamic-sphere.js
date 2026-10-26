@@ -1,4 +1,6 @@
 import { connectDragging } from "./sphere-interactions.js";
+import { connectMenuChrome } from "./hit-menu-chrome.js";
+import { connectModifiers } from "./hit-modifiers.js";
 
 const observers = new WeakMap();
 
@@ -7,6 +9,8 @@ export function observe(element, dotnet) {
 
     const sphere = element.querySelector(".dynamic-sphere");
     const menuMeasure = sphere.querySelector(".hit-menu-measure");
+    const disconnectMenuChrome = connectMenuChrome(sphere);
+    const disconnectModifiers = connectModifiers(sphere);
     let disposed = false;
     let frame = 0;
     let measureFrame = 0;
@@ -137,6 +141,8 @@ export function observe(element, dotnet) {
     observers.set(element, () => {
         disposed = true;
         disconnectDragging();
+        disconnectMenuChrome();
+        disconnectModifiers();
         observer.disconnect();
         window.removeEventListener("resize", scheduleMeasure);
         document.removeEventListener("hit-theme-status", onThemeChange);

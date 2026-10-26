@@ -1,0 +1,25 @@
+@using HoldItTogether.Services.Clock
+@implements IDisposable
+@inject HitClockService Clock
+
+@if (_notice is { } notice)
+{
+    <aside class="clock-notice" role="status" aria-live="polite" data-no-drag @onclick:stopPropagation="true" @onkeydown:stopPropagation="true">
+        <div><strong>@notice.Title</strong><p>@notice.Message</p>@if (_error is { } error) { <small>@error</small> }</div>
+        <button type="button" aria-label="Dispensar aviso do relógio" title="Dispensar aviso" @onclick="Dismiss">×</button>
+    </aside>
+}
+@code {
+    private ClockNotice? _notice;
+    private bool _disposed;
+    private string? _error;
+    protected override void OnInitialized() { Clock.Changed += Refresh; _notice = Clock.Read().Notices.LastOrDefault(); }
+    private void Refresh() { if (!_disposed) _ = InvokeAsync(() => { _notice = Clock.Read().Notices.LastOrDefault(); StateHasChanged(); }); }
+    private void Dismiss()
+    {
+        try { if (_notice is { } notice) Clock.DismissNotice(notice.Id); _error = null; }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException or System.ComponentModel.Win32Exception)
+        { _error = "Não foi possível dispensar o aviso."; }
+    }
+    public void Dispose() { _disposed = true; Clock.Changed -= Refresh; }
+}

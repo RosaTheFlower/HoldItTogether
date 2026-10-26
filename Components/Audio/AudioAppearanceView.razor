@@ -1,0 +1,48 @@
+<section class="audio-appearance-view" aria-label="Personalizar tema da música" data-no-drag
+         @oncontextmenu:preventDefault="true" @onpointerup="HandlePointerUp">
+    <div class="appearance-heading">
+        <button type="button" class="lyrics-back audio-view-back" aria-label="Voltar ao áudio" title="Voltar ao áudio" @onclick="ReturnAsync">
+            <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m11 5-5 5 5 5M6 10h10" /></svg>
+            <span>Áudio</span>
+        </button>
+    </div>
+    <div class="appearance-blur">
+        <label for="audio-artwork-blur">Blur do fundo</label>
+        <output>@Blur px</output>
+        <input id="audio-artwork-blur" type="range" min="0" max="40" step="1" value="@Blur"
+               aria-label="Blur da capa" @oninput="PreviewBlur" @onchange="SaveBlur" @onwheel:stopPropagation="true" />
+    </div>
+    <label class="appearance-global">
+        <span>Usar cores em todo o HIT</span>
+        <input type="checkbox" class="appearance-switch" role="switch" aria-label="Usar cores da música em todo o HIT"
+               @bind:get="GlobalAccent" @bind:set="SetGlobal" />
+    </label>
+    @if (GlobalAccent)
+    {
+        <label class="appearance-global appearance-suboption">
+            <span>Capa nos outros menus</span>
+            <input type="checkbox" class="appearance-switch" role="switch" aria-label="Manter capa nos outros menus"
+                   @bind:get="GlobalCover" @bind:set="SetCover" />
+        </label>
+    }
+    <p class="appearance-hint">Mantém as cores de destaque da música nos outros menus.</p>
+    @if (Error is { } error) { <p class="audio-error" role="status">@error</p> }
+</section>
+
+@code {
+    [Parameter] public int Blur { get; set; } = 8;
+    [Parameter] public bool GlobalAccent { get; set; }
+    [Parameter] public bool GlobalCover { get; set; } = true;
+    [Parameter] public string? Error { get; set; }
+    [Parameter] public EventCallback<int> BlurPreview { get; set; }
+    [Parameter] public EventCallback<int> BlurChanged { get; set; }
+    [Parameter] public EventCallback<bool> GlobalAccentChanged { get; set; }
+    [Parameter] public EventCallback<bool> GlobalCoverChanged { get; set; }
+    [Parameter] public EventCallback BackRequested { get; set; }
+    private Task SetGlobal(bool enabled) => GlobalAccentChanged.InvokeAsync(enabled);
+    private Task SetCover(bool enabled) => GlobalCoverChanged.InvokeAsync(enabled);
+    private Task ReturnAsync() => BackRequested.InvokeAsync();
+    private Task HandlePointerUp(PointerEventArgs args) => args.Button == 2 ? ReturnAsync() : Task.CompletedTask;
+    private Task PreviewBlur(ChangeEventArgs args) => int.TryParse(args.Value?.ToString(), out var value) ? BlurPreview.InvokeAsync(Math.Clamp(value,0,40)) : Task.CompletedTask;
+    private Task SaveBlur(ChangeEventArgs args) => int.TryParse(args.Value?.ToString(), out var value) ? BlurChanged.InvokeAsync(Math.Clamp(value,0,40)) : Task.CompletedTask;
+}

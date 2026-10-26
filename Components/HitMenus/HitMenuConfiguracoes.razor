@@ -27,6 +27,12 @@
                @bind:get="Settings.Current.RemoveAnimations" @bind:set="SetRemoveAnimations" />
     </label>
 
+    <label class="setting-row">
+        <span><strong>Mostrar tooltips</strong></span>
+        <input class="switch" type="checkbox" role="switch" aria-label="Mostrar tooltips"
+               @bind:get="Settings.Current.ShowTooltips" @bind:set="SetShowTooltips" />
+    </label>
+
     <HitDisclosure Title="Scroll speed" PanelId="scroll-speed-options" CssClass="scroll-settings">
         <MainControl>
             <label class="cooldown-toggle">
@@ -146,6 +152,9 @@
 
     private void SetSystemTray(bool enabled) =>
         Save(value => value with { SystemTray = enabled });
+
+    private void SetShowTooltips(bool enabled) =>
+        Save(value => value with { ShowTooltips = enabled });
 
     private void SetRemoveAnimations(bool enabled) =>
         Save(value => value with { RemoveAnimations = enabled });

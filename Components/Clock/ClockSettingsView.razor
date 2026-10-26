@@ -1,0 +1,49 @@
+@using HoldItTogether.Services.Clock
+
+<section class="clock-settings" aria-label="Configurações do relógio" data-no-drag>
+    <button type="button" class="clock-back" @onclick="() => BackRequested.InvokeAsync()" aria-label="Voltar ao relógio">
+        <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m11 5-5 5 5 5M6 10h10" /></svg>Relógio
+    </button>
+    <label class="clock-setting-row">
+        <span>Mostrar segundos<small>No relógio do sistema, inclusive fixado.</small></span>
+        <input class="clock-switch switch" type="checkbox" role="switch" aria-label="Mostrar segundos no relógio"
+               checked="@Options.ShowSeconds" @onchange="args => Change(value => value with { ShowSeconds = args.Value is true })" />
+    </label>
+    <label class="clock-setting-row">
+        <span>Mostrar dois relógios<small>Os dois primeiros da lista de relógios globais, inclusive fixado.</small></span>
+        <input class="clock-switch switch" type="checkbox" role="switch" aria-label="Mostrar dois relógios de sistema"
+               checked="@Options.ShowTwoClocks" @onchange="args => Change(value => value with { ShowTwoClocks = args.Value is true })" />
+    </label>
+    <label class="clock-setting-row">
+        <span>Som dos avisos<small>Ao concluir o temporizador ou uma etapa do Pomodoro.</small></span>
+        <input class="clock-switch switch" type="checkbox" role="switch" aria-label="Som dos avisos do relógio"
+               checked="@Options.SoundEnabled" @onchange="args => Change(value => value with { SoundEnabled = args.Value is true })" />
+    </label>
+    <HitDisclosure Title="Pomodoro" PanelId="clock-pomodoro-options" CssClass="clock-disclosure">
+        <MainControl><span class="clock-setting-summary">@Options.FocusMinutes / @Options.ShortBreakMinutes min</span></MainControl>
+        <ChildContent>
+            <label class="clock-setting-number"><span>Foco</span><input type="number" min="1" max="180" value="@Options.FocusMinutes" aria-label="Minutos de foco"
+                @onchange="args => SetNumber(args, (value, number) => value with { FocusMinutes = number })" @onwheel:stopPropagation="true" /><span>min</span></label>
+            <label class="clock-setting-number"><span>Pausa curta</span><input type="number" min="1" max="60" value="@Options.ShortBreakMinutes" aria-label="Minutos de pausa curta"
+                @onchange="args => SetNumber(args, (value, number) => value with { ShortBreakMinutes = number })" @onwheel:stopPropagation="true" /><span>min</span></label>
+            <label class="clock-setting-number"><span>Pausa longa</span><input type="number" min="1" max="120" value="@Options.LongBreakMinutes" aria-label="Minutos de pausa longa"
+                @onchange="args => SetNumber(args, (value, number) => value with { LongBreakMinutes = number })" @onwheel:stopPropagation="true" /><span>min</span></label>
+            <label class="clock-setting-number"><span>Pausa longa a cada</span><input type="number" min="2" max="12" value="@Options.RoundsBeforeLongBreak" aria-label="Rodadas antes da pausa longa"
+                @onchange="args => SetNumber(args, (value, number) => value with { RoundsBeforeLongBreak = number })" @onwheel:stopPropagation="true" /><span>focos</span></label>
+            <label class="clock-setting-row"><span>Continuar automaticamente</span>
+                <input class="clock-switch switch" type="checkbox" role="switch" aria-label="Continuar ciclos do Pomodoro automaticamente" checked="@Options.AutoContinue"
+                       @onchange="args => Change(value => value with { AutoContinue = args.Value is true })" /></label>
+        </ChildContent>
+    </HitDisclosure>
+    <p class="clock-settings-hint">Fixado: compacta após 3 segundos sem interação ou ao clicar no mostrador. Somente M1 reabre os controles. M2 no relógio do sistema configura os fusos; M2 no título abre estas opções.</p>
+    @if (Error is { } error) { <p class="clock-error" role="status">@error</p> }
+</section>
+@code {
+    [Parameter, EditorRequired] public ClockPreferences Options { get; set; } = new();
+    [Parameter] public EventCallback<ClockPreferences> Changed { get; set; }
+    [Parameter] public EventCallback BackRequested { get; set; }
+    [Parameter] public string? Error { get; set; }
+    private Task Change(Func<ClockPreferences, ClockPreferences> change) => Changed.InvokeAsync(change(Options).Normalize());
+    private Task SetNumber(ChangeEventArgs args, Func<ClockPreferences, int, ClockPreferences> change) =>
+        int.TryParse(args.Value?.ToString(), out var number) ? Change(value => change(value, number)) : Task.CompletedTask;
+}

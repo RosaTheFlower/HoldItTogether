@@ -1,6 +1,6 @@
 const dragThreshold = 6;
 const interactiveSelector =
-    "button, a, input, textarea, select, [contenteditable], [data-no-drag]";
+    'button, a, input, textarea, select, [role="button"], [contenteditable], [data-no-drag]';
 
 export function connectDragging(sphere, dotnet, onSettled) {
     let gesture = null;
@@ -42,8 +42,11 @@ export function connectDragging(sphere, dotnet, onSettled) {
     }
 
     function pointerDown(event) {
+        const handle = event.target.closest("[data-hit-drag-handle]");
+        const control = event.target.closest(interactiveSelector);
         if (disposed || ending || gesture || event.button !== 0 || !event.isPrimary ||
-            event.target.closest(interactiveSelector)) {
+            (event.ctrlKey && event.target.closest("[data-ctrl-link]")) ||
+            (control && control !== handle)) {
             return;
         }
 
@@ -56,6 +59,7 @@ export function connectDragging(sphere, dotnet, onSettled) {
             offsetFromBottom: window.innerHeight - event.clientY,
             scale: window.devicePixelRatio || 1,
             dragged: false,
+            deferredCapture: !!handle,
             ended: false,
             dirty: false,
             moving: false,
@@ -64,9 +68,11 @@ export function connectDragging(sphere, dotnet, onSettled) {
             work: Promise.resolve()
         };
 
-        // Delay focus until a genuine click. A drag must not open the menu.
-        event.preventDefault();
-        sphere.setPointerCapture(event.pointerId);
+        // Clickable drag handles retain their native click target until an actual drag starts.
+        if (!gesture.deferredCapture) {
+            event.preventDefault();
+            sphere.setPointerCapture(event.pointerId);
+        }
     }
 
     function pointerMove(event) {
@@ -80,6 +86,7 @@ export function connectDragging(sphere, dotnet, onSettled) {
 
             current.dragged = true;
             suppressClick = true;
+            if (current.deferredCapture) sphere.setPointerCapture(current.id);
             sphere.classList.add("is-dragging");
             current.start = dotnet.invokeMethodAsync(
                 "BeginDrag", current.offsetX, current.offsetFromBottom, current.scale
@@ -142,12 +149,17 @@ export function connectDragging(sphere, dotnet, onSettled) {
         }
     }
 
+    function cancelGesture() {
+        if (gesture) void pointerEnd({pointerId: gesture.id});
+    }
+
     sphere.addEventListener("selectstart", preventNativeSelection, true);
     sphere.addEventListener("dragstart", preventNativeSelection, true);
     sphere.addEventListener("pointerdown", pointerDown);
-    sphere.addEventListener("pointermove", pointerMove);
-    sphere.addEventListener("pointerup", pointerEnd);
-    sphere.addEventListener("pointercancel", pointerEnd);
+    window.addEventListener("pointermove", pointerMove);
+    window.addEventListener("pointerup", pointerEnd);
+    window.addEventListener("pointercancel", pointerEnd);
+    window.addEventListener("blur", cancelGesture);
     sphere.addEventListener("lostpointercapture", pointerEnd);
     sphere.addEventListener("click", click, true);
 
@@ -164,9 +176,10 @@ export function connectDragging(sphere, dotnet, onSettled) {
         sphere.removeEventListener("selectstart", preventNativeSelection, true);
         sphere.removeEventListener("dragstart", preventNativeSelection, true);
         sphere.removeEventListener("pointerdown", pointerDown);
-        sphere.removeEventListener("pointermove", pointerMove);
-        sphere.removeEventListener("pointerup", pointerEnd);
-        sphere.removeEventListener("pointercancel", pointerEnd);
+        window.removeEventListener("pointermove", pointerMove);
+        window.removeEventListener("pointerup", pointerEnd);
+        window.removeEventListener("pointercancel", pointerEnd);
+        window.removeEventListener("blur", cancelGesture);
         sphere.removeEventListener("lostpointercapture", pointerEnd);
         sphere.removeEventListener("click", click, true);
         sphere.classList.remove("is-dragging");

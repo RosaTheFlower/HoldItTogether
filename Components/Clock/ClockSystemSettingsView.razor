@@ -1,0 +1,120 @@
+@using HoldItTogether.Services.Clock
+
+<section class="clock-system-settings" aria-label="Relógios globais" data-no-drag>
+    <button type="button" class="clock-back" @onclick="() => BackRequested.InvokeAsync()" aria-label="Voltar ao relógio">
+        <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m11 5-5 5 5 5M6 10h10" /></svg>Relógio
+    </button>
+    <p class="clock-world-hint">O primeiro é o principal; o segundo aparece quando a exibição dupla está ativa.</p>
+    <HitScrollRegion CssClass="clock-world-list" Label="Lista de relógios globais">
+        @for (var index = 0; index < Options.SystemClocks.Length; index++)
+        {
+            var position = index;
+            var clock = Options.SystemClocks[index];
+            <HitDisclosure Title="@clock.Name" PanelId="@($"clock-world-options-{index}")" CssClass="clock-world-entry"
+                           Expanded="@(_expandedClock == index)" ExpandedChanged="value => ExpandClock(position, value)">
+                <MainControl>
+                    <span class="clock-world-preview">
+                        <time>@ClockTimeZones.At(Now, clock).ToString(Options.ShowSeconds ? "HH:mm:ss" : "HH:mm")</time>
+                        <span class="clock-world-position">@(position == 0 ? "Principal" : position == 1 ? "Secundário" : $"Relógio {position + 1}")</span>
+                    </span>
+                </MainControl>
+                <ChildContent>
+                    <label class="clock-form-field clock-world-field"><span>Nome</span>
+                        <input type="text" maxlength="40" aria-label="@($"Nome do relógio {position + 1}")" value="@clock.Name"
+                               @onchange="args => Edit(position, clock with { Name = args.Value?.ToString() ?? string.Empty })" />
+                    </label>
+                    <label class="clock-form-field clock-world-field"><span>Fuso</span>
+                        <select aria-label="@($"Fuso do relógio {position + 1}")" value="@clock.TimeZoneId"
+                                @onchange="args => Edit(position, clock with { TimeZoneId = args.Value?.ToString() ?? ClockTimeZones.LocalId })">
+                            @if (!ClockTimeZones.Options.Any(option => option.Id == clock.TimeZoneId))
+                            { <option value="@clock.TimeZoneId">@clock.TimeZoneId</option> }
+                            @foreach (var option in ClockTimeZones.Options)
+                            { <option value="@option.Id">@option.Label</option> }
+                        </select>
+                    </label>
+                    <div class="clock-world-actions">
+                        <button type="button" class="clock-world-icon" disabled="@(position == 0)" title="Mover para cima" aria-label="@($"Mover relógio {position + 1} para cima")" @onclick="() => Move(position, -1)">
+                            <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m5 11 5-5 5 5M10 6v10" /></svg>
+                        </button>
+                        <button type="button" class="clock-world-icon" disabled="@(position == Options.SystemClocks.Length - 1)" title="Mover para baixo" aria-label="@($"Mover relógio {position + 1} para baixo")" @onclick="() => Move(position, 1)">
+                            <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m5 9 5 5 5-5M10 4v10" /></svg>
+                        </button>
+                        <button type="button" class="clock-world-remove" disabled="@(Options.SystemClocks.Length == 1)" aria-label="@($"Remover relógio {position + 1}")" @onclick="() => Remove(position)">
+                            <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 5.5h12M8 5.5V3.5h4v2M6 5.5l.8 11h6.4l.8-11M8.5 8.5v5M11.5 8.5v5" /></svg>Remover
+                        </button>
+                    </div>
+                </ChildContent>
+            </HitDisclosure>
+        }
+    </HitScrollRegion>
+    @if (Options.SystemClocks.Length < ClockTimeZones.MaxClocks)
+    {
+        <HitDisclosure Title="Adicionar relógio" PanelId="clock-world-add-options" CssClass="clock-world-add"
+                       Expanded="@_adding" ExpandedChanged="ExpandAdd">
+            <MainControl><span class="clock-world-count">@Options.SystemClocks.Length / @ClockTimeZones.MaxClocks</span></MainControl>
+            <ChildContent>
+                <label class="clock-form-field clock-world-field"><span>Nome</span>
+                    <input type="text" maxlength="40" placeholder="Ex.: Lisboa" aria-label="Nome do novo relógio" @bind="_newName" />
+                </label>
+                <label class="clock-form-field clock-world-field"><span>Fuso</span>
+                    <select aria-label="Fuso do novo relógio" @bind="_newZone">
+                        @foreach (var option in ClockTimeZones.Options)
+                        { <option value="@option.Id">@option.Label</option> }
+                    </select>
+                </label>
+                <button type="button" class="clock-button clock-world-add-button" aria-label="Adicionar relógio" @onclick="Add">
+                    <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 4v12M4 10h12" /></svg>Adicionar
+                </button>
+            </ChildContent>
+        </HitDisclosure>
+    }
+</section>
+
+@code {
+    [Parameter, EditorRequired] public ClockPreferences Options { get; set; } = new();
+    [Parameter] public EventCallback<ClockPreferences> Changed { get; set; }
+    [Parameter] public EventCallback BackRequested { get; set; }
+    [Parameter] public DateTimeOffset Now { get; set; }
+    private string _newName = "", _newZone = ClockTimeZones.LocalId;
+    private int? _expandedClock;
+    private bool _adding;
+    private (SystemClock[] Clocks, int? Expanded, bool Added)? _pendingLayout;
+
+    protected override void OnParametersSet()
+    {
+        if (_pendingLayout is not { } pending) return;
+        _pendingLayout = null;
+        if (!Options.SystemClocks.SequenceEqual(pending.Clocks)) return;
+        _expandedClock = pending.Expanded;
+        if (pending.Added) { _adding = false; _newName = ""; _newZone = ClockTimeZones.LocalId; }
+    }
+
+    private void ExpandClock(int index, bool expanded) { _expandedClock = expanded ? index : null; if (expanded) _adding = false; }
+    private void ExpandAdd(bool expanded) { _adding = expanded; if (expanded) _expandedClock = null; }
+    private Task Save(SystemClock[] clocks, bool arrange = false, int? expanded = null, bool added = false)
+    {
+        var next = (Options with { SystemClocks = clocks }).Normalize();
+        if (arrange) _pendingLayout = (next.SystemClocks, expanded, added);
+        return Changed.InvokeAsync(next);
+    }
+    private Task Edit(int index, SystemClock clock) => Save(Options.SystemClocks.Select((item, position) => position == index ? clock : item).ToArray());
+    private Task Remove(int index)
+    {
+        return Options.SystemClocks.Length > 1
+            ? Save(Options.SystemClocks.Where((_, position) => position != index).ToArray(), arrange: true) : Task.CompletedTask;
+    }
+    private Task Move(int index, int direction)
+    {
+        var target = index + direction;
+        if (target < 0 || target >= Options.SystemClocks.Length) return Task.CompletedTask;
+        var clocks = Options.SystemClocks.ToArray();
+        (clocks[index], clocks[target]) = (clocks[target], clocks[index]);
+        return Save(clocks, arrange: true, expanded: target);
+    }
+    private Task Add()
+    {
+        if (Options.SystemClocks.Length >= ClockTimeZones.MaxClocks) return Task.CompletedTask;
+        SystemClock[] clocks = [..Options.SystemClocks, new(_newName, _newZone)];
+        return Save(clocks, arrange: true, added: true);
+    }
+}

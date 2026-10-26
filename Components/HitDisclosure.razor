@@ -3,15 +3,15 @@
         <strong class="disclosure-title">@Title</strong>
         <div class="disclosure-primary">@MainControl</div>
         <button type="button" class="disclosure-toggle"
-                aria-label="@($"{(_expanded ? "Recolher" : "Expandir")} {Title}")"
-                aria-expanded="@(_expanded ? "true" : "false")"
-                aria-controls="@PanelId" @onclick="ToggleAsync">
+                aria-label="@($"{(IsExpanded ? "Recolher" : "Expandir")} {Title}")"
+                aria-expanded="@(IsExpanded ? "true" : "false")"
+                title="@($"{(IsExpanded ? "Recolher" : "Expandir")} {Title}")" aria-controls="@PanelId" @onclick="ToggleAsync">
             <svg viewBox="0 0 20 20" aria-hidden="true" focusable="false">
                 <path d="m6 8 4 4 4-4" />
             </svg>
         </button>
     </div>
-    <div id="@PanelId" class="disclosure-content" hidden="@(!_expanded)">
+    <div id="@PanelId" class="disclosure-content" hidden="@(!IsExpanded)">
         @ChildContent
     </div>
 </section>
@@ -23,11 +23,14 @@
     [Parameter] public RenderFragment? MainControl { get; set; }
     [Parameter] public RenderFragment? ChildContent { get; set; }
     [Parameter] public EventCallback<bool> ExpandedChanged { get; set; }
+    [Parameter] public bool? Expanded { get; set; }
     private bool _expanded;
+    private bool IsExpanded => Expanded ?? _expanded;
 
     private async Task ToggleAsync()
     {
-        _expanded = !_expanded;
-        await ExpandedChanged.InvokeAsync(_expanded);
+        var next = !IsExpanded;
+        if (Expanded is null) _expanded = next;
+        await ExpandedChanged.InvokeAsync(next);
     }
 }

@@ -1,0 +1,37 @@
+/* DOM data attributes survive component class updates. No theme files are rewritten. */
+.sphere-area .dynamic-sphere[data-audio-theme] .sphere-title { color: var(--audio-art-foreground); }
+.sphere-area .dynamic-sphere[data-audio-theme] .sphere-action { color: var(--audio-art-muted); }
+.sphere-area .dynamic-sphere[data-audio-theme] .sphere-action.is-active { color: var(--audio-art-foreground); }
+.sphere-area .dynamic-sphere[data-audio-theme] .hit-menu-dot span { background: color-mix(in srgb, var(--audio-art-muted) 35%, transparent); }
+.sphere-area .dynamic-sphere[data-audio-theme] .hit-menu-dot.is-current span { background: var(--audio-art-accent); }
+.sphere-area .dynamic-sphere[data-audio-theme="global"] {
+    --hit-text: var(--audio-art-foreground);
+    --hit-muted: var(--audio-art-muted);
+    --hit-accent: var(--audio-art-accent);
+    --hit-background: var(--audio-art-background);
+    --hit-open-background: var(--audio-art-background);
+    --hit-idle-background: var(--audio-art-background);
+}
+.sphere-area .dynamic-sphere[data-audio-theme="global"].is-open,
+.sphere-area .dynamic-sphere[data-audio-theme="global"].is-idle,
+.sphere-area .dynamic-sphere[data-audio-theme="global"].is-away,
+.sphere-area .dynamic-sphere[data-audio-theme="global"].is-hovered { background-color: var(--audio-art-background); }
+.sphere-area .dynamic-sphere[data-audio-theme="global"] .hit-menu-panel {
+    --hit-accent: var(--audio-art-accent);
+    --hit-menu-text: var(--audio-art-foreground); --hit-menu-muted: var(--audio-art-muted);
+    color: var(--audio-art-foreground);
+}
+.sphere-area .dynamic-sphere[data-audio-theme="global"] .hit-menu-panel :is(h1,h2,h3,strong) { color: var(--audio-art-foreground); }
+.sphere-area .dynamic-sphere[data-audio-theme="global"] .hit-menu-panel :is(p,small,.memory,.range-row > span) { color: var(--audio-art-muted); }
+.sphere-area .dynamic-sphere[data-audio-theme="global"] .hit-menu-panel :is(output,input[type="range"]) { color: var(--audio-art-accent); accent-color: var(--audio-art-accent); }
+.sphere-area .dynamic-sphere[data-audio-theme="global"] .hit-menu-panel .switch:checked { background: var(--audio-art-accent); }
+.sphere-area .dynamic-sphere[data-audio-theme="global"] .hit-menu-panel .switch:checked::after { background: var(--audio-art-surface); }
+.sphere-area .dynamic-sphere[data-audio-theme="global"] .hit-menu-panel :is(select,.theme-delete-dialog) { background: var(--audio-art-surface); color: var(--audio-art-foreground); }
+.sphere-area .dynamic-sphere[data-audio-theme="global"] .hit-menu-panel :is(.theme-buttons button,.theme-button,.dialog-actions button,.disclosure-toggle) { color: var(--audio-art-accent); }
+.sphere-audio-backdrop {
+    display: none; position: absolute; z-index: 0; inset: -10%; pointer-events: none;
+    background: var(--audio-artwork, none) center/cover no-repeat;
+    filter: blur(var(--audio-cover-blur, 8px)) saturate(0.8);
+    opacity: var(--audio-cover-opacity, 0.32);
+}
+.dynamic-sphere[data-audio-cover="true"] > .sphere-audio-backdrop { display: block; }

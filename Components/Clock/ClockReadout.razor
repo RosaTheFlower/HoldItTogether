@@ -1,0 +1,22 @@
+<div class="clock-readout @(Compact ? "is-compact" : "") @(Alert ? "is-alert" : "")" data-clock-mode="@Mode">
+    @if (!Compact) { <span class="clock-readout-label">@Label</span> }
+    <span class="clock-digits" role="timer" aria-label="@($"{Label}: {Value}")">@Value</span>
+    @if (!Compact && !string.IsNullOrWhiteSpace(Detail)) { <p class="clock-readout-detail">@Detail</p> }
+    @if (!string.IsNullOrWhiteSpace(SecondaryValue))
+    {
+        <span class="clock-secondary" aria-label="@($"{SecondaryLabel}: {SecondaryValue}")">
+            @if (!Compact) { <span class="clock-secondary-label">@SecondaryLabel</span> }
+            <span class="clock-secondary-digits">@SecondaryValue</span>
+        </span>
+    }
+</div>
+@code {
+    [Parameter] public string Mode { get; set; } = "system";
+    [Parameter] public string Value { get; set; } = "00:00";
+    [Parameter] public string Label { get; set; } = "Relógio";
+    [Parameter] public string? Detail { get; set; }
+    [Parameter] public string? SecondaryValue { get; set; }
+    [Parameter] public string? SecondaryLabel { get; set; }
+    [Parameter] public bool Compact { get; set; }
+    [Parameter] public bool Alert { get; set; }
+}

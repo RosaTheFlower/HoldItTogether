@@ -1,0 +1,265 @@
+@using System.Globalization
+@using HoldItTogether.Components.Clock
+@using HoldItTogether.Services.Clock
+@using HoldItTogether.Services.HitMenus
+@using HoldItTogether.Services.Settings
+@using Microsoft.JSInterop
+@attribute [HitMenuTitle("Relógio")]
+@implements IHitMenuSettings
+@implements IAsyncDisposable
+@inject HitClockService Clock
+@inject HitSettingsService Settings
+@inject IJSRuntime JS
+
+<section @ref="_element" class="clock-menu @(IsCompact ? "is-compact" : "")" data-clock-view="@_view.ToString().ToLowerInvariant()"
+         data-hit-idle-action="@((MenuContext?.IsPinned ?? false) && _view == ClockView.Main && !IsCompact ? "compact" : null)"
+         data-hit-idle-delay="3000"
+         data-hit-view="@_view.ToString().ToLowerInvariant()"
+         @onclick:stopPropagation="true" @onkeydown="HandleKey" @onkeydown:stopPropagation="true" @oncontextmenu:preventDefault="true">
+    @if (IsCompact)
+    {
+        <div class="clock-compact-trigger" role="button" tabindex="0" data-hit-menu-trigger="clock" data-hit-drag-handle
+             aria-label="@($"{ReadoutLabel}: {ReadoutValue}. Abrir controles do relógio")"
+             title="Clique para abrir · Arraste para mover · M2 para configurar"
+             @onclick="Expand" @onkeydown="HandleCompactKey" @onkeydown:stopPropagation="true"
+             @oncontextmenu="OpenReadoutSettingsAsync" @oncontextmenu:preventDefault="true">
+            <ClockReadout Mode="@ModeId" Value="@ReadoutValue" Label="@ReadoutLabel" Compact="true" Alert="@HasNotice"
+                          SecondaryValue="@SecondaryValue" SecondaryLabel="@SecondaryLabel" />
+        </div>
+    }
+    else if (_view == ClockView.Settings)
+    {
+        <ClockSettingsView Options="@Options" Changed="SaveOptions" BackRequested="ReturnToMain" Error="@(_error ?? _snapshot.StorageError)" />
+    }
+    else if (_view == ClockView.SystemSettings)
+    {
+        <ClockSystemSettingsView Options="@Options" Changed="SaveOptions" BackRequested="ReturnToMain" Now="@_snapshot.LocalNow" />
+    }
+    else
+    {
+        <nav class="clock-tabs" aria-label="Funções do relógio" data-no-drag>
+            @foreach (var mode in Enum.GetValues<ClockMode>())
+            {
+                var itemMode = mode;
+                <button type="button" class="clock-tab @(Mode == mode ? "is-current" : "")" aria-label="@ClockFormatting.ModeName(mode)"
+                        aria-pressed="@(Mode == mode ? "true" : "false")" @onclick="() => SelectMode(itemMode)">
+                    @ClockFormatting.ModeName(mode)
+                </button>
+            }
+        </nav>
+
+        @if (MenuContext?.IsPinned == true || Mode == ClockMode.System)
+        {
+            <div class="clock-full-trigger" role="button" tabindex="0" data-hit-menu-trigger="clock" data-no-drag
+                 aria-label="@(MenuContext?.IsPinned == true ? "Mostrar somente o relógio" : "Configurar relógios globais com M2")"
+                 title="@(MenuContext?.IsPinned == true ? "Clique para compactar · M2 para configurar" : "M2 para configurar relógios globais")"
+                 @onclick="ClickReadout" @onkeydown="HandleFullReadoutKey" @onkeydown:stopPropagation="true"
+                 @oncontextmenu="OpenReadoutSettingsAsync" @oncontextmenu:preventDefault="true">
+                <ClockReadout Mode="@ModeId" Value="@ReadoutValue" Label="@ReadoutLabel" Detail="@ReadoutDetail" Alert="@HasNotice"
+                              SecondaryValue="@SecondaryValue" SecondaryLabel="@SecondaryLabel" />
+            </div>
+        }
+        else
+        {
+            <ClockReadout Mode="@ModeId" Value="@ReadoutValue" Label="@ReadoutLabel" Detail="@ReadoutDetail" Alert="@HasNotice" />
+        }
+
+        @if (Mode == ClockMode.Timer)
+        {
+            <div class="clock-duration" data-no-drag>
+                <label><input type="number" min="0" max="23" value="@_timerHours" aria-label="Horas do temporizador" disabled="@_snapshot.Timer.Running"
+                              @onchange="args => EditTimer(args, 0)" @onwheel:stopPropagation="true" /><span>horas</span></label>
+                <span class="clock-duration-separator">:</span>
+                <label><input type="number" min="0" max="59" value="@_timerMinutes" aria-label="Minutos do temporizador" disabled="@_snapshot.Timer.Running"
+                              @onchange="args => EditTimer(args, 1)" @onwheel:stopPropagation="true" /><span>minutos</span></label>
+                <span class="clock-duration-separator">:</span>
+                <label><input type="number" min="0" max="59" value="@_timerSeconds" aria-label="Segundos do temporizador" disabled="@_snapshot.Timer.Running"
+                              @onchange="args => EditTimer(args, 2)" @onwheel:stopPropagation="true" /><span>segundos</span></label>
+            </div>
+            <div class="clock-actions" data-no-drag>
+                <button type="button" class="clock-button is-primary" aria-label="@TimerAction" @onclick="ToggleTimer">@TimerAction</button>
+                <button type="button" class="clock-button" aria-label="Redefinir temporizador" @onclick="ResetTimer">Redefinir</button>
+            </div>
+        }
+        else if (Mode == ClockMode.Pomodoro)
+        {
+            <div class="clock-progress" role="progressbar" aria-label="Progresso da etapa do Pomodoro"
+                 aria-valuemin="0" aria-valuemax="100" aria-valuenow="@Math.Round(PomodoroProgress)" style="@($"--clock-progress:{PomodoroProgress.ToString("0.##", CultureInfo.InvariantCulture)}%")"><span></span></div>
+            <div class="clock-actions" data-no-drag>
+                <button type="button" class="clock-button is-primary" aria-label="@PomodoroAction" @onclick="() => Run(Clock.TogglePomodoro)">@PomodoroAction</button>
+                <button type="button" class="clock-button" aria-label="Pular etapa do Pomodoro" @onclick="() => Run(Clock.SkipPomodoro)">Pular</button>
+                <button type="button" class="clock-button" aria-label="Reiniciar Pomodoro" @onclick="() => Run(Clock.ResetPomodoro)">Reiniciar</button>
+            </div>
+        }
+
+    }
+    @if (!IsCompact && _view != ClockView.Settings && (_error ?? _snapshot.StorageError) is { } error) { <p class="clock-error" role="status">@error</p> }
+</section>
+
+@code {
+    private enum ClockView { Main, Settings, SystemSettings }
+    [CascadingParameter(Name = "HitMenu")] public HitMenuContext? MenuContext { get; set; }
+    private ClockView _view;
+    private ClockSnapshot _snapshot = new(DateTimeOffset.Now, new(), TimeSpan.FromMinutes(5), new(), TimeSpan.FromMinutes(25), [], null);
+    private ClockPreferences Options => Settings.Current.Clock;
+    private ClockMode Mode => Options.SelectedMode;
+    private string ModeId => Mode.ToString().ToLowerInvariant();
+    public bool IsSettingsOpen => _view != ClockView.Main;
+    private bool IsCompact => (MenuContext?.IsPinned ?? false) && _view == ClockView.Main && !_expanded;
+    private bool _expanded = true, _lastPinned, _visible, _disposed;
+    private ElementReference _element;
+    private IJSObjectReference? _idleModule;
+    private DotNetObjectReference<HitMenuRelogio>? _idleReference;
+    private Task? _idleConnect;
+    private string? _error, _publishedTitle;
+    private HitMenuLayout? _publishedLayout;
+    private CancellationTokenSource? _tickerCts;
+    private Task? _ticker;
+    private int _timerHours, _timerMinutes = 5, _timerSeconds;
+    private bool _timerEdited;
+    private TimeSpan TimerInput => TimeSpan.FromHours(_timerHours) + TimeSpan.FromMinutes(_timerMinutes) + TimeSpan.FromSeconds(_timerSeconds);
+    private DateTimeOffset SystemNow => ClockTimeZones.At(_snapshot.LocalNow, Options.SystemClocks[0]);
+    private string? SecondaryValue => Mode == ClockMode.System && Options.ShowTwoClocks && Options.SystemClocks.Length > 1
+        ? ClockTimeZones.At(_snapshot.LocalNow, Options.SystemClocks[1]).ToString(Options.ShowSeconds ? "HH:mm:ss" : "HH:mm") : null;
+    private string? SecondaryLabel => SecondaryValue is not null ? Options.SystemClocks[1].Name : null;
+    private bool HasNotice => IsCompact ? _snapshot.Notices.Count > 0 : _snapshot.Notices.Any(item => Mode switch
+    { ClockMode.Timer => item.Kind == ClockNoticeKind.Timer, ClockMode.Pomodoro => item.Kind == ClockNoticeKind.Pomodoro, _ => false });
+    private string ReadoutValue => Mode switch
+    {
+        ClockMode.Timer => ClockFormatting.Countdown(_timerEdited ? TimerInput : _snapshot.TimerRemaining),
+        ClockMode.Pomodoro => ClockFormatting.Countdown(_snapshot.PomodoroRemaining),
+        _ => SystemNow.ToString(Options.ShowSeconds ? "HH:mm:ss" : "HH:mm")
+    };
+    private string ReadoutLabel => Mode switch
+    { ClockMode.Timer => "Temporizador", ClockMode.Pomodoro => ClockFormatting.PhaseName(_snapshot.Pomodoro.Phase), _ => Options.SystemClocks[0].Name };
+    private string ReadoutDetail => Mode switch
+    {
+        ClockMode.Timer => _snapshot.Timer.Completed ? "Tempo concluído" : _snapshot.Timer.Running ? "Em andamento" : "Prepare seu tempo",
+        ClockMode.Pomodoro => $"{_snapshot.Pomodoro.CompletedFocusRounds} focos concluídos · pausa longa a cada {Options.RoundsBeforeLongBreak}",
+        _ => SystemNow.ToString("dddd, dd 'de' MMMM", CultureInfo.GetCultureInfo("pt-BR"))
+    };
+    private string TimerAction => _snapshot.Timer.Running ? "Pausar temporizador" : _snapshot.Timer.Completed ? "Recomeçar temporizador" :
+        !_timerEdited && _snapshot.TimerRemaining < _snapshot.Timer.Duration ? "Continuar temporizador" : "Iniciar temporizador";
+    private string PomodoroAction => _snapshot.Pomodoro.Countdown.Running ? "Pausar Pomodoro" : "Iniciar Pomodoro";
+    private double PomodoroProgress => Math.Clamp(100 - _snapshot.PomodoroRemaining.TotalSeconds / Math.Max(1, _snapshot.Pomodoro.Countdown.Duration.TotalSeconds) * 100, 0, 100);
+
+    protected override void OnInitialized()
+    {
+        _snapshot = Clock.Read(); SyncTimerInputs();
+        Clock.Changed += Refresh; Settings.Changed += Refresh;
+    }
+    protected override void OnParametersSet()
+    {
+        _visible = (MenuContext?.IsActive ?? true) && (MenuContext?.IsVisible ?? true);
+        var pinned = MenuContext?.IsPinned ?? false;
+        if (pinned != _lastPinned) { _expanded = true; _lastPinned = pinned; }
+        if (!(MenuContext?.IsActive ?? true)) { _expanded = true; _publishedLayout = null; _publishedTitle = null; }
+        if (!_visible) _tickerCts?.Cancel();
+    }
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_disposed) return;
+        _idleConnect ??= ConnectIdleAsync();
+        await _idleConnect;
+        if (_disposed) return;
+        if (MenuContext?.IsActive ?? true)
+        {
+            var layout = IsCompact ? HitMenuLayout.Compact : HitMenuLayout.Default;
+            if (_publishedLayout != layout) { _publishedLayout = layout; if (MenuContext is not null) await MenuContext.LayoutRequested.InvokeAsync(layout); }
+            var title = _view == ClockView.Settings ? "Configurações do relógio" : _view == ClockView.SystemSettings ? "Relógios globais" : "Relógio";
+            if (_publishedTitle != title) { _publishedTitle = title; if (MenuContext is not null) await MenuContext.TitleRequested.InvokeAsync(title); }
+        }
+        if (_visible && _ticker is null)
+        { _tickerCts = new(); _ticker = TickAsync(_tickerCts); }
+    }
+    private async Task ConnectIdleAsync()
+    {
+        var module = await JS.InvokeAsync<IJSObjectReference>("import", "./js/clock-menu.js");
+        if (_disposed) { await module.DisposeAsync(); return; }
+        _idleModule = module;
+        _idleReference = DotNetObjectReference.Create(this);
+        await module.InvokeVoidAsync("connectIdle", _element, _idleReference);
+    }
+    private async Task TickAsync(CancellationTokenSource source)
+    {
+        using var timer = new PeriodicTimer(TimeSpan.FromSeconds(1));
+        try
+        {
+            do { await InvokeAsync(() => { if (!_disposed) { _snapshot = Clock.Read(); StateHasChanged(); } }); }
+            while (await timer.WaitForNextTickAsync(source.Token));
+        }
+        catch (OperationCanceledException) when (source.IsCancellationRequested) { }
+        finally
+        {
+            source.Dispose(); _tickerCts = null; _ticker = null;
+            if (!_disposed) await InvokeAsync(StateHasChanged);
+        }
+    }
+    private void Refresh() { if (!_disposed) _ = InvokeAsync(() => { _snapshot = Clock.Read(); if (_visible) StateHasChanged(); }); }
+    private bool Run(Action action)
+    {
+        _error = null;
+        try { action(); _snapshot = Clock.Read(); return true; }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException or ArgumentException or InvalidOperationException or System.ComponentModel.Win32Exception)
+        { _error = error is ArgumentException ? error.Message : "Não foi possível salvar essa alteração. Tente novamente."; return false; }
+    }
+    private void SelectMode(ClockMode mode) => Run(() => Settings.Update(value => value with { Clock = value.Clock with { SelectedMode = mode } }));
+    private void SaveOptions(ClockPreferences value) => Run(() => Settings.Update(settings => settings with { Clock = value.Normalize() }));
+    public Task OpenSettingsAsync() => InvokeAsync(() => { _view = ClockView.Settings; _error = null; StateHasChanged(); });
+    private Task OpenReadoutSettingsAsync() => Mode == ClockMode.System
+        ? InvokeAsync(() => { _view = ClockView.SystemSettings; _error = null; StateHasChanged(); }) : OpenSettingsAsync();
+    private void ClickReadout() { if (MenuContext?.IsPinned == true) Compact(); }
+    private void Expand() { _expanded = true; _view = ClockView.Main; }
+    private void Compact() { _expanded = false; _view = ClockView.Main; }
+    private void ReturnToMain() { Expand(); _error = null; }
+    [JSInvokable]
+    public Task CompactAfterInactivity() => InvokeAsync(() =>
+    {
+        if (_disposed || !_visible || MenuContext?.IsPinned != true || IsSettingsOpen || IsCompact) return;
+        Compact(); StateHasChanged();
+    });
+    private Task HandleFullReadoutKey(KeyboardEventArgs args)
+    {
+        if (args.Key is "Enter" or " ") { ClickReadout(); return Task.CompletedTask; }
+        if (args.Key == "ContextMenu" || args.ShiftKey && args.Key == "F10") return OpenReadoutSettingsAsync();
+        return HandleKey(args);
+    }
+    private Task HandleCompactKey(KeyboardEventArgs args)
+    {
+        if (args.Key is "Enter" or " ") Expand();
+        else if (args.Key == "ContextMenu" || args.ShiftKey && args.Key == "F10") return OpenReadoutSettingsAsync();
+        else if (args.Key == "Escape") return MenuContext?.CloseRequested.InvokeAsync() ?? Task.CompletedTask;
+        return Task.CompletedTask;
+    }
+    private Task HandleKey(KeyboardEventArgs args)
+    {
+        if (args.Key != "Escape") return Task.CompletedTask;
+        if (_view != ClockView.Main) ReturnToMain();
+        else if (MenuContext?.IsPinned == true && _expanded) Compact();
+        else return MenuContext?.CloseRequested.InvokeAsync() ?? Task.CompletedTask;
+        return Task.CompletedTask;
+    }
+    private void EditTimer(ChangeEventArgs args, int unit)
+    {
+        if (!int.TryParse(args.Value?.ToString(), out var number)) return;
+        number = Math.Clamp(number, 0, unit == 0 ? 23 : 59);
+        if (unit == 0) _timerHours = number; else if (unit == 1) _timerMinutes = number; else _timerSeconds = number;
+        _timerEdited = true;
+    }
+    private void SyncTimerInputs() { var duration = _snapshot.Timer.Duration; _timerHours = (int)duration.TotalHours; _timerMinutes = duration.Minutes; _timerSeconds = duration.Seconds; _timerEdited = false; }
+    private void ToggleTimer()
+    {
+        if (!_snapshot.Timer.Running && (_timerEdited || _snapshot.Timer.Completed))
+        { if (Run(() => Clock.StartTimer(TimerInput))) _timerEdited = false; }
+        else Run(Clock.ToggleTimer);
+    }
+    private void ResetTimer() { if (Run(Clock.ResetTimer)) SyncTimerInputs(); }
+    public async ValueTask DisposeAsync()
+    {
+        _disposed = true; Clock.Changed -= Refresh; Settings.Changed -= Refresh;
+        _tickerCts?.Cancel(); if (_ticker is { } task) await task;
+        try { if (_idleConnect is not null) await _idleConnect; if (_idleModule is not null) { await _idleModule.InvokeVoidAsync("disconnectIdle", _element); await _idleModule.DisposeAsync(); } }
+        catch (JSDisconnectedException) { }
+        _idleReference?.Dispose();
+    }
+}

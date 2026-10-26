@@ -17,9 +17,15 @@
          @onfocusin="HandleFocusIn"
          @onfocusout="HandleFocusOut"
          @onkeydown="HandleKeyDown">
+        <div class="sphere-audio-backdrop" aria-hidden="true"></div>
         <div class="sphere-content" inert="@(_state != SphereState.Open)">
-            <header class="sphere-header">
-                <h1 class="sphere-title">@_menuTitle</h1>
+            <header class="sphere-header" hidden="@_compactMenu" inert="@_compactMenu">
+                <h1 class="sphere-title @(_hasMenuSettings ? "has-settings" : "")"
+                    tabindex="@(_hasMenuSettings ? 0 : -1)"
+                    data-hit-menu-trigger="@(_hasMenuSettings ? "settings" : null)"
+                    title="@(_hasMenuSettings ? "Botão direito para configurar este menu" : null)"
+                    @oncontextmenu="OpenMenuSettingsAsync" @oncontextmenu:preventDefault="true"
+                    @oncontextmenu:stopPropagation="true" @onkeydown="HandleTitleKeyAsync" @onkeydown:stopPropagation="true">@_menuTitle</h1>
             <div class="sphere-actions" data-no-drag
                  @onclick:stopPropagation="true"
                  @onkeydown="HandleActionKeyDown"
@@ -47,7 +53,10 @@
                 </button>
             </div>
             </header>
-            <HitMenuHost @ref="_menuHost" OnCloseRequested="CloseSphere" OnTitleChanged="UpdateTitle" />
+            <HitMenuHost @ref="_menuHost" OnCloseRequested="CloseSphere" OnTitleChanged="UpdateTitle"
+                         OnSettingsAvailableChanged="UpdateSettingsAvailable" OnLayoutChanged="UpdateLayout"
+                         IsPinned="@_pinnedOpen" IsVisible="@(_state == SphereState.Open)" />
+            <HoldItTogether.Components.Clock.ClockNotifications />
         </div>
     </div>
 </div>
@@ -60,7 +69,21 @@
     private ElementReference _area;
     private HitMenuHost? _menuHost;
     private string _menuTitle = "HIT";
+    private bool _hasMenuSettings;
+    private bool _compactMenu;
+    private void UpdateLayout(HoldItTogether.Services.HitMenus.HitMenuLayout layout) =>
+        _compactMenu = layout == HoldItTogether.Services.HitMenus.HitMenuLayout.Compact;
     private void UpdateTitle(string title) => _menuTitle = title;
+    private void UpdateSettingsAvailable(bool available) => _hasMenuSettings = available;
+    private Task OpenMenuSettingsAsync() => _hasMenuSettings && _menuHost is not null
+        ? _menuHost.OpenCurrentSettingsAsync() : Task.CompletedTask;
+    private Task HandleTitleKeyAsync(KeyboardEventArgs args)
+    {
+        if (args.Key == "ContextMenu" || (args.ShiftKey && args.Key == "F10") || args.Key is "Enter" or " ")
+            return OpenMenuSettingsAsync();
+        if (args.Key == "Escape") CloseSphere();
+        return Task.CompletedTask;
+    }
     private IJSObjectReference? _module;
     private DotNetObjectReference<DynamicSphere>? _reference;
     private readonly CancellationTokenSource _lifetimeCts = new();
@@ -82,7 +105,7 @@
     }
 
     private string StateClass =>
-        $"is-{_state.ToString().ToLowerInvariant()}{(_pinnedOpen ? " is-pinned" : "")}{(_isDragging ? " is-dragging" : "")}";
+        $"is-{_state.ToString().ToLowerInvariant()}{(_pinnedOpen ? " is-pinned" : "")}{(_isDragging ? " is-dragging" : "")}{(_compactMenu ? " is-menu-compact" : "")}";
 
     protected override void OnInitialized() => Schedule(SphereState.Idle, TimeSpan.FromSeconds(10));
 

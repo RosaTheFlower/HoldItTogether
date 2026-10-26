@@ -1,14 +1,22 @@
+@property --hit-focus-progress { syntax: "<number>"; inherits: true; initial-value: 0; }
+.sphere-area {
+    --hit-focus-duration: 1200ms;
+    --hit-focus-ease: cubic-bezier(0.22, 1, 0.36, 1);
+    --hit-focus-fade-duration: 450ms;
+}
 .hit-menu-host {
     position: absolute;
     inset: 0;
 }
 
 .hit-menu-measure {
+    --hit-focus-progress: 0;
     display: flow-root;
     width: max-content;
     min-width: 360px;
     min-height: 220px;
-    padding: 64px 24px 44px;
+    padding: calc(var(--hit-menu-padding-top, 64px) -
+        (var(--hit-menu-padding-top, 64px) - var(--hit-menu-idle-padding-top, 24px)) * var(--hit-focus-progress)) 24px 44px;
 }
 
 .hit-menu-panel {
@@ -94,4 +102,65 @@
 @media (prefers-reduced-motion: reduce) {
     .hit-menu-panel:not([hidden]) { animation: none; }
     .hit-menu-dot span { transition: none; }
+}
+.hit-menu-scale { width: max-content; }
+.hit-menu-viewport {
+    width: calc(var(--hit-menu-natural-width, 360px) * var(--hit-menu-scale-x, 1));
+    height: calc(var(--hit-menu-natural-height, 220px) * var(--hit-menu-scale-y, 1));
+}
+.hit-menu-surface {
+    display: flow-root; width: max-content;
+    transform: scale(var(--hit-menu-scale-x, 1), var(--hit-menu-scale-y, 1));
+    transform-origin: top left;
+}
+.sphere-title.has-settings { cursor: context-menu; }
+.sphere-title.has-settings:focus-visible { outline: 1px solid var(--hit-accent); outline-offset: 5px; border-radius: 3px; }
+.sphere-header, [data-hit-idle-controls] {
+    transition: opacity var(--hit-focus-fade-duration) ease, visibility 0s linear;
+}
+.dynamic-sphere[data-hit-controls-hidden="true"] .sphere-header,
+.dynamic-sphere[data-hit-controls-hidden="true"] [data-hit-idle-controls] {
+    opacity: 0; visibility: hidden; pointer-events: none;
+    transition-delay: 0s, var(--hit-focus-fade-duration);
+}
+.dynamic-sphere[data-hit-controls-hidden="true"] .hit-menu-measure {
+    --hit-focus-progress: 1;
+}
+.dynamic-sphere[data-hit-controls-hidden="true"][data-hit-idle-view="player"] .hit-menu-measure { min-height: 0; }
+.hit-idle-collapse { display: grid; grid-template-rows: 1fr; }
+.hit-idle-collapse-content { display: flow-root; min-height: 0; overflow: hidden; }
+.dynamic-sphere[data-hit-controls-hidden="true"][data-hit-idle-view="player"] [data-hit-collapse="player"],
+.dynamic-sphere[data-hit-controls-hidden="true"][data-hit-idle-view="lyrics"] [data-hit-collapse="lyrics"],
+.dynamic-sphere[data-hit-controls-hidden="true"] .hit-menu-panel:not([hidden]) [data-hit-collapse="always"] { grid-template-rows: 0fr; }
+.dynamic-sphere[data-hit-layout-animating="true"] .hit-menu-measure {
+    transition: --hit-focus-progress var(--hit-focus-duration) var(--hit-focus-ease);
+}
+.dynamic-sphere[data-hit-layout-animating="true"] .hit-idle-collapse {
+    transition: grid-template-rows var(--hit-focus-duration) var(--hit-focus-ease);
+}
+/* The layout already supplies animated dimensions; avoid a second height transition lagging behind it. */
+.sphere-area .dynamic-sphere.is-open[data-hit-layout-animating="true"] {
+    transition-property: width, border-radius, background-color, box-shadow;
+}
+.dynamic-sphere[data-ctrl-pressed="true"] [data-ctrl-link]:not(:disabled):not([aria-disabled="true"]) {
+    cursor: pointer; text-decoration: underline;
+    text-decoration-color: var(--hit-link-hint-color, color-mix(in srgb, var(--audio-accent, var(--hit-accent)) 55%, transparent));
+    text-underline-offset: 3px;
+}
+.dynamic-sphere[data-alt-pressed="true"] [data-hit-menu-trigger]:not(:disabled):not([aria-disabled="true"]) {
+    cursor: context-menu; text-decoration: underline dotted;
+    text-decoration-color: var(--hit-menu-hint-color, var(--audio-accent, var(--hit-accent)));
+    text-underline-offset: 4px;
+    outline: 1px dashed var(--hit-menu-hint-color, color-mix(in srgb, var(--audio-accent, var(--hit-accent)) 65%, transparent));
+    outline-offset: 3px;
+}
+.dynamic-sphere[data-alt-pressed="true"] button[data-hit-menu-trigger]:not(:disabled):not([aria-disabled="true"]) { outline-offset: -3px; }
+@media (prefers-reduced-motion: reduce) {
+    .sphere-header, [data-hit-idle-controls],
+    .dynamic-sphere[data-hit-layout-animating="true"] .hit-menu-measure,
+    .dynamic-sphere[data-hit-layout-animating="true"] .hit-idle-collapse { transition: none; }
+}
+.sphere-header[hidden], .hit-menu-pagination[hidden] { display: none; }
+.hit-menu-host.is-compact .hit-menu-measure {
+    min-width: 0; min-height: 0; padding: var(--hit-compact-padding-y, 14px) var(--hit-compact-padding-x, 18px);
 }

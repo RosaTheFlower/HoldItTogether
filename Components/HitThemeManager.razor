@@ -13,6 +13,7 @@
     private string? _revision;
     private string? _baseRevision;
     private bool? _motionDisabled;
+    private bool? _tooltipsEnabled;
     private bool _disposed;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -33,6 +34,11 @@
     private async Task ApplyAsync()
     {
         if (_disposed || _module is null) return;
+        if (_tooltipsEnabled != Settings.Current.ShowTooltips)
+        {
+            await _module.InvokeVoidAsync("setTooltips", Settings.Current.ShowTooltips);
+            _tooltipsEnabled = Settings.Current.ShowTooltips;
+        }
         var motionDisabled = Settings.Current.RemoveAnimations;
         if (_motionDisabled != motionDisabled)
         {

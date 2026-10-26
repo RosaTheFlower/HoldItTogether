@@ -1,0 +1,38 @@
+@using System.Globalization
+@using Microsoft.JSInterop
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+
+<div class="hit-menu-scale" style="@ScaleStyle">
+<div @ref="_viewport" class="hit-menu-viewport">
+    <div class="hit-menu-surface">@ChildContent</div>
+</div>
+</div>
+
+@code {
+    [Parameter] public int ScaleX { get; set; } = 100;
+    [Parameter] public int ScaleY { get; set; } = 100;
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    private ElementReference _viewport;
+    private IJSObjectReference? _module;
+    private bool _disposed;
+    private string ScaleStyle => $"--hit-menu-scale-x:{Factor(ScaleX)};--hit-menu-scale-y:{Factor(ScaleY)}";
+    private static string Factor(int value) => (Math.Clamp(value, 75, 200) / 100d).ToString("0.##", CultureInfo.InvariantCulture);
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender || _disposed) return;
+        var module = await JS.InvokeAsync<IJSObjectReference>("import", "./js/hit-menu-viewport.js");
+        if (_disposed) { await module.DisposeAsync(); return; }
+        _module = module;
+        await _module.InvokeVoidAsync("observe", _viewport);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        _disposed = true;
+        if (_module is null) return;
+        try { await _module.InvokeVoidAsync("disconnect", _viewport); await _module.DisposeAsync(); }
+        catch (JSDisconnectedException) { }
+    }
+}

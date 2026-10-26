@@ -1,3 +1,5 @@
+using HoldItTogether.Services.Audio;
+using HoldItTogether.Services.Clock;
 using HoldItTogether.Services.Settings;
 using HoldItTogether.Services.Themes;
 using HoldItTogether.Services.Diagnostics;
@@ -17,6 +19,11 @@ internal static class Program
         var builder = PhotinoBlazorAppBuilder.CreateDefault(args);
 
         builder.Services.AddLogging();
+        builder.Services.AddSingleton<IHitMediaService, WindowsMediaService>();
+        builder.Services.AddSingleton<AudioSpectrumService>();
+        builder.Services.AddSingleton<LyricsService>();
+        builder.Services.AddSingleton(provider => new HitClockService(provider.GetRequiredService<HitSettingsService>()));
+        builder.Services.AddSingleton<IExternalLinkService, ExternalLinkService>();
         builder.Services.AddSingleton<HitSettingsService>();
         builder.Services.AddSingleton<HitMemorySampler>();
         builder.Services.AddSingleton<HitThemeService>();
@@ -26,6 +33,7 @@ internal static class Program
 
         var app = builder.Build();
         var settings = app.Services.GetRequiredService<HitSettingsService>();
+        var clock = app.Services.GetRequiredService<HitClockService>();
 
         app.MainWindow
             .SetTitle("Hold It Together")
@@ -42,6 +50,13 @@ internal static class Program
         app.Services.GetRequiredService<DesktopWindowService>().Attach(app.MainWindow);
 
         try { app.Run(); }
-        finally { settings.UnbindRuntime(); }
+        finally
+        {
+            settings.UnbindRuntime();
+            clock.DisposeAsync().AsTask().GetAwaiter().GetResult();
+            app.Services.GetRequiredService<AudioSpectrumService>().Dispose();
+            app.Services.GetRequiredService<LyricsService>().Dispose();
+            (app.Services.GetRequiredService<IHitMediaService>() as IDisposable)?.Dispose();
+        }
     }
 }

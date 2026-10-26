@@ -1,5 +1,7 @@
 # HIT — padrão de design e implementação
 
+Contrato de menus/serviços/telas: [HIT-MENUS.md](../HIT-MENUS.md). Evolução para módulos externos: [MENU-PACKAGES.md](MENU-PACKAGES.md), ainda planejada.
+
 Esta é a referência para criar telas, controles e temas. O padrão oficial é
 **HIT Obsidian Eyes**, definido em:
 
@@ -7,7 +9,7 @@ Esta é a referência para criar telas, controles e temas. O padrão oficial é
 - ../wwwroot/css/theme-base.css — estrutura compartilhada de cabeçalho, seções e diálogos.
 - ../wwwroot/css/menus/ — estrutura pública de cada página.
 
-Há uma página de exemplo (Início), além de Configurações. Menus e temas antigos não fazem parte do build. Não recrie variantes
+Há menus de Áudio e Relógio, além de Configurações. Menus e temas antigos não fazem parte do build. Não recrie variantes
 distribuídas sem uma decisão explícita de produto.
 
 ## Direção visual
@@ -68,6 +70,8 @@ acessíveis. Use o componente compartilhado, em vez de duplicar a estrutura:
 
 Use um PanelId único por seção. O tamanho da janela acompanha a expansão
 pelo ResizeObserver, sem larguras dependentes da própria viewport.
+Para coordenar uma lista de seções, passe Expanded e trate ExpandedChanged.
+Sem Expanded, o componente mantém seu próprio estado, como antes.
 
 ### Configurações
 
@@ -76,9 +80,10 @@ A ordem é:
 1. Always on Top.
 2. System Tray.
 3. Remover animações.
-4. Scroll speed: cooldown visível; sensibilidade e pausa dentro da expansão.
-5. RAM em uso: uma linha de 10 px, sem subtítulo, atualizada só com a página ativa.
-6. Temas: seletor visível; ações dentro da expansão.
+4. Mostrar tooltips.
+5. Scroll speed: cooldown visível; sensibilidade e pausa dentro da expansão.
+6. RAM em uso: uma linha de 10 px, sem subtítulo, atualizada só com a página ativa.
+7. Temas: seletor visível; ações dentro da expansão.
 
 Importar CSS, Abrir pasta e Excluir ficam **lado a lado numa única linha**,
 com três colunas iguais ocupando toda a largura disponível.
@@ -220,3 +225,91 @@ bin, obj, artifacts, preferências da IDE e o índice gerado css/menus.css são
 ignorados. O build gera novamente esse índice e copia os recursos públicos
 para a saída. Não mantenha cópias exportadas do tema: o arquivo canônico já pode
 ser copiado/importado quando necessário.
+## Mini-player de áudio
+
+A página Áudio substitui Início e segue a mesma estrutura de título, medição e
+paginação. Não adicione controles de janela dentro do componente do player.
+
+- Capa de 64 px, título em 15 px e artista em 11 px; metadados longos são truncados.
+- Timeline acima dos controles principais: aleatório, anterior, play/pause, próxima, loop.
+- Ações secundárias: modo capa/cores/compacto à esquerda; letras e visualizador à direita.
+- Letras têm tela própria, com retorno por M2/Escape/Voltar. Mantêm as dimensões do player; o espectro fica ao fundo.
+- Controles indisponíveis no aplicativo de origem ficam desabilitados.
+- As letras só são habilitadas quando o serviço encontra conteúdo sincronizado.
+- O visualizador mostra dados reais. Não use números aleatórios ou animações decorativas.
+- A captura para fora de vista. O polling só continua no modo de cores globais, a cada dois segundos.
+- M2 no modo capa abre blur, cores globais e subopção de capa nos outros menus.
+- Mostrar tooltips é uma preferência global dos controles HTML, preservando aria-label.
+- Todo CSS permanece público em css/menus/HitMenuAudio.css, com escopo estável.
+
+HitMenuContext.IsActive indica o menu selecionado; IsVisible também considera
+a esfera aberta. Recursos de mídia devem consultar ambos para suspender trabalho.
+O contrato específico de estilos, classes, paleta da capa e animações está em
+[AUDIO-THEMES.md](AUDIO-THEMES.md). Ele deve acompanhar novas mudanças da página.
+## Configurações específicas dos menus
+
+O padrão opcional é IHitMenuSettings: M2 no título abre a configuração do
+menu atual, inclusive de suas subtelas. Configurações gerais não adota o
+atalho. O contrato e o exemplo para novos menus estão em
+[Components/HitMenus/README.md](../Components/HitMenus/README.md).
+
+Áudio oferece tamanho uniforme ou X/Y individualmente, ocultação de ações
+após cinco segundos sem interação enquanto fixado e Mostrar fonte.
+Mantenha o formulário compacto e a escala do formulário em 100%. A escala
+escolhida vale para player e letras, que devem continuar com medidas iguais.
+Ao ocultar ações no player, remova o espaço reservado e compacte a janela.
+Em Letras, mantenha a janela e amplie a leitura para ocupar o espaço liberado.
+O CSS dessas opções continua público e usa as cores do tema/paleta atual.
+
+A interface IHitMenuSettings também expõe IsSettingsOpen; true bloqueia
+scroll entre menus automaticamente. Áudio inclui nessa regra suas
+configurações e a personalização da capa. Voltar libera a navegação.
+
+Interações com Ctrl: títulos de músicas e a fonte de letras usam
+data-ctrl-link. O cursor vira uma mão e o texto ganha sublinhado enquanto
+Ctrl estiver pressionado. Clique simples mantém o comportamento normal.
+
+## Movimento de foco e indicação de configuração
+
+O foco por inatividade leva 1200ms, com início rápido e desaceleração longa.
+O layout contrai gradualmente as regiões secundárias e o espaço do cabeçalho;
+Letras recupera esse espaço usando o mesmo progresso, sem aumentar a janela.
+Ao voltar a interagir, a transição parte da posição atual, sem salto.
+O fade de ações/título dura 450ms. As opções de movimento reduzido têm prioridade.
+
+Estilize por --hit-focus-duration, --hit-focus-ease,
+--hit-focus-fade-duration e pelas duas margens de cabeçalho documentadas.
+O tamanho nativo acompanha a animação do conteúdo; não duplique uma transição
+de height nesse intervalo. Não troque as regiões animadas por display:none.
+
+Ctrl revela data-ctrl-link com sublinhado contínuo. Alt revela
+data-hit-menu-trigger com sublinhado pontilhado e contorno tracejado.
+Ícones precisam do contorno porque não possuem texto para sublinhar.
+Use --hit-link-hint-color / --hit-menu-hint-color para ajustar as cores.
+O título de Configurações gerais não anuncia um menu próprio.
+
+Planeje tela principal, detalhes, configuração do menu e configuração de
+objetos conforme [HIT-MENUS.md](../HIT-MENUS.md). Temas continuam controlando
+apresentação; serviços/layout externos pertencem ao futuro formato de módulos.
+
+## Menu Relógio e apresentação compacta
+
+Relógio é a segunda bolinha; Configurações gerais continua sendo a última.
+O conteúdo principal escolhe entre Sistema, Temporizador e Pomodoro.
+M2 no título abre segundos, dois relógios, som e parâmetros do Pomodoro. M2 no mostrador do sistema abre fusos: nomes, adição, remoção e ordem. As duas telas bloqueiam navegação por scroll.
+
+Enquanto fixado, o menu principal pede HitMenuLayout.Compact após três segundos sem interação ou ao clicar no mostrador.
+O shell retira cabeçalho/paginação e usa margens compactas. O mostrador mantém
+somente a função selecionada. M1 reabre controles, M2 configura e Alt revela
+esse gesto. Hover não expande o compacto. O mostrador compacto permite arrastar:
+M1 sem deslocamento abre, enquanto segurar e mover reposiciona sem abrir ao soltar.
+O relógio secundário compacto exibe apenas os dígitos pequenos e muted,
+centralizados abaixo do principal; o nome permanece disponível à acessibilidade.
+
+A configuração do sistema usa linhas sem cartões, com nome, prévia e seta.
+Cada relógio e a inclusão começam recolhidos, usando HitDisclosure; somente
+uma edição fica aberta. Nome/fuso e ações de ordem/remoção aparecem na expansão.
+Ao reordenar, a edição acompanha o relógio. Depois de adicionar, recolha o formulário.
+
+O estilo do Relógio continua separado e público. Contrato de classes e
+variáveis: [CLOCK-THEMES.md](CLOCK-THEMES.md).

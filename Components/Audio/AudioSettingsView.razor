@@ -1,0 +1,75 @@
+@using HoldItTogether.Services.Settings
+
+<section class="audio-settings-view" aria-label="Configurações de áudio" data-no-drag
+         @onclick:stopPropagation="true" @oncontextmenu="ReturnAsync" @oncontextmenu:preventDefault="true"
+         @onpointerup="HandlePointerUp">
+    <button type="button" class="lyrics-back audio-view-back" aria-label="Voltar ao áudio" title="Voltar ao áudio" @onclick="ReturnAsync">
+        <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m11 5-5 5 5 5M6 10h10" /></svg>
+        <span>Áudio</span>
+    </button>
+
+    <HitDisclosure Title="Tamanho" PanelId="audio-size-options" CssClass="audio-size-disclosure">
+        <MainControl>
+            <div class="audio-size-uniform">
+                <input type="range" min="75" max="200" step="5" value="@UniformScale"
+                       aria-label="Tamanho uniforme do áudio" @oninput="PreviewUniform" @onchange="SaveUniform" @onwheel:stopPropagation="true" />
+                <output>@(ScaleX == ScaleY ? $"{ScaleX}%" : $"{ScaleX} × {ScaleY}%")</output>
+            </div>
+        </MainControl>
+        <ChildContent>
+            <label class="audio-size-axis">
+                <span>Largura · X</span>
+                <input type="range" min="75" max="200" step="5" value="@ScaleX" aria-label="Largura do áudio"
+                       @oninput="PreviewX" @onchange="SaveX" @onwheel:stopPropagation="true" />
+                <output>@ScaleX%</output>
+            </label>
+            <label class="audio-size-axis">
+                <span>Altura · Y</span>
+                <input type="range" min="75" max="200" step="5" value="@ScaleY" aria-label="Altura do áudio"
+                       @oninput="PreviewY" @onchange="SaveY" @onwheel:stopPropagation="true" />
+                <output>@ScaleY%</output>
+            </label>
+        </ChildContent>
+    </HitDisclosure>
+
+    <label class="audio-setting-row">
+        <span>Esconder botões<small>Após 5 segundos sem interação, quando fixado.</small></span>
+        <input type="checkbox" class="appearance-switch" role="switch" aria-label="Esconder botões após inatividade"
+               @bind:get="Settings.AudioHideControls" @bind:set="SetHide" />
+    </label>
+    <label class="audio-setting-row">
+        <span>Mostrar fonte<small>Aplicativo que está reproduzindo o áudio.</small></span>
+        <input type="checkbox" class="appearance-switch" role="switch" aria-label="Mostrar fonte do áudio"
+               @bind:get="Settings.AudioShowSource" @bind:set="SetSource" />
+    </label>
+    @if (Error is { } error) { <p class="audio-error" role="status">@error</p> }
+</section>
+
+@code {
+    [Parameter, EditorRequired] public HitSettings Settings { get; set; } = new();
+    [Parameter] public string? Error { get; set; }
+    [Parameter] public EventCallback<(int X, int Y)> SizeChanged { get; set; }
+    [Parameter] public EventCallback<bool> HideControlsChanged { get; set; }
+    [Parameter] public EventCallback<bool> ShowSourceChanged { get; set; }
+    [Parameter] public EventCallback BackRequested { get; set; }
+    private int? _previewX, _previewY;
+    private int ScaleX => _previewX ?? Settings.AudioScaleX;
+    private int ScaleY => _previewY ?? Settings.AudioScaleY;
+    private int UniformScale => (int)Math.Round((ScaleX + ScaleY) / 2d / 5) * 5;
+    private static int Read(ChangeEventArgs args, int fallback) => int.TryParse(args.Value?.ToString(), out var value) ? Math.Clamp(value, 75, 200) : fallback;
+    private void PreviewUniform(ChangeEventArgs args) { _previewX = _previewY = Read(args, UniformScale); }
+    private void PreviewX(ChangeEventArgs args) => _previewX = Read(args, ScaleX);
+    private void PreviewY(ChangeEventArgs args) => _previewY = Read(args, ScaleY);
+    private Task SaveUniform(ChangeEventArgs args) { PreviewUniform(args); return SaveSize(); }
+    private Task SaveX(ChangeEventArgs args) { PreviewX(args); return SaveSize(); }
+    private Task SaveY(ChangeEventArgs args) { PreviewY(args); return SaveSize(); }
+    private async Task SaveSize()
+    {
+        await SizeChanged.InvokeAsync((ScaleX, ScaleY));
+        _previewX = _previewY = null;
+    }
+    private Task SetHide(bool enabled) => HideControlsChanged.InvokeAsync(enabled);
+    private Task SetSource(bool enabled) => ShowSourceChanged.InvokeAsync(enabled);
+    private Task ReturnAsync() => BackRequested.InvokeAsync();
+    private Task HandlePointerUp(PointerEventArgs args) => args.Button == 2 ? ReturnAsync() : Task.CompletedTask;
+}

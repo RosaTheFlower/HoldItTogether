@@ -160,3 +160,32 @@ export function applyBase(css) {
     document.head.insertBefore(baseline, style || motionStyle || null);
     document.dispatchEvent(new CustomEvent("hit-theme-status"));
 }
+
+// Preserve accessible names. Only native hover tooltips are optional.
+let tooltipObserver;
+function stripTitles() {
+    for (const element of document.querySelectorAll(".sphere-area[title], .sphere-area [title]")) {
+        element.dataset.hitTooltip = element.getAttribute("title");
+        element.removeAttribute("title");
+    }
+}
+export function setTooltips(enabled) {
+    tooltipObserver?.disconnect();
+    if (enabled) {
+        for (const element of document.querySelectorAll(".sphere-area[data-hit-tooltip], .sphere-area [data-hit-tooltip]")) {
+            element.setAttribute("title", element.dataset.hitTooltip);
+            delete element.dataset.hitTooltip;
+        }
+        return;
+    }
+    stripTitles();
+    tooltipObserver ??= new MutationObserver(records => {
+        tooltipObserver.disconnect();
+        for (const record of records)
+            if (record.type === "attributes" && !record.target.hasAttribute("title"))
+                delete record.target.dataset.hitTooltip;
+        stripTitles();
+        tooltipObserver.observe(document.documentElement, {subtree:true, childList:true, attributes:true, attributeFilter:["title"]});
+    });
+    tooltipObserver.observe(document.documentElement, {subtree:true, childList:true, attributes:true, attributeFilter:["title"]});
+}
