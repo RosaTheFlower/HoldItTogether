@@ -3,12 +3,13 @@
 @implements IAsyncDisposable
 @inject IJSRuntime JS
 @inject DesktopWindowService DesktopWindow
+@inject HoldItTogether.Services.Extensions.ExtensionUi Extensions
 
 <div @ref="_area" class="sphere-area">
     <div class="dynamic-sphere @StateClass"
          tabindex="0"
          role="group"
-         aria-label="HIT"
+         aria-label="@Text.Get("HIT")"
          @onwheel="HandleMenuWheelAsync"
          @onwheel:preventDefault="true"
          @onclick="PinOpen"
@@ -23,7 +24,7 @@
                 <h1 class="sphere-title @(_hasMenuSettings ? "has-settings" : "")"
                     tabindex="@(_hasMenuSettings ? 0 : -1)"
                     data-hit-menu-trigger="@(_hasMenuSettings ? "settings" : null)"
-                    title="@(_hasMenuSettings ? "Botão direito para configurar este menu" : null)"
+                    title="@(_hasMenuSettings ? "Right-click to configure this menu" : null)"
                     @oncontextmenu="OpenMenuSettingsAsync" @oncontextmenu:preventDefault="true"
                     @oncontextmenu:stopPropagation="true" @onkeydown="HandleTitleKeyAsync" @onkeydown:stopPropagation="true">@_menuTitle</h1>
             <div class="sphere-actions" data-no-drag
@@ -32,9 +33,9 @@
                  @onkeydown:stopPropagation="true">
                 <button type="button"
                         class="sphere-action sphere-action-pin @(_pinnedOpen ? "is-active" : "")"
-                        aria-label="@(_pinnedOpen ? "Desfixar menu" : "Manter menu aberto")"
+                        aria-label="@(_pinnedOpen ? "Unpin menu" : "Keep menu open")"
                         aria-pressed="@(_pinnedOpen ? "true" : "false")"
-                        title="@(_pinnedOpen ? "Desfixar menu" : "Manter menu aberto")"
+                        title="@(_pinnedOpen ? "Unpin menu" : "Keep menu open")"
                         @onclick="TogglePin">
                     <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                         <path d="M9 3h6l-1 6 3 3v2H7v-2l3-3-1-6Z"
@@ -44,8 +45,8 @@
                 </button>
                 <button type="button"
                         class="sphere-action sphere-action-close"
-                        aria-label="Fechar e desfixar menu"
-                        title="Fechar menu"
+                        aria-label="@Text.Get("Close and unpin menu")"
+                        title="@Text.Get("Close menu")"
                         @onclick="CloseSphere">
                     <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                         <path d="m6 6 12 12M18 6 6 18" />
@@ -55,8 +56,10 @@
             </header>
             <HitMenuHost @ref="_menuHost" OnCloseRequested="CloseSphere" OnTitleChanged="UpdateTitle"
                          OnSettingsAvailableChanged="UpdateSettingsAvailable" OnLayoutChanged="UpdateLayout"
+                         OnPinRequested="SetPinned"
                          IsPinned="@_pinnedOpen" IsVisible="@(_state == SphereState.Open)" />
             <HoldItTogether.Components.Clock.ClockNotifications />
+            <HoldItTogether.Components.Extensions.ExtensionNotification />
         </div>
     </div>
 </div>
@@ -107,7 +110,21 @@
     private string StateClass =>
         $"is-{_state.ToString().ToLowerInvariant()}{(_pinnedOpen ? " is-pinned" : "")}{(_isDragging ? " is-dragging" : "")}{(_compactMenu ? " is-menu-compact" : "")}";
 
-    protected override void OnInitialized() => Schedule(SphereState.Idle, TimeSpan.FromSeconds(10));
+    protected override void OnInitialized()
+    {
+        Extensions.OpenRequested += ShowExtensions;
+        Schedule(SphereState.Idle, TimeSpan.FromSeconds(10));
+    }
+    private void SetPinned(bool pinned) { if (pinned) PinOpen(); else _pinnedOpen = false; }
+    private void ShowExtensions()
+    {
+        if (!_disposed) _ = InvokeAsync(async () =>
+        {
+            PinOpen();
+            if (_menuHost is not null) await _menuHost.ShowExtensionsAsync();
+            StateHasChanged();
+        });
+    }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -427,6 +444,7 @@
 
     public async ValueTask DisposeAsync()
     {
+        Extensions.OpenRequested -= ShowExtensions;
         _disposed = true;
         DesktopWindow.CancelDrag();
         CancelTransition();

@@ -1,0 +1,20 @@
+@inherits ErrorBoundaryBase
+@inject Microsoft.Extensions.Logging.ILogger<ExtensionErrorBoundary> Logger
+@using Microsoft.Extensions.Logging
+
+@if (CurrentException is null)
+{
+    @ChildContent
+}
+else
+{
+    @ErrorContent?.Invoke(CurrentException)
+}
+
+@code {
+    protected override Task OnErrorAsync(Exception exception)
+    {
+        Logger.LogError(exception, "An extension menu failed to render.");
+        return Task.CompletedTask;
+    }
+}

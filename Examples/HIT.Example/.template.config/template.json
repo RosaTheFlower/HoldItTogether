@@ -1,0 +1,14 @@
+{
+  "$schema": "http://json.schemastore.org/template",
+  "author": "HIT",
+  "classifications": ["HIT", "Blazor", "Extension"],
+  "identity": "HIT.Extension.Template",
+  "name": "HIT menu extension",
+  "shortName": "hitmenu",
+  "sourceName": "HIT.Example",
+  "preferNameDirectory": true,
+  "symbols": {
+    "extensionId": { "type": "parameter", "datatype": "string", "defaultValue": "dev.hit.example", "replaces": "dev.hit.example", "description": "Unique lowercase extension ID" }
+  },
+  "sources": [{ "exclude": ["**/bin/**", "**/obj/**", ".template.config/**"] }]
+}

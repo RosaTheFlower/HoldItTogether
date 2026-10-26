@@ -47,7 +47,7 @@ public sealed class HitClockService : IAsyncDisposable
 
     public void StartTimer(TimeSpan duration)
     {
-        if (duration < TimeSpan.FromSeconds(1) || duration > TimeSpan.FromHours(24)) throw new ArgumentException("Use um tempo entre 1 segundo e 24 horas.");
+        if (duration < TimeSpan.FromSeconds(1) || duration > TimeSpan.FromHours(24)) throw new ArgumentException("Choose a duration between 1 second and 24 hours.");
         Change((state, now) => state with { Timer = ClockCountdown.Ready(duration) with { Deadline = now + duration } });
     }
     public void ToggleTimer() => Change((state, now) => state with { Timer = Toggle(state.Timer, now) });
@@ -86,7 +86,7 @@ public sealed class HitClockService : IAsyncDisposable
             if (next.Timer.Deadline is { } timerDue && timerDue <= now)
             {
                 next = next with { Timer = next.Timer with { Deadline = null, Remaining = TimeSpan.Zero, Completed = true } };
-                notices.Add(new(Guid.NewGuid(), ClockNoticeKind.Timer, "Temporizador concluído", "O tempo terminou.", now));
+                notices.Add(new(Guid.NewGuid(), ClockNoticeKind.Timer, "Timer complete", "Time is up.", now));
             }
             if (next.Pomodoro.Countdown.Deadline is { } pomoDue && pomoDue <= now)
             {
@@ -95,7 +95,7 @@ public sealed class HitClockService : IAsyncDisposable
                 var start = now - pomoDue > TimeSpan.FromSeconds(5) ? now : pomoDue;
                 var following = NextPhase(next.Pomodoro, start, true);
                 next = next with { Pomodoro = following };
-                notices.Add(new(Guid.NewGuid(), ClockNoticeKind.Pomodoro, $"{phase} concluído", $"{ClockFormatting.PhaseName(following.Phase)}{(following.Countdown.Running ? " em andamento." : " pronta para iniciar.")}", now));
+                notices.Add(new(Guid.NewGuid(), ClockNoticeKind.Pomodoro, $"{phase} completed", $"{ClockFormatting.PhaseName(following.Phase)}{(following.Countdown.Running ? " running." : " ready to start.")}", now));
             }
             if (notices.Count > 0)
             {
@@ -106,7 +106,7 @@ public sealed class HitClockService : IAsyncDisposable
             {
                 try { Save(_state); _dirty = false; changed |= _storageError is not null; _storageError = null; }
                 catch (Exception error) when (IsStorageError(error))
-                { changed |= _storageError is null; _storageError = "Não foi possível salvar o estado do relógio. Tentando novamente."; }
+                { changed |= _storageError is null; _storageError = "Could not save the clock state. Retrying."; }
             }
         }
         if (notify && _settings.Current.Clock.SoundEnabled) _sound.Play();
@@ -133,7 +133,7 @@ public sealed class HitClockService : IAsyncDisposable
                 ? state with { Pomodoro = state.Pomodoro with { Countdown = ClockCountdown.Ready(PhaseDuration(state.Pomodoro.Phase)) } } : state);
         }
         catch (Exception error) when (IsStorageError(error))
-        { lock (_sync) _storageError = "Não foi possível salvar os ajustes do relógio."; Changed?.Invoke(); }
+        { lock (_sync) _storageError = "Could not save clock settings."; Changed?.Invoke(); }
     }
     private async Task RunAsync(CancellationToken token)
     {
@@ -187,7 +187,7 @@ public sealed class HitClockService : IAsyncDisposable
             _dirty = migrated;
         }
         catch (Exception error) when (IsStorageError(error) || error is JsonException)
-        { _storageError = "Não foi possível restaurar o estado salvo do relógio."; }
+        { _storageError = "Could not restore the saved clock state."; }
     }
     public async ValueTask DisposeAsync()
     {

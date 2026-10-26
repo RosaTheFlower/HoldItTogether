@@ -1,0 +1,35 @@
+/* Public extension manager styles. Colors inherit the active HIT/music theme. */
+.settings-extensions-link { display:flex; align-items:center; justify-content:space-between; width:100%; min-height:48px; padding:0; border:0; background:transparent; color:var(--hit-menu-text,var(--hit-text)); cursor:pointer; text-align:left; }
+.settings-extensions-link strong { font-size:12px; font-weight:500; }
+.settings-extensions-link svg { width:17px; height:17px; margin-right:5px; fill:none; stroke:currentColor; stroke-width:1.5; color:var(--hit-menu-muted,var(--hit-muted)); }
+.settings-extensions-link:hover svg { color:var(--hit-accent); transform:translateX(2px); }
+.extensions-view { width:480px; max-width:100%; color:var(--hit-menu-text,var(--hit-text)); font-size:12px; }
+.extensions-toolbar { display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:14px; }
+.extension-back { display:flex; align-items:center; gap:6px; padding:6px 0; border:0; background:transparent; color:var(--hit-menu-muted,var(--hit-muted)); font:inherit; cursor:pointer; }
+.extension-back svg,.extension-icon svg { width:18px; height:18px; fill:none; stroke:currentColor; stroke-width:1.5; stroke-linecap:round; stroke-linejoin:round; }
+.extension-install { position:relative; display:inline-flex; padding:8px 12px; border:1px solid color-mix(in srgb,currentColor 14%,transparent); border-radius:8px; background:color-mix(in srgb,currentColor 5%,transparent); cursor:pointer; }
+.extension-install input { position:absolute; inset:0; width:100%; height:100%; opacity:0; cursor:pointer; }
+.extension-install:focus-within,.extension-actions button:focus-visible,.settings-extensions-link:focus-visible { outline:1px solid var(--hit-accent); outline-offset:3px; }
+.extension-install.is-busy { opacity:.5; }
+.extensions-hint { margin:0 0 12px; color:var(--hit-menu-muted,var(--hit-muted)); font-size:10px; line-height:1.6; }
+.extensions-list { max-height:330px; overflow-y:auto; overscroll-behavior:contain; scrollbar-width:thin; scrollbar-color:color-mix(in srgb,currentColor 18%,transparent) transparent; }
+.extension-row { display:flex; align-items:center; gap:10px; min-height:64px; padding:10px 0; border-bottom:1px solid color-mix(in srgb,currentColor 7%,transparent); transition:opacity 180ms ease; }
+.extension-row.is-dragging { opacity:.35; }
+.extension-row.is-disabled .extension-identity { opacity:.5; }
+.extension-grip { width:14px; color:var(--hit-menu-muted,var(--hit-muted)); cursor:grab; font-size:20px; }
+.extension-identity { display:flex; flex:1; flex-direction:column; min-width:0; gap:4px; }
+.extension-identity strong { font-size:12px; font-weight:500; overflow:hidden; text-overflow:ellipsis; }
+.extension-identity span { font-size:10px; color:var(--hit-menu-muted,var(--hit-muted)); overflow-wrap:anywhere; }
+.extension-rollback { align-self:flex-start; padding:2px 0; border:0; background:transparent; color:var(--hit-menu-muted,var(--hit-muted)); font:inherit; font-size:10px; text-decoration:underline; cursor:pointer; }
+.extension-actions { display:flex; align-items:center; gap:4px; }
+.extension-icon { display:grid; place-items:center; width:27px; height:29px; padding:0; color:var(--hit-menu-muted,var(--hit-muted)); background:transparent; border:0; border-radius:7px; cursor:pointer; font-size:16px; }
+.extension-icon:hover:not(:disabled),.extension-back:hover { color:var(--hit-menu-text,var(--hit-text)); background:color-mix(in srgb,currentColor 6%,transparent); }
+.extension-icon:disabled { opacity:.25; cursor:default; }
+.extension-switch { appearance:none; width:30px; height:18px; border:1px solid color-mix(in srgb,currentColor 16%,transparent); border-radius:10px; background:color-mix(in srgb,currentColor 6%,transparent); cursor:pointer; position:relative; margin:0 4px; color:var(--hit-menu-text,var(--hit-text)); }
+.extension-switch::after { content:""; position:absolute; left:3px; top:3px; width:10px; height:10px; border-radius:50%; background:var(--hit-menu-muted,var(--hit-muted)); transition:transform 180ms ease; }
+.extension-switch:checked { background:var(--hit-accent); }
+.extension-switch:checked::after { transform:translateX(12px); background:var(--hit-open-background,#17191e); }
+.extension-switch:disabled { opacity:.4; cursor:default; }
+.extension-message { font-size:11px; line-height:1.6; padding:8px 10px; border-radius:7px; background:color-mix(in srgb,currentColor 6%,transparent); overflow-wrap:anywhere; }
+.extension-message.is-error,.extension-identity .extension-failure { color:var(--hit-error,#c98f8f); }
+.hit-drop-overlay { position:absolute; inset:0; z-index:100; display:grid; place-items:center; border:1px dashed var(--hit-accent); border-radius:var(--hit-open-radius,22px); background:var(--hit-open-background,#17191e); color:var(--hit-menu-text,var(--hit-text)); font:12px var(--hit-font); pointer-events:none; }

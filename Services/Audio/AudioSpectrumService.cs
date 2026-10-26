@@ -34,7 +34,7 @@ public sealed class AudioSpectrumService : IDisposable
                 capture.RecordingStopped += (_, args) =>
                 {
                     if (args.Exception is not null)
-                        Volatile.Write(ref _error, "A saída de áudio ficou indisponível. Reabra o visualizador para tentar novamente.");
+                        Volatile.Write(ref _error, "Audio output became unavailable. Reopen the visualizer to try again.");
                 };
                 capture.StartRecording();
                 _capture = capture;

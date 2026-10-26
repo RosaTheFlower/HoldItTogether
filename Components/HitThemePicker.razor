@@ -9,9 +9,9 @@
 @inject IJSRuntime JS
 
 <div class="theme-picker" data-no-drag>
-    <HitDisclosure Title="Temas" PanelId="theme-options" CssClass="theme-settings" ExpandedChanged="OnExpandedChanged">
+    <HitDisclosure Title="@Text.Get("Themes")" PanelId="theme-options" CssClass="theme-settings" ExpandedChanged="OnExpandedChanged">
         <MainControl>
-            <select @ref="_themeSelect" aria-label="Tema do HIT" value="@Settings.Current.Theme" @onchange="SelectTheme">
+            <select @ref="_themeSelect" aria-label="@Text.Get("HIT theme")" value="@Settings.Current.Theme" @onchange="SelectTheme">
                 @foreach (var theme in _themes)
                 {
                     <option value="@theme.Id">@theme.Name</option>
@@ -21,21 +21,21 @@
         <ChildContent>
             <div class="theme-buttons">
                 <label class="theme-button import-theme">
-                    Importar CSS
-                    <InputFile accept=".css,text/css" OnChange="ImportTheme" aria-label="Importar tema CSS" />
+                    @Text.Get("Import CSS")
+                    <InputFile accept=".css,text/css" OnChange="ImportTheme" aria-label="@Text.Get("Import CSS theme")" />
                 </label>
-                <button type="button" @onclick="OpenFolder">Abrir pasta</button>
-                <button type="button" disabled="@(!CanDelete)" aria-label="Excluir tema" @onclick="RequestDelete">Excluir</button>
+                <button type="button" @onclick="OpenFolder">@Text.Get("Open folder")</button>
+                <button type="button" disabled="@(!CanDelete)" aria-label="@Text.Get("Delete theme")" @onclick="RequestDelete">@Text.Get("Delete")</button>
             </div>
         </ChildContent>
     </HitDisclosure>
     <dialog @ref="_deleteDialog" class="theme-delete-dialog" aria-labelledby="delete-theme-title"
             aria-describedby="delete-theme-description" @onwheel:stopPropagation="true" @onclick:stopPropagation="true" @onkeydown:stopPropagation="true">
-        <h2 id="delete-theme-title">Excluir tema?</h2>
-        <p id="delete-theme-description">“@_pendingDeleteName” será excluído permanentemente.</p>
+        <h2 id="delete-theme-title">@Text.Get("Delete theme?")</h2>
+        <p id="delete-theme-description">“@_pendingDeleteName” will be permanently deleted.</p>
         <div class="dialog-actions">
-            <button type="button" data-dialog-cancel aria-label="Cancelar exclusão" @onclick="CancelDelete">Cancelar</button>
-            <button type="button" class="confirm-delete" aria-label="Confirmar exclusão do tema" @onclick="ConfirmDelete">Excluir</button>
+            <button type="button" data-dialog-cancel aria-label="@Text.Get("Cancel deletion")" @onclick="CancelDelete">@Text.Get("Cancel")</button>
+            <button type="button" class="confirm-delete" aria-label="@Text.Get("Confirm theme deletion")" @onclick="ConfirmDelete">@Text.Get("Delete")</button>
         </div>
     </dialog>
     @if ((_error ?? _runtimeError) is { Length: > 0 } error)
@@ -86,7 +86,7 @@
                 (_pendingDeleteId != Settings.Current.Theme || !CanDelete)) CancelDelete();
         }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException)
-        { _error = "Não foi possível acessar a pasta de temas."; }
+        { _error = Text.Get("Could not access the themes folder."); }
     }
 
     private void SettingsChanged()

@@ -22,7 +22,7 @@ function selectors(value) {
 }
 
 function scopeSelector(selector, target) {
-    const root = target === "menus" ? '.hit-menu-panel[data-hit-menu]' : '.sphere-area';
+    const root = typeof target === "object" ? target.root : target === "menus" ? '.hit-menu-panel[data-hit-menu]' : '.sphere-area';
     if (/^(:root|:scope|html|body)(?=$|[\s.#:[>+~])/.test(selector))
         return selector.replace(/^(:root|:scope|html|body)/, root);
     return root + " " + selector;
@@ -57,11 +57,11 @@ function declarations(style, names) {
     }).join("");
 }
 
-function compileRules(rules, target, names = namesIn(rules, target)) {
+function compileRules(rules, target, names = namesIn(rules, typeof target === "object" ? target.key : target)) {
     return [...rules].map(rule => {
         if (rule.type === CSSRule.STYLE_RULE) {
             // CSS nesting is deliberately excluded: all selectors must pass through this boundary.
-            if (rule.cssRules?.length) throw new Error("Use seletores completos em vez de CSS aninhado.");
+            if (rule.cssRules?.length) throw new Error("Use complete selectors instead of nested CSS.");
             const scoped = selectors(rule.selectorText).map(value => scopeSelector(value, target)).join(",");
             return scoped + "{" + declarations(rule.style, names) + "}";
         }
@@ -72,7 +72,7 @@ function compileRules(rules, target, names = namesIn(rules, target)) {
             return "@font-face{" + declarations(rule.style, names) + "}";
         if (rule.type === CSSRule.MEDIA_RULE || rule.type === CSSRule.SUPPORTS_RULE)
             return (rule.type === CSSRule.MEDIA_RULE ? "@media " : "@supports ") + rule.conditionText + "{" + compileRules(rule.cssRules, target, names) + "}";
-        throw new Error("Regra não suportada no tema. Use seletores, @media, @supports, @keyframes ou @font-face.");
+        throw new Error("Unsupported theme rule. Use selectors, @media, @supports, @keyframes or @font-face.");
     }).join("\n");
 }
 
@@ -81,16 +81,25 @@ export function compile(css) {
     const sheet = new CSSStyleSheet();
     sheet.replaceSync(css);
     // replaceSync ignores @import. Reject it explicitly so downloaded CSS cannot escape scoping.
-    if (/(^|[;}])\s*@import\b/i.test(css.replace(/\/\*[\s\S]*?\*\//g, ""))) throw new Error("Inclua o CSS no próprio arquivo; @import não é aceito em temas.");
+    if (/(^|[;}])\s*@import\b/i.test(css.replace(/\/\*[\s\S]*?\*\//g, ""))) throw new Error("Inline your CSS; @import is not supported in themes.");
     const rules = [...sheet.cssRules];
-    if (!rules.length) throw new Error("O arquivo não contém um tema CSS válido.");
+    if (!rules.length) throw new Error("The file does not contain a valid CSS theme.");
     const compiled = [];
     for (const rule of rules) {
         if (rule.constructor.name !== "CSSLayerBlockRule" || (rule.name !== "sphere" && rule.name !== "menus"))
-            throw new Error("Organize o tema em @layer sphere { ... } e @layer menus { ... }.");
+            throw new Error("Organize the theme into @layer sphere { ... } and @layer menus { ... }.");
         compiled.push(compileRules(rule.cssRules, rule.name));
     }
     return compiled.join("\n");
+}
+
+// Public package CSS is scoped independently of the global theme contract.
+export function compileExtension(css, id, baseUrl) {
+    if (/(^|[;}])\s*@import\b/i.test(css.replace(/\/\*[\s\S]*?\*\//g, ""))) throw new Error("Inline your CSS; @import is not supported.");
+    const sheet = new CSSStyleSheet();
+    const absolute = css.replace(/url\(\s*(['"]?)([^)'"\s]+)\1\s*\)/gi, (_, quote, url) => `url("${new URL(url, new URL(baseUrl, document.baseURI)).href.replaceAll('"', '%22')}")`);
+    sheet.replaceSync(absolute);
+    return compileRules(sheet.cssRules, { root: `.hit-menu-panel[data-hit-menu="${CSS.escape(id)}"]`, key: id.replace(/[^a-z0-9-]/gi, "-") });
 }
 
 export function apply(css, readError = null) {
@@ -104,7 +113,7 @@ export function apply(css, readError = null) {
         style.textContent = compiled;
         document.documentElement.dataset.hitThemeError = readError || "";
     } catch (error) {
-        document.documentElement.dataset.hitThemeError = "Tema não aplicado: " + error.message;
+        document.documentElement.dataset.hitThemeError = "Theme not applied: " + error.message;
     }
     document.dispatchEvent(new CustomEvent("hit-theme-status"));
     // Preserve the final override after every theme change.

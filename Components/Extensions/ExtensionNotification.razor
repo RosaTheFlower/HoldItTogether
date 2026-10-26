@@ -1,0 +1,18 @@
+@using HoldItTogether.Services.Extensions
+@using HoldItTogether.Services.Clock
+@implements IDisposable
+@inject ExtensionUi Ui
+@inject HitClockService Clock
+@if (Ui.Notice is { } notice && !_clockNotice)
+{
+    <aside class="clock-notice extension-notice" role="status" aria-live="polite" data-no-drag @onclick:stopPropagation="true" @onkeydown:stopPropagation="true">
+        <div><strong>@notice.Title</strong><p>@notice.Message</p></div>
+        <button type="button" aria-label="@Text.Get("Dismiss extension notification")" title="@Text.Get("Dismiss notification")" @onclick="Ui.DismissNotice">×</button>
+    </aside>
+}
+@code {
+    private bool _clockNotice, _disposed;
+    protected override void OnInitialized() { Ui.NoticeChanged += Refresh; Clock.Changed += Refresh; _clockNotice = Clock.Read().Notices.Count > 0; }
+    private void Refresh() { if (!_disposed) _ = InvokeAsync(() => { _clockNotice = Clock.Read().Notices.Count > 0; StateHasChanged(); }); }
+    public void Dispose() { _disposed = true; Ui.NoticeChanged -= Refresh; Clock.Changed -= Refresh; }
+}

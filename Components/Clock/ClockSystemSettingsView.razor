@@ -1,11 +1,11 @@
 @using HoldItTogether.Services.Clock
 
-<section class="clock-system-settings" aria-label="Relógios globais" data-no-drag>
-    <button type="button" class="clock-back" @onclick="() => BackRequested.InvokeAsync()" aria-label="Voltar ao relógio">
-        <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m11 5-5 5 5 5M6 10h10" /></svg>Relógio
+<section class="clock-system-settings" aria-label="@Text.Get("World clocks")" data-no-drag>
+    <button type="button" class="clock-back" @onclick="() => BackRequested.InvokeAsync()" aria-label="@Text.Get("Back to Clock")">
+        <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m11 5-5 5 5 5M6 10h10" /></svg>@Text.Get("Clock")
     </button>
-    <p class="clock-world-hint">O primeiro é o principal; o segundo aparece quando a exibição dupla está ativa.</p>
-    <HitScrollRegion CssClass="clock-world-list" Label="Lista de relógios globais">
+    <p class="clock-world-hint">@Text.Get("The first clock is primary. The second appears when dual clocks are enabled.")</p>
+    <HitScrollRegion CssClass="clock-world-list" Label="@Text.Get("World clocks list")">
         @for (var index = 0; index < Options.SystemClocks.Length; index++)
         {
             var position = index;
@@ -15,18 +15,18 @@
                 <MainControl>
                     <span class="clock-world-preview">
                         <time>@ClockTimeZones.At(Now, clock).ToString(Options.ShowSeconds ? "HH:mm:ss" : "HH:mm")</time>
-                        <span class="clock-world-position">@(position == 0 ? "Principal" : position == 1 ? "Secundário" : $"Relógio {position + 1}")</span>
+                        <span class="clock-world-position">@(position == 0 ? Text.Get("Primary") : position == 1 ? Text.Get("Secondary") : $"Clock {position + 1}")</span>
                     </span>
                 </MainControl>
                 <ChildContent>
                     @if (_expandedClock == position)
                     {
-                    <label class="clock-form-field clock-world-field"><span>Nome</span>
-                        <input type="text" maxlength="40" aria-label="@($"Nome do relógio {position + 1}")" value="@clock.Name"
+                    <label class="clock-form-field clock-world-field"><span>@Text.Get("Name")</span>
+                        <input type="text" maxlength="40" aria-label="@($"Clock name {position + 1}")" value="@clock.Name"
                                @onchange="args => Edit(position, clock with { Name = args.Value?.ToString() ?? string.Empty })" />
                     </label>
-                    <label class="clock-form-field clock-world-field"><span>Fuso</span>
-                        <select aria-label="@($"Fuso do relógio {position + 1}")" value="@clock.TimeZoneId"
+                    <label class="clock-form-field clock-world-field"><span>@Text.Get("Time zone")</span>
+                        <select aria-label="@($"Clock time zone {position + 1}")" value="@clock.TimeZoneId"
                                 @onchange="args => Edit(position, clock with { TimeZoneId = args.Value?.ToString() ?? ClockTimeZones.LocalId })">
                             @if (!ClockTimeZones.Options.Any(option => option.Id == clock.TimeZoneId))
                             { <option value="@clock.TimeZoneId">@clock.TimeZoneId</option> }
@@ -35,14 +35,14 @@
                         </select>
                     </label>
                     <div class="clock-world-actions">
-                        <button type="button" class="clock-world-icon" disabled="@(position == 0)" title="Mover para cima" aria-label="@($"Mover relógio {position + 1} para cima")" @onclick="() => Move(position, -1)">
+                        <button type="button" class="clock-world-icon" disabled="@(position == 0)" title="@Text.Get("Move up")" aria-label="@($"Move clock {position + 1} up")" @onclick="() => Move(position, -1)">
                             <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m5 11 5-5 5 5M10 6v10" /></svg>
                         </button>
-                        <button type="button" class="clock-world-icon" disabled="@(position == Options.SystemClocks.Length - 1)" title="Mover para baixo" aria-label="@($"Mover relógio {position + 1} para baixo")" @onclick="() => Move(position, 1)">
+                        <button type="button" class="clock-world-icon" disabled="@(position == Options.SystemClocks.Length - 1)" title="@Text.Get("Move down")" aria-label="@($"Move clock {position + 1} down")" @onclick="() => Move(position, 1)">
                             <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m5 9 5 5 5-5M10 4v10" /></svg>
                         </button>
-                        <button type="button" class="clock-world-remove" disabled="@(Options.SystemClocks.Length == 1)" aria-label="@($"Remover relógio {position + 1}")" @onclick="() => Remove(position)">
-                            <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 5.5h12M8 5.5V3.5h4v2M6 5.5l.8 11h6.4l.8-11M8.5 8.5v5M11.5 8.5v5" /></svg>Remover
+                        <button type="button" class="clock-world-remove" disabled="@(Options.SystemClocks.Length == 1)" aria-label="@($"Remove clock {position + 1}")" @onclick="() => Remove(position)">
+                            <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 5.5h12M8 5.5V3.5h4v2M6 5.5l.8 11h6.4l.8-11M8.5 8.5v5M11.5 8.5v5" /></svg>@Text.Get("Remove")
                         </button>
                     </div>
                     }
@@ -52,23 +52,23 @@
     </HitScrollRegion>
     @if (Options.SystemClocks.Length < ClockTimeZones.MaxClocks)
     {
-        <HitDisclosure Title="Adicionar relógio" PanelId="clock-world-add-options" CssClass="clock-world-add"
+        <HitDisclosure Title="@Text.Get("Add clock")" PanelId="clock-world-add-options" CssClass="clock-world-add"
                        Expanded="@_adding" ExpandedChanged="ExpandAdd">
             <MainControl><span class="clock-world-count">@Options.SystemClocks.Length / @ClockTimeZones.MaxClocks</span></MainControl>
             <ChildContent>
                 @if (_adding)
                 {
-                <label class="clock-form-field clock-world-field"><span>Nome</span>
-                    <input type="text" maxlength="40" placeholder="Ex.: Lisboa" aria-label="Nome do novo relógio" @bind="_newName" />
+                <label class="clock-form-field clock-world-field"><span>@Text.Get("Name")</span>
+                    <input type="text" maxlength="40" placeholder="@Text.Get("e.g. Lisbon")" aria-label="@Text.Get("New clock name")" @bind="_newName" />
                 </label>
-                <label class="clock-form-field clock-world-field"><span>Fuso</span>
-                    <select aria-label="Fuso do novo relógio" @bind="_newZone">
+                <label class="clock-form-field clock-world-field"><span>@Text.Get("Time zone")</span>
+                    <select aria-label="@Text.Get("New clock time zone")" @bind="_newZone">
                         @foreach (var option in ClockTimeZones.Options)
                         { <option value="@option.Id">@option.Label</option> }
                     </select>
                 </label>
-                <button type="button" class="clock-button clock-world-add-button" aria-label="Adicionar relógio" @onclick="Add">
-                    <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 4v12M4 10h12" /></svg>Adicionar
+                <button type="button" class="clock-button clock-world-add-button" aria-label="@Text.Get("Add clock")" @onclick="Add">
+                    <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 4v12M4 10h12" /></svg>@Text.Get("Add")
                 </button>
                 }
             </ChildContent>

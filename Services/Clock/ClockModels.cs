@@ -8,7 +8,7 @@ public sealed record ClockPreferences
 {
     public bool ShowSeconds { get; init; } = true;
     public bool ShowTwoClocks { get; init; }
-    public SystemClock[] SystemClocks { get; init; } = [new("Sistema", ClockTimeZones.LocalId), new("Nova York", "Eastern Standard Time")];
+    public SystemClock[] SystemClocks { get; init; } = [new("System", ClockTimeZones.LocalId), new("New York", "Eastern Standard Time")];
     public ClockMode SelectedMode { get; init; }
     public int FocusMinutes { get; init; } = 25;
     public int ShortBreakMinutes { get; init; } = 5;
@@ -65,7 +65,7 @@ public static class ClockFormatting
             : $"{seconds / 60:00}:{seconds % 60:00}";
     }
     public static string ModeName(ClockMode mode) => mode switch
-    { ClockMode.Timer => "Temporizador", ClockMode.Pomodoro => "Pomodoro", _ => "Relógio" };
+    { ClockMode.Timer => "Timer", ClockMode.Pomodoro => "Pomodoro", _ => "Clock" };
     public static string PhaseName(PomodoroPhase phase) => phase switch
-    { PomodoroPhase.ShortBreak => "Pausa curta", PomodoroPhase.LongBreak => "Pausa longa", _ => "Foco" };
+    { PomodoroPhase.ShortBreak => "Short break", PomodoroPhase.LongBreak => "Long break", _ => "Focus" };
 }

@@ -1,32 +1,32 @@
-<section class="audio-appearance-view" aria-label="Personalizar tema da música" data-no-drag
+<section class="audio-appearance-view" aria-label="@Text.Get("Customize music theme")" data-no-drag
          @oncontextmenu:preventDefault="true" @onpointerup="HandlePointerUp">
     <div class="appearance-heading">
-        <button type="button" class="lyrics-back audio-view-back" aria-label="Voltar ao áudio" title="Voltar ao áudio" @onclick="ReturnAsync">
+        <button type="button" class="lyrics-back audio-view-back" aria-label="@Text.Get("Back to Audio")" title="@Text.Get("Back to Audio")" @onclick="ReturnAsync">
             <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m11 5-5 5 5 5M6 10h10" /></svg>
-            <span>Áudio</span>
+            <span>@Text.Get("Audio")</span>
         </button>
     </div>
     <div class="appearance-blur">
-        <label for="audio-artwork-blur">Blur do fundo</label>
+        <label for="audio-artwork-blur">@Text.Get("Background blur")</label>
         <output>@Blur px</output>
         <input id="audio-artwork-blur" type="range" min="0" max="40" step="1" value="@Blur"
-               aria-label="Blur da capa" @oninput="PreviewBlur" @onchange="SaveBlur" @onwheel:stopPropagation="true" />
+               aria-label="@Text.Get("Artwork blur")" @oninput="PreviewBlur" @onchange="SaveBlur" @onwheel:stopPropagation="true" />
     </div>
     <label class="appearance-global">
-        <span>Capa na tela de letras</span>
-        <input type="checkbox" class="appearance-switch" role="switch" aria-label="Mostrar capa no fundo das letras"
+        <span>@Text.Get("Artwork behind lyrics")</span>
+        <input type="checkbox" class="appearance-switch" role="switch" aria-label="@Text.Get("Show artwork behind lyrics")"
                @bind:get="LyricsCover" @bind:set="SetLyricsCover" />
     </label>
     <label class="appearance-global">
-        <span>Usar cores em todo o HIT</span>
-        <input type="checkbox" class="appearance-switch" role="switch" aria-label="Usar cores da música em todo o HIT"
+        <span>@Text.Get("Use colors throughout HIT")</span>
+        <input type="checkbox" class="appearance-switch" role="switch" aria-label="@Text.Get("Use music colors throughout HIT")"
                @bind:get="GlobalAccent" @bind:set="SetGlobal" />
     </label>
     @if (GlobalAccent)
     {
         <label class="appearance-global appearance-suboption">
-            <span>Capa nos outros menus</span>
-            <input type="checkbox" class="appearance-switch" role="switch" aria-label="Manter capa nos outros menus"
+            <span>@Text.Get("Artwork behind other menus")</span>
+            <input type="checkbox" class="appearance-switch" role="switch" aria-label="@Text.Get("Keep artwork behind other menus")"
                    @bind:get="GlobalCover" @bind:set="SetCover" />
         </label>
     }

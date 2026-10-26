@@ -61,12 +61,12 @@ public sealed class HitThemeService
             var bundled = HitBundledThemes.All.FirstOrDefault(theme => theme.Id == id);
             var path = bundled is not null ? Path.Combine(_bundledDirectory, bundled.FileName) : Resolve(id);
             if (!File.Exists(path))
-                return ReadDefault("Tema não encontrado. O HIT está usando HIT Dark Theme.");
+                return ReadDefault("Theme not found. HIT is using HIT Dark Theme.");
             return ReadCss(path, id);
         }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException or ArgumentException)
         {
-            return ReadDefault("Não foi possível ler o tema. O HIT está usando HIT Dark Theme.");
+            return ReadDefault("Could not read the theme. HIT is using HIT Dark Theme.");
         }
     }
 
@@ -82,7 +82,7 @@ public sealed class HitThemeService
         }
         catch (Exception failure) when (failure is IOException or UnauthorizedAccessException)
         {
-            return new("default-error", "", "Não foi possível carregar o tema padrão.");
+            return new("default-error", "", "Could not load the default theme.");
         }
     }
 
@@ -105,31 +105,31 @@ public sealed class HitThemeService
     private static HitThemeSnapshot LoadCss(string path, string id)
     {
         if (new FileInfo(path).Length > MaxCssBytes)
-            return new("large:" + id, "", "O tema deve ter no máximo 1 MB.");
+            return new("large:" + id, "", "Themes must not exceed 1 MB.");
         using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
         using var reader = new StreamReader(stream, Encoding.UTF8, true);
         var css = reader.ReadToEnd();
         if (Encoding.UTF8.GetByteCount(css) > MaxCssBytes)
-            return new("large:" + id, "", "O tema deve ter no máximo 1 MB.");
+            return new("large:" + id, "", "Themes must not exceed 1 MB.");
         return new(id + ":" + Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(css))), css, null);
     }
     public void Select(string id)
     {
         if (!GetThemes().Any(theme => theme.Id == id))
-            throw new ArgumentException("Tema não encontrado.");
+            throw new ArgumentException("Theme not found.");
         _settings.Update(value => value with { Theme = id });
     }
 
     public async Task<string> ImportAsync(string fileName, Stream source)
     {
         if (!fileName.EndsWith(".css", StringComparison.OrdinalIgnoreCase))
-            throw new ArgumentException("Selecione um arquivo CSS.");
+            throw new ArgumentException("Choose a CSS file.");
         using var buffer = new MemoryStream();
         var block = new byte[8192];
         int count;
         while ((count = await source.ReadAsync(block)) > 0)
         {
-            if (buffer.Length + count > MaxCssBytes) throw new IOException("O tema deve ter no máximo 1 MB.");
+            if (buffer.Length + count > MaxCssBytes) throw new IOException("Themes must not exceed 1 MB.");
             await buffer.WriteAsync(block.AsMemory(0, count));
         }
         var name = Path.GetFileNameWithoutExtension(fileName);
@@ -164,7 +164,7 @@ public sealed class HitThemeService
     public void Delete(string id)
     {
         if (!id.StartsWith("custom:", StringComparison.Ordinal))
-            throw new InvalidOperationException("Os temas embutidos não podem ser excluídos.");
+            throw new InvalidOperationException("Built-in themes cannot be deleted.");
         var path = Resolve(id);
         // Persist the fallback before deleting, so a failed save cannot strand the selection.
         if (_settings.Current.Theme == id) Select("default");
@@ -180,11 +180,11 @@ public sealed class HitThemeService
     private string Resolve(string id)
     {
         if (!id.StartsWith("custom:", StringComparison.Ordinal))
-            throw new ArgumentException("Identificador de tema inválido.");
+            throw new ArgumentException("Invalid theme ID.");
         var name = id[7..];
         if (string.IsNullOrWhiteSpace(name) || name != Path.GetFileName(name) ||
             name.Contains('/') || name.Contains('\\') || !name.EndsWith(".css", StringComparison.OrdinalIgnoreCase))
-            throw new ArgumentException("Nome de tema inválido.");
+            throw new ArgumentException("Invalid theme name.");
         return Path.Combine(DirectoryPath, name);
     }
 }

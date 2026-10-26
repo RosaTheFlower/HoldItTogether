@@ -71,8 +71,8 @@ public sealed class WindowsMediaService : IHitMediaService, IDisposable
             return new MediaSnapshot
             {
                 Generation = _generation, HasMedia = true,
-                Title = string.IsNullOrWhiteSpace(_title) ? "Áudio em reprodução" : _title,
-                Artist = string.IsNullOrWhiteSpace(_artist) ? "Mídia do sistema" : _artist,
+                Title = string.IsNullOrWhiteSpace(_title) ? "Audio playing" : _title,
+                Artist = string.IsNullOrWhiteSpace(_artist) ? "System media" : _artist,
                 Album = _album, CanShuffle = controls.IsShuffleEnabled, Shuffle = playback.IsShuffleActive ?? false,
                 Source = SourceName(_session.SourceAppUserModelId), Artwork = _artwork,
                 Playing = playing, Position = Math.Clamp(position, 0, duration), Duration = duration,

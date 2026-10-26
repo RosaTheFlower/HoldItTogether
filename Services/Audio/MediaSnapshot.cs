@@ -8,8 +8,8 @@ public sealed record MediaSnapshot
     public static MediaSnapshot Empty { get; } = new();
     public long Generation { get; init; }
     public bool HasMedia { get; init; }
-    public string Title { get; init; } = "Nada tocando por enquanto";
-    public string Artist { get; init; } = "Abra uma música ou um vídeo em um player compatível.";
+    public string Title { get; init; } = "Nothing playing yet";
+    public string Artist { get; init; } = "Play music or a video in a compatible app.";
     public string Album { get; init; } = "";
     public string Source { get; init; } = "";
     public string? Artwork { get; init; }

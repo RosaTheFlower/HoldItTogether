@@ -4,7 +4,7 @@
 @using HoldItTogether.Services.HitMenus
 @using HoldItTogether.Services.Settings
 @using Microsoft.JSInterop
-@attribute [HitMenuTitle("Relógio")]
+@attribute [HitMenuTitle("Clock")]
 @implements IHitMenuSettings
 @implements IAsyncDisposable
 @inject HitClockService Clock
@@ -19,8 +19,8 @@
     @if (IsCompact)
     {
         <div class="clock-compact-trigger" role="button" tabindex="0" data-hit-menu-trigger="clock" data-hit-drag-handle
-             aria-label="@($"{ReadoutLabel}: {ReadoutValue}. Abrir controles do relógio")"
-             title="Clique para abrir · Arraste para mover · M2 para configurar"
+             aria-label="@($"{ReadoutLabel}: {ReadoutValue}. Open clock controls")"
+             title="@Text.Get("Click to open · Drag to move · Right-click for settings")"
              @onclick="Expand" @onkeydown="HandleCompactKey" @onkeydown:stopPropagation="true"
              @oncontextmenu="OpenReadoutSettingsAsync" @oncontextmenu:preventDefault="true" @oncontextmenu:stopPropagation="true">
             <ClockReadout Mode="@ModeId" Value="@ReadoutValue" Label="@ReadoutLabel" Compact="true" Alert="@HasNotice"
@@ -37,7 +37,7 @@
     }
     else
     {
-        <nav class="clock-tabs" aria-label="Funções do relógio" data-no-drag>
+        <nav class="clock-tabs" aria-label="@Text.Get("Clock functions")" data-no-drag>
             @foreach (var mode in Enum.GetValues<ClockMode>())
             {
                 var itemMode = mode;
@@ -51,8 +51,8 @@
         @if (MenuContext?.IsPinned == true || Mode == ClockMode.System)
         {
             <div class="clock-full-trigger" role="button" tabindex="0" data-hit-menu-trigger="clock" data-no-drag
-                 aria-label="@(MenuContext?.IsPinned == true ? "Mostrar somente o relógio" : "Configurar relógios globais com M2")"
-                 title="@(MenuContext?.IsPinned == true ? "Clique para compactar · M2 para configurar" : "M2 para configurar relógios globais")"
+                 aria-label="@(MenuContext?.IsPinned == true ? "Show only the clock" : "Right-click to configure world clocks")"
+                 title="@(MenuContext?.IsPinned == true ? "Click to compact · Right-click for settings" : "Right-click to configure world clocks")"
                  @onclick="ClickReadout" @onkeydown="HandleFullReadoutKey" @onkeydown:stopPropagation="true"
                  @oncontextmenu="OpenReadoutSettingsAsync" @oncontextmenu:preventDefault="true" @oncontextmenu:stopPropagation="true">
                 <ClockReadout Mode="@ModeId" Value="@ReadoutValue" Label="@ReadoutLabel" Detail="@ReadoutDetail" Alert="@HasNotice"
@@ -67,28 +67,28 @@
         @if (Mode == ClockMode.Timer)
         {
             <div class="clock-duration" data-no-drag>
-                <label><input type="number" min="0" max="23" value="@_timerHours" aria-label="Horas do temporizador" disabled="@_snapshot.Timer.Running"
-                              @onchange="args => EditTimer(args, 0)" @onwheel:stopPropagation="true" /><span>horas</span></label>
+                <label><input type="number" min="0" max="23" value="@_timerHours" aria-label="@Text.Get("Timer hours")" disabled="@_snapshot.Timer.Running"
+                              @onchange="args => EditTimer(args, 0)" @onwheel:stopPropagation="true" /><span>@Text.Get("hours")</span></label>
                 <span class="clock-duration-separator">:</span>
-                <label><input type="number" min="0" max="59" value="@_timerMinutes" aria-label="Minutos do temporizador" disabled="@_snapshot.Timer.Running"
-                              @onchange="args => EditTimer(args, 1)" @onwheel:stopPropagation="true" /><span>minutos</span></label>
+                <label><input type="number" min="0" max="59" value="@_timerMinutes" aria-label="@Text.Get("Timer minutes")" disabled="@_snapshot.Timer.Running"
+                              @onchange="args => EditTimer(args, 1)" @onwheel:stopPropagation="true" /><span>@Text.Get("minutes")</span></label>
                 <span class="clock-duration-separator">:</span>
-                <label><input type="number" min="0" max="59" value="@_timerSeconds" aria-label="Segundos do temporizador" disabled="@_snapshot.Timer.Running"
-                              @onchange="args => EditTimer(args, 2)" @onwheel:stopPropagation="true" /><span>segundos</span></label>
+                <label><input type="number" min="0" max="59" value="@_timerSeconds" aria-label="@Text.Get("Timer seconds")" disabled="@_snapshot.Timer.Running"
+                              @onchange="args => EditTimer(args, 2)" @onwheel:stopPropagation="true" /><span>@Text.Get("seconds")</span></label>
             </div>
             <div class="clock-actions" data-no-drag>
                 <button type="button" class="clock-button is-primary" aria-label="@TimerAction" @onclick="ToggleTimer">@TimerAction</button>
-                <button type="button" class="clock-button" aria-label="Redefinir temporizador" @onclick="ResetTimer">Redefinir</button>
+                <button type="button" class="clock-button" aria-label="@Text.Get("Reset timer")" @onclick="ResetTimer">@Text.Get("Reset")</button>
             </div>
         }
         else if (Mode == ClockMode.Pomodoro)
         {
-            <div class="clock-progress" role="progressbar" aria-label="Progresso da etapa do Pomodoro"
+            <div class="clock-progress" role="progressbar" aria-label="@Text.Get("Pomodoro phase progress")"
                  aria-valuemin="0" aria-valuemax="100" aria-valuenow="@Math.Round(PomodoroProgress)" style="@($"--clock-progress:{PomodoroProgress.ToString("0.##", CultureInfo.InvariantCulture)}%")"><span></span></div>
             <div class="clock-actions" data-no-drag>
                 <button type="button" class="clock-button is-primary" aria-label="@PomodoroAction" @onclick="() => Run(Clock.TogglePomodoro)">@PomodoroAction</button>
-                <button type="button" class="clock-button" aria-label="Pular etapa do Pomodoro" @onclick="() => Run(Clock.SkipPomodoro)">Pular</button>
-                <button type="button" class="clock-button" aria-label="Reiniciar Pomodoro" @onclick="() => Run(Clock.ResetPomodoro)">Reiniciar</button>
+                <button type="button" class="clock-button" aria-label="@Text.Get("Skip Pomodoro phase")" @onclick="() => Run(Clock.SkipPomodoro)">@Text.Get("Skip")</button>
+                <button type="button" class="clock-button" aria-label="@Text.Get("Restart Pomodoro")" @onclick="() => Run(Clock.ResetPomodoro)">@Text.Get("Restart")</button>
             </div>
         }
 
@@ -131,16 +131,16 @@
         _ => SystemNow.ToString(Options.ShowSeconds ? "HH:mm:ss" : "HH:mm")
     };
     private string ReadoutLabel => Mode switch
-    { ClockMode.Timer => "Temporizador", ClockMode.Pomodoro => ClockFormatting.PhaseName(_snapshot.Pomodoro.Phase), _ => Options.SystemClocks[0].Name };
+    { ClockMode.Timer => Text.Get("Timer"), ClockMode.Pomodoro => ClockFormatting.PhaseName(_snapshot.Pomodoro.Phase), _ => Options.SystemClocks[0].Name };
     private string ReadoutDetail => Mode switch
     {
-        ClockMode.Timer => _snapshot.Timer.Completed ? "Tempo concluído" : _snapshot.Timer.Running ? "Em andamento" : "Prepare seu tempo",
-        ClockMode.Pomodoro => $"{_snapshot.Pomodoro.CompletedFocusRounds} focos concluídos · pausa longa a cada {Options.RoundsBeforeLongBreak}",
-        _ => SystemNow.ToString("dddd, dd 'de' MMMM", CultureInfo.GetCultureInfo("pt-BR"))
+        ClockMode.Timer => _snapshot.Timer.Completed ? Text.Get("Time complete") : _snapshot.Timer.Running ? Text.Get("Running") : Text.Get("Set your duration"),
+        ClockMode.Pomodoro => $"{_snapshot.Pomodoro.CompletedFocusRounds} focus sessions completed · long break every {Options.RoundsBeforeLongBreak}",
+        _ => SystemNow.ToString("dddd, MMMM d", Text.Culture)
     };
-    private string TimerAction => _snapshot.Timer.Running ? "Pausar temporizador" : _snapshot.Timer.Completed ? "Recomeçar temporizador" :
-        !_timerEdited && _snapshot.TimerRemaining < _snapshot.Timer.Duration ? "Continuar temporizador" : "Iniciar temporizador";
-    private string PomodoroAction => _snapshot.Pomodoro.Countdown.Running ? "Pausar Pomodoro" : "Iniciar Pomodoro";
+    private string TimerAction => _snapshot.Timer.Running ? Text.Get("Pause timer") : _snapshot.Timer.Completed ? Text.Get("Restart timer") :
+        !_timerEdited && _snapshot.TimerRemaining < _snapshot.Timer.Duration ? Text.Get("Resume timer") : Text.Get("Start timer");
+    private string PomodoroAction => _snapshot.Pomodoro.Countdown.Running ? Text.Get("Pause Pomodoro") : Text.Get("Start Pomodoro");
     private double PomodoroProgress => Math.Clamp(100 - _snapshot.PomodoroRemaining.TotalSeconds / Math.Max(1, _snapshot.Pomodoro.Countdown.Duration.TotalSeconds) * 100, 0, 100);
 
     protected override void OnInitialized()
@@ -166,7 +166,7 @@
         {
             var layout = IsCompact ? HitMenuLayout.Compact : HitMenuLayout.Default;
             if (_publishedLayout != layout) { _publishedLayout = layout; if (MenuContext is not null) await MenuContext.LayoutRequested.InvokeAsync(layout); }
-            var title = _view == ClockView.Settings ? "Configurações do relógio" : _view == ClockView.SystemSettings ? "Relógios globais" : "Relógio";
+            var title = _view == ClockView.Settings ? Text.Get("Clock settings") : _view == ClockView.SystemSettings ? Text.Get("World clocks") : Text.Get("Clock");
             if (_publishedTitle != title) { _publishedTitle = title; if (MenuContext is not null) await MenuContext.TitleRequested.InvokeAsync(title); }
         }
         if (_visible && _ticker is null)
@@ -201,7 +201,7 @@
         _error = null;
         try { action(); _snapshot = Clock.Read(); return true; }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException or ArgumentException or InvalidOperationException or System.ComponentModel.Win32Exception)
-        { _error = error is ArgumentException ? error.Message : "Não foi possível salvar essa alteração. Tente novamente."; return false; }
+        { _error = error is ArgumentException ? error.Message : Text.Get("Could not save this change. Please try again."); return false; }
     }
     private void SelectMode(ClockMode mode) => Run(() => Settings.Update(value => value with { Clock = value.Clock with { SelectedMode = mode } }));
     private void SaveOptions(ClockPreferences value) => Run(() => Settings.Update(settings => settings with { Clock = value.Normalize() }));

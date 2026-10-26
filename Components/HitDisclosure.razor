@@ -3,9 +3,9 @@
         <strong class="disclosure-title">@Title</strong>
         <div class="disclosure-primary">@MainControl</div>
         <button type="button" class="disclosure-toggle"
-                aria-label="@($"{(IsExpanded ? "Recolher" : "Expandir")} {Title}")"
+                aria-label="@($"{(IsExpanded ? Text.Get("Collapse") : Text.Get("Expand"))} {Title}")"
                 aria-expanded="@(IsExpanded ? "true" : "false")"
-                title="@($"{(IsExpanded ? "Recolher" : "Expandir")} {Title}")" aria-controls="@PanelId" @onclick="ToggleAsync">
+                title="@($"{(IsExpanded ? Text.Get("Collapse") : Text.Get("Expand"))} {Title}")" aria-controls="@PanelId" @onclick="ToggleAsync">
             <svg viewBox="0 0 20 20" aria-hidden="true" focusable="false">
                 <path d="m6 8 4 4 4-4" />
             </svg>

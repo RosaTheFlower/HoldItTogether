@@ -20,7 +20,7 @@ internal sealed class WindowsTrayIcon(nint window) : IDisposable
             _enabled = true;
             if (!_added && !Add())
             {
-                throw new InvalidOperationException("Não foi possível criar o ícone na bandeja do Windows.");
+                throw new InvalidOperationException("Could not create the Windows tray icon.");
             }
         }
         else
@@ -115,10 +115,10 @@ internal sealed class WindowsTrayIcon(nint window) : IDisposable
 
         try
         {
-            AppendMenu(menu, 0, 1, "Mostrar HIT");
-            AppendMenu(menu, 0, 2, "Ocultar HIT");
+            AppendMenu(menu, 0, 1, "Show HIT");
+            AppendMenu(menu, 0, 2, "Hide HIT");
             AppendMenu(menu, 0x800, 0, null); // separator
-            AppendMenu(menu, 0, 3, "Sair");
+            AppendMenu(menu, 0, 3, "Exit");
             SetForegroundWindow(window);
             var command = TrackPopupMenu(menu, 0x100 | 0x2, location.X, location.Y, 0, window, 0);
             switch (command)

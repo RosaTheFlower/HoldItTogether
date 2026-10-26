@@ -3,78 +3,92 @@
 @using HoldItTogether.Services.Diagnostics
 @using HoldItTogether.Services.HitMenus
 @implements IAsyncDisposable
+@implements IHitMenuSettings
+@inject HoldItTogether.Services.Extensions.ExtensionUi Extensions
 @inject HitSettingsService Settings
 @inject HitMemorySampler Memory
 
+@if (_showExtensions)
+{
+    <HoldItTogether.Components.Extensions.ExtensionsView BackRequested="CloseSettingsAsync" />
+}
+else
+{
 <div class="settings-menu" @onclick:stopPropagation="true"
      @onkeydown="HandleKey" @onkeydown:stopPropagation="true">
     <label class="setting-row">
-        <span><strong>Always on Top</strong></span>
-        <input class="switch" type="checkbox" role="switch" aria-label="Always on Top"
+        <span><strong>@Text.Get("Always on Top")</strong></span>
+        <input class="switch" type="checkbox" role="switch" aria-label="@Text.Get("Always on Top")"
                @bind:get="Settings.Current.AlwaysOnTop" @bind:set="SetAlwaysOnTop" />
     </label>
 
     <label class="setting-row">
-        <span><strong>System Tray</strong></span>
-        <input class="switch" type="checkbox" role="switch" aria-label="System Tray"
+        <span><strong>@Text.Get("System Tray")</strong></span>
+        <input class="switch" type="checkbox" role="switch" aria-label="@Text.Get("System Tray")"
                disabled="@(!OperatingSystem.IsWindows())"
                @bind:get="Settings.Current.SystemTray" @bind:set="SetSystemTray" />
     </label>
 
     <label class="setting-row">
-        <span><strong>Remover animações</strong></span>
-        <input class="switch" type="checkbox" role="switch" aria-label="Remover animações"
+        <span><strong>@Text.Get("Remove animations")</strong></span>
+        <input class="switch" type="checkbox" role="switch" aria-label="@Text.Get("Remove animations")"
                @bind:get="Settings.Current.RemoveAnimations" @bind:set="SetRemoveAnimations" />
     </label>
 
     <label class="setting-row">
-        <span><strong>Mostrar tooltips</strong></span>
-        <input class="switch" type="checkbox" role="switch" aria-label="Mostrar tooltips"
+        <span><strong>@Text.Get("Show tooltips")</strong></span>
+        <input class="switch" type="checkbox" role="switch" aria-label="@Text.Get("Show tooltips")"
                @bind:get="Settings.Current.ShowTooltips" @bind:set="SetShowTooltips" />
     </label>
 
-    <HitDisclosure Title="Scroll speed" PanelId="scroll-speed-options" CssClass="scroll-settings">
+    <HitDisclosure Title="@Text.Get("Scroll speed")" PanelId="scroll-speed-options" CssClass="scroll-settings">
         <MainControl>
             <label class="cooldown-toggle">
-                <span>Cooldown</span>
-                <input class="switch" type="checkbox" role="switch" aria-label="Ativar cooldown do scroll"
+                <span>@Text.Get("Cooldown")</span>
+                <input class="switch" type="checkbox" role="switch" aria-label="@Text.Get("Enable scroll cooldown")"
                        @bind:get="Settings.Current.ScrollCooldownEnabled" @bind:set="SetCooldown" />
             </label>
         </MainControl>
         <ChildContent>
             <label class="range-row" @onwheel:stopPropagation="true">
-                <span>Sensibilidade</span>
-                <input type="range" min="0.25" max="3" step="0.25" aria-label="Sensibilidade do scroll"
+                <span>@Text.Get("Sensitivity")</span>
+                <input type="range" min="0.25" max="3" step="0.25" aria-label="@Text.Get("Scroll sensitivity")"
                        value="@SensitivityValue" @oninput="PreviewSensitivity" @onchange="ChangeSensitivity" />
                 <output>@SensitivityLabel</output>
             </label>
             <label class="range-row" @onwheel:stopPropagation="true">
-                <span>Pausa</span>
-                <input type="range" min="0" max="2000" step="50" aria-label="Tempo de cooldown"
+                <span>@Text.Get("Pause")</span>
+                <input type="range" min="0" max="2000" step="50" aria-label="@Text.Get("Cooldown duration")"
                        disabled="@(!Settings.Current.ScrollCooldownEnabled)"
                        value="@CooldownValue" @oninput="PreviewCooldown" @onchange="ChangeCooldownTime" />
-                <output>@(Settings.Current.ScrollCooldownEnabled ? $"{CooldownValue} ms" : "Sem pausa")</output>
+                <output>@(Settings.Current.ScrollCooldownEnabled ? $"{CooldownValue} ms" : Text.Get("No cooldown"))</output>
             </label>
         </ChildContent>
     </HitDisclosure>
 
     <div class="setting-row memory-row">
-        <span>RAM em uso</span>
+        <span>@Text.Get("RAM usage")</span>
         <output class="memory" aria-live="off">@MemoryLabel</output>
     </div>
 
     <HitThemePicker />
+
+    <button type="button" class="settings-extensions-link" @onclick="OpenExtensions" aria-label="@Text.Get("Open Extensions")">
+        <strong>@Text.Get("Extensions")</strong>
+        <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m8 5 5 5-5 5" /></svg>
+    </button>
 
     @if ((_error ?? Settings.RuntimeError) is { } error)
     {
         <p class="settings-error" role="alert">@error</p>
     }
 </div>
+}
 
 @code {
     [CascadingParameter(Name = "HitMenu")] public HitMenuContext? MenuContext { get; set; }
 
-    private static readonly CultureInfo DisplayCulture = CultureInfo.GetCultureInfo("pt-BR");
+    private static readonly CultureInfo DisplayCulture = CultureInfo.GetCultureInfo("en-US");
     private CancellationTokenSource? _monitorCts;
     private Task? _monitorTask;
     private HitMemoryUsage _usage;
@@ -82,6 +96,23 @@
     private int? _cooldownPreview;
     private string? _error;
     private bool _disposed;
+    private bool _showExtensions;
+    private string? _title;
+    public bool IsSettingsOpen => _showExtensions;
+    public Task OpenSettingsAsync() => Task.CompletedTask;
+    public Task CloseSettingsAsync()
+    {
+        _showExtensions = false; Extensions.ShowExtensions = false;
+        return InvokeAsync(StateHasChanged);
+    }
+    private void OpenExtensions() { _showExtensions = true; Extensions.ShowExtensions = true; }
+    private void ExtensionsRequested() { if (!_disposed) _ = InvokeAsync(() => { OpenExtensions(); StateHasChanged(); }); }
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (MenuContext?.IsActive != true) { _title = null; return; }
+        var title = _showExtensions ? Text.Get("Extensions") : Text.Get("Settings");
+        if (_title != title) { _title = title; await MenuContext.TitleRequested.InvokeAsync(title); }
+    }
 
     private string MemoryLabel => _usage.Bytes > 0 ? $"{_usage.Megabytes.ToString("N1", DisplayCulture)} MB" : "—";
     private double Sensitivity => _sensitivityPreview ?? Settings.Current.ScrollSensitivity;
@@ -89,7 +120,12 @@
     private string SensitivityLabel => $"{Sensitivity.ToString("0.##", DisplayCulture)}×";
     private int CooldownValue => _cooldownPreview ?? Settings.Current.ScrollCooldownMs;
 
-    protected override void OnInitialized() => Settings.Changed += OnSettingsChanged;
+    protected override void OnInitialized()
+    {
+        Settings.Changed += OnSettingsChanged;
+        Extensions.OpenRequested += ExtensionsRequested;
+        _showExtensions = Extensions.ShowExtensions;
+    }
 
     protected override void OnParametersSet()
     {
@@ -143,7 +179,7 @@
         catch (Exception error) when (error is IOException or UnauthorizedAccessException or
                                       InvalidOperationException or System.ComponentModel.Win32Exception)
         {
-            _error = "Não foi possível aplicar a alteração. Tente novamente.";
+            _error = Text.Get("Could not apply this change. Please try again.");
         }
     }
 
@@ -199,6 +235,7 @@
     {
         _disposed = true;
         Settings.Changed -= OnSettingsChanged;
+        Extensions.OpenRequested -= ExtensionsRequested;
         _monitorCts?.Cancel();
         if (_monitorTask is not null) await _monitorTask;
         _monitorCts?.Dispose();

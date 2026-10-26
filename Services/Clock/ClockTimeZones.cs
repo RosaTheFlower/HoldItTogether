@@ -10,7 +10,7 @@ public static class ClockTimeZones
     private static readonly object Sync = new();
     private static readonly Dictionary<string, TimeZoneInfo> Zones = new(StringComparer.OrdinalIgnoreCase);
     private static readonly Lazy<IReadOnlyList<ClockTimeZoneOption>> Catalog = new(() => Array.AsReadOnly(
-        new[] { new ClockTimeZoneOption(LocalId, "Horário local do sistema") }
+        new[] { new ClockTimeZoneOption(LocalId, "Local system time") }
             .Concat(TimeZoneInfo.GetSystemTimeZones().Select(zone => new ClockTimeZoneOption(zone.Id, zone.DisplayName))).ToArray()));
     public static IReadOnlyList<ClockTimeZoneOption> Options => Catalog.Value;
 
@@ -40,10 +40,10 @@ public static class ClockTimeZones
         var clean = (clocks ?? []).Where(clock => clock is not null && Resolve(clock.TimeZoneId) is not null)
             .Take(MaxClocks).Select(clock => clock with
             {
-                Name = string.IsNullOrWhiteSpace(clock.Name) ? "Relógio" : clock.Name.Trim()[..Math.Min(clock.Name.Trim().Length, 40)],
+                Name = string.IsNullOrWhiteSpace(clock.Name) ? "Clock" : clock.Name.Trim()[..Math.Min(clock.Name.Trim().Length, 40)],
                 TimeZoneId = clock.TimeZoneId == LocalId ? LocalId : Resolve(clock.TimeZoneId)!.Id
             }).ToArray();
-        if (clean.Length == 0) clean = [new("Sistema", LocalId)];
+        if (clean.Length == 0) clean = [new("System", LocalId)];
         return clocks is not null && clocks.SequenceEqual(clean) ? clocks : clean;
     }
 }

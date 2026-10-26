@@ -89,7 +89,7 @@ public sealed class AudioSpectrumAnalyzer
 
     public void CopyTo(Span<double> destination)
     {
-        if (destination.Length < BandCount) throw new ArgumentException("O buffer deve comportar todas as bandas.", nameof(destination));
+        if (destination.Length < BandCount) throw new ArgumentException("The buffer must hold all spectrum bands.", nameof(destination));
         lock (_sync)
         {
             // WASAPI does not necessarily deliver buffers when the endpoint is silent.

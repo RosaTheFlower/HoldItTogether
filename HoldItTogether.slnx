@@ -1,3 +1,6 @@
 <Solution>
   <Project Path="HoldItTogether.csproj" />
+  <Project Path="Sdk/HIT.Sdk/HIT.Sdk.csproj" />
+  <Project Path="Tests/HIT.Extensions.Tests/HIT.Extensions.Tests.csproj" />
+  <Project Path="Examples/HIT.Example/HIT.Example.csproj" />
 </Solution>

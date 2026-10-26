@@ -1,0 +1,8 @@
+:root { width:440px; }
+.example-notes { color:var(--hit-menu-text,var(--hit-text)); font-family:var(--hit-menu-font,var(--hit-font)); }
+.example-notes label { display:block; font-size:13px; margin-bottom:12px; }
+.example-notes textarea { box-sizing:border-box; width:100%; resize:vertical; max-height:220px; min-height:100px; background:color-mix(in srgb,currentColor 4%,transparent); color:inherit; border:1px solid color-mix(in srgb,currentColor 14%,transparent); border-radius:8px; padding:12px; font:inherit; user-select:text; }
+.example-actions { display:flex; gap:10px; margin-top:12px; }
+.example-notes button { color:inherit; background:transparent; border:1px solid color-mix(in srgb,currentColor 12%,transparent); border-radius:7px; padding:9px 12px; cursor:pointer; }
+.example-notes button:hover { background:color-mix(in srgb,currentColor 8%,transparent); }
+.example-notes p { font-size:11px; color:var(--hit-menu-muted,var(--hit-muted)); line-height:1.6; }

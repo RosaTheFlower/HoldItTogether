@@ -7,7 +7,7 @@
 </div>
 @code {
     [Parameter] public string? CssClass { get; set; }
-    [Parameter] public string Label { get; set; } = "Conteúdo rolável";
+    [Parameter] public string Label { get; set; } = Text.Get("Scrollable content");
     [Parameter] public RenderFragment? ChildContent { get; set; }
     private ElementReference _element;
     private IJSObjectReference? _module;

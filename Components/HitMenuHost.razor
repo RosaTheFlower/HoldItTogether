@@ -2,6 +2,7 @@
 @using HoldItTogether.Services.Settings
 @inject HitMenuCatalog Catalog
 @inject HitSettingsService Settings
+@implements IDisposable
 
 <div class="hit-menu-host @(CurrentLayout == HitMenuLayout.Compact ? "is-compact" : "")"
      @onpointerdown="RememberContextStart" @oncontextmenu="ReturnFromSettingsAsync"
@@ -9,7 +10,7 @@
     <div class="hit-menu-measure">
         @if (Catalog.Menus.Count == 0)
         {
-            <div class="hit-menu-empty">Nenhum menu disponível.</div>
+            <div class="hit-menu-empty">@Text.Get("No menus available.")</div>
         }
         else
         {
@@ -17,17 +18,32 @@
             {
                 var menu = Catalog.Menus[index];
                 var active = index == _navigation.SelectedIndex;
-                var contextIndex = index;
-                @if (_visited.Contains(index))
+                var contextId = menu.Id;
+                @if (_visited.Contains(menu.Id))
                 {
                     <section @key="menu.Id" class="hit-menu-panel"
                              hidden="@(!active)" inert="@(!active)"
                              aria-hidden="@(!active ? "true" : "false")"
                              aria-label="@menu.Name" data-hit-menu="@menu.Id">
                         <CascadingValue Name="HitMenu" Value="@(new HitMenuContext(active, OnCloseRequested, active && IsVisible,
-                            EventCallback.Factory.Create<string>(this, title => RequestTitleAsync(contextIndex, title)), IsPinned,
-                            EventCallback.Factory.Create<HitMenuLayout>(this, layout => RequestLayoutAsync(contextIndex, layout))))">
-                            <DynamicComponent @ref="_components[contextIndex]" Type="@menu.ComponentType" />
+                            EventCallback.Factory.Create<string>(this, title => RequestTitleAsync(contextId, title)), IsPinned,
+                            EventCallback.Factory.Create<HitMenuLayout>(this, layout => RequestLayoutAsync(contextId, layout))))">
+                            @if (menu.Api is null)
+                            {
+                                <DynamicComponent @ref="_components[contextId]" Type="@menu.ComponentType" />
+                            }
+                            else
+                            {
+                                <CascadingValue Name="HitExtension" Value="@(ExtensionContext(menu, active))">
+                                    <ExtensionErrorBoundary @key="menu.Id">
+                                        <ChildContent>
+                                            <ExtensionStyles Menu="menu" />
+                                            <DynamicComponent @ref="_components[contextId]" Type="@menu.ComponentType" Parameters="@(new Dictionary<string, object> { ["Api"] = menu.Api })" />
+                                        </ChildContent>
+                                        <ErrorContent><p class="settings-error" role="alert">@Text.Get("This extension could not display its menu. Disable it in Extensions and check its compatibility.")</p></ErrorContent>
+                                    </ExtensionErrorBoundary>
+                                </CascadingValue>
+                            }
                         </CascadingValue>
                     </section>
                 }
@@ -37,7 +53,7 @@
 
     @if (Catalog.Menus.Count > 0)
     {
-        <nav class="hit-menu-pagination" aria-label="Menus do HIT" data-no-drag hidden="@(CurrentLayout == HitMenuLayout.Compact)"
+        <nav class="hit-menu-pagination" aria-label="@Text.Get("HIT menus")" data-no-drag hidden="@(CurrentLayout == HitMenuLayout.Compact)"
              @onclick:stopPropagation="true"
              @onkeydown="HandlePaginationKey" @onkeydown:stopPropagation="true">
             @for (var index = 0; index < Catalog.Menus.Count; index++)
@@ -46,7 +62,7 @@
                 var menu = Catalog.Menus[index];
                 var active = index == _navigation.SelectedIndex;
                 <button type="button" class="hit-menu-dot @(active ? "is-current" : "")"
-                        aria-label="@($"Menu {index + 1} de {Catalog.Menus.Count}: {menu.Name}")"
+                        aria-label="@($"Menu {index + 1} of {Catalog.Menus.Count}: {menu.Name}")"
                         aria-current="@(active ? "page" : null)" title="@menu.Name"
                         @onclick="() => SelectMenuAsync(menuIndex)">
                     <span aria-hidden="true"></span>
@@ -63,25 +79,29 @@
     [Parameter] public EventCallback<string> OnTitleChanged { get; set; }
     [Parameter] public EventCallback<bool> OnSettingsAvailableChanged { get; set; }
     [Parameter] public EventCallback<HitMenuLayout> OnLayoutChanged { get; set; }
-    private string CurrentTitle => Catalog.Menus.Count > 0 ? Catalog.Menus[_navigation.SelectedIndex].Name : "HIT";
+    [Parameter] public EventCallback<bool> OnPinRequested { get; set; }
+    private string? _selectedId;
+    private string CurrentTitle => _selectedId is not null && _titles.TryGetValue(_selectedId, out var title) ? title : Catalog.Menus.FirstOrDefault(menu => menu.Id == _selectedId)?.Name ?? "HIT";
+    private readonly Dictionary<string, string> _titles = [];
     private HitMenuNavigator _navigation = new(0);
-    private readonly HashSet<int> _visited = [];
-    private readonly Dictionary<int, DynamicComponent> _components = [];
-    private readonly Dictionary<int, HitMenuLayout> _layouts = [];
+    private readonly HashSet<string> _visited = [];
+    private readonly Dictionary<string, DynamicComponent> _components = [];
+    private readonly Dictionary<string, HitMenuLayout> _layouts = [];
     private bool _contextStartedInSettings;
-    private HitMenuLayout CurrentLayout => _layouts.GetValueOrDefault(_navigation.SelectedIndex);
-    private bool CurrentHasSettings => Catalog.Menus.Count > 0 &&
-        typeof(IHitMenuSettings).IsAssignableFrom(Catalog.Menus[_navigation.SelectedIndex].ComponentType);
+    private HitMenuLayout CurrentLayout => _selectedId is null ? HitMenuLayout.Default : _layouts.GetValueOrDefault(_selectedId);
+    private bool CurrentHasSettings => _selectedId != HitMenuCatalog.SettingsId &&
+        Catalog.Menus.FirstOrDefault(menu => menu.Id == _selectedId)?.ComponentType is { } type &&
+        typeof(HIT.Sdk.IHitMenuSettings).IsAssignableFrom(type);
 
     public Task OpenCurrentSettingsAsync() => CurrentHasSettings &&
-        _components.TryGetValue(_navigation.SelectedIndex, out var component) && component.Instance is IHitMenuSettings settings
+        _components.TryGetValue(_selectedId ?? "", out var component) && component.Instance is HIT.Sdk.IHitMenuSettings settings
             ? settings.OpenSettingsAsync() : Task.CompletedTask;
 
     private void RememberContextStart(PointerEventArgs args)
     {
         if (args.Button == 2) _contextStartedInSettings =
-            _components.TryGetValue(_navigation.SelectedIndex, out var component) &&
-            component.Instance is IHitMenuSettings { IsSettingsOpen: true };
+            _components.TryGetValue(_selectedId ?? "", out var component) &&
+            component.Instance is HIT.Sdk.IHitMenuSettings { IsSettingsOpen: true };
     }
 
     private Task ReturnFromSettingsAsync(MouseEventArgs args)
@@ -89,8 +109,8 @@
         var canReturn = _contextStartedInSettings;
         _contextStartedInSettings = false;
         // Opening a configuration with this same right-click must never close it again.
-        return canReturn && _components.TryGetValue(_navigation.SelectedIndex, out var component) &&
-            component.Instance is IHitMenuSettings { IsSettingsOpen: true } settings
+        return canReturn && _components.TryGetValue(_selectedId ?? "", out var component) &&
+            component.Instance is HIT.Sdk.IHitMenuSettings { IsSettingsOpen: true } settings
                 ? settings.CloseSettingsAsync() : Task.CompletedTask;
     }
 
@@ -103,19 +123,22 @@
 
     protected override async Task OnInitializedAsync()
     {
+        Catalog.Changed += CatalogChanged;
         _navigation = new HitMenuNavigator(Catalog.Menus.Count);
-        if (Catalog.Menus.Count > 0) _visited.Add(0);
+        _selectedId = Catalog.Menus.FirstOrDefault()?.Id;
+        if (_selectedId is not null) _visited.Add(_selectedId);
         await PublishMenuAsync();
     }
 
     public async Task HandleWheelAsync(WheelEventArgs args)
     {
-        if (_components.TryGetValue(_navigation.SelectedIndex, out var component) &&
-            component.Instance is IHitMenuSettings { IsSettingsOpen: true }) return;
+        if (_components.TryGetValue(_selectedId ?? "", out var component) &&
+            component.Instance is HIT.Sdk.IHitMenuSettings { IsSettingsOpen: true }) return;
         if (_navigation.Scroll(args.DeltaX, args.DeltaY, args.DeltaMode, args.CtrlKey,
                                Environment.TickCount64, Settings.Current))
         {
-            _visited.Add(_navigation.SelectedIndex);
+            _selectedId = Catalog.Menus[_navigation.SelectedIndex].Id;
+            _visited.Add(_selectedId);
             await PublishMenuAsync();
             await InvokeAsync(StateHasChanged);
         }
@@ -125,22 +148,58 @@
     {
         if (_navigation.Select(index))
         {
-            _visited.Add(index);
+            _selectedId = Catalog.Menus[index].Id;
+            _visited.Add(_selectedId);
             await PublishMenuAsync();
             await InvokeAsync(StateHasChanged);
         }
     }
 
-    private Task RequestTitleAsync(int menuIndex, string title) =>
-        menuIndex == _navigation.SelectedIndex ? OnTitleChanged.InvokeAsync(title) : Task.CompletedTask;
-
-    private async Task RequestLayoutAsync(int menuIndex, HitMenuLayout layout)
+    private Task RequestTitleAsync(string menuId, string title) =>
+        SetTitleAsync(menuId, title);
+    private Task SetTitleAsync(string menuId, string title)
     {
-        if (menuIndex != _navigation.SelectedIndex || CurrentLayout == layout) return;
-        _layouts[menuIndex] = layout;
+        if (menuId != _selectedId) return Task.CompletedTask;
+        _titles[menuId] = title.Length > 100 ? title[..100] : title;
+        return OnTitleChanged.InvokeAsync(_titles[menuId]);
+    }
+
+    private async Task RequestLayoutAsync(string menuId, HitMenuLayout layout)
+    {
+        if (menuId != _selectedId || CurrentLayout == layout) return;
+        _layouts[menuId] = layout;
         await OnLayoutChanged.InvokeAsync(layout);
     }
 
     private Task HandlePaginationKey(KeyboardEventArgs args) =>
         args.Key == "Escape" ? OnCloseRequested.InvokeAsync() : Task.CompletedTask;
+    private bool _disposed;
+    private void CatalogChanged()
+    {
+        if (!_disposed) _ = InvokeAsync(async () =>
+        {
+            var ids = Catalog.Menus.Select(menu => menu.Id).ToHashSet();
+            _visited.RemoveWhere(id => !ids.Contains(id));
+            foreach (var id in _components.Keys.Where(id => !ids.Contains(id)).ToArray()) { _components.Remove(id); _layouts.Remove(id); _titles.Remove(id); }
+            _navigation = new HitMenuNavigator(Catalog.Menus.Count);
+            var next = Catalog.Menus.ToList().FindIndex(menu => menu.Id == _selectedId);
+            if (next < 0) next = Math.Max(0, Catalog.Menus.ToList().FindIndex(menu => menu.Id == HitMenuCatalog.SettingsId));
+            _navigation.Select(next);
+            _selectedId = Catalog.Menus.ElementAtOrDefault(next)?.Id;
+            if (_selectedId is not null) _visited.Add(_selectedId);
+            await PublishMenuAsync(); StateHasChanged();
+        });
+    }
+    public async Task ShowExtensionsAsync()
+    {
+        var index = Catalog.Menus.ToList().FindIndex(menu => menu.Id == HitMenuCatalog.SettingsId);
+        if (index >= 0) await SelectMenuAsync(index);
+    }
+    private HIT.Sdk.HitContext ExtensionContext(HitMenuDefinition menu, bool active) => new(active, active && IsVisible, IsPinned,
+        title => RequestTitleAsync(menu.Id, title),
+        layout => RequestLayoutAsync(menu.Id, (HitMenuLayout)(int)layout),
+        pinned => { menu.Api!.Demand("window.control"); return menu.Id == _selectedId && IsVisible ? OnPinRequested.InvokeAsync(pinned) : Task.CompletedTask; },
+        () => { menu.Api!.Demand("window.control"); return menu.Id == _selectedId && IsVisible ? OnCloseRequested.InvokeAsync() : Task.CompletedTask; });
+    public void Dispose() { _disposed = true; Catalog.Changed -= CatalogChanged; }
+
 }

@@ -1,31 +1,31 @@
 @using HoldItTogether.Services.Settings
 
-<section class="audio-settings-view" aria-label="Configurações de áudio" data-no-drag
+<section class="audio-settings-view" aria-label="@Text.Get("Audio settings")" data-no-drag
          @onclick:stopPropagation="true" @oncontextmenu="ReturnAsync" @oncontextmenu:preventDefault="true"
          @onpointerup="HandlePointerUp">
-    <button type="button" class="lyrics-back audio-view-back" aria-label="Voltar ao áudio" title="Voltar ao áudio" @onclick="ReturnAsync">
+    <button type="button" class="lyrics-back audio-view-back" aria-label="@Text.Get("Back to Audio")" title="@Text.Get("Back to Audio")" @onclick="ReturnAsync">
         <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m11 5-5 5 5 5M6 10h10" /></svg>
-        <span>Áudio</span>
+        <span>@Text.Get("Audio")</span>
     </button>
 
-    <HitDisclosure Title="Tamanho" PanelId="audio-size-options" CssClass="audio-size-disclosure">
+    <HitDisclosure Title="@Text.Get("Size")" PanelId="audio-size-options" CssClass="audio-size-disclosure">
         <MainControl>
             <div class="audio-size-uniform">
                 <input type="range" min="75" max="200" step="5" value="@UniformScale"
-                       aria-label="Tamanho uniforme do áudio" @oninput="PreviewUniform" @onchange="SaveUniform" @onwheel:stopPropagation="true" />
+                       aria-label="@Text.Get("Uniform audio size")" @oninput="PreviewUniform" @onchange="SaveUniform" @onwheel:stopPropagation="true" />
                 <output>@(ScaleX == ScaleY ? $"{ScaleX}%" : $"{ScaleX} × {ScaleY}%")</output>
             </div>
         </MainControl>
         <ChildContent>
             <label class="audio-size-axis">
-                <span>Largura · X</span>
-                <input type="range" min="75" max="200" step="5" value="@ScaleX" aria-label="Largura do áudio"
+                <span>@Text.Get("Width · X")</span>
+                <input type="range" min="75" max="200" step="5" value="@ScaleX" aria-label="@Text.Get("Audio width")"
                        @oninput="PreviewX" @onchange="SaveX" @onwheel:stopPropagation="true" />
                 <output>@ScaleX%</output>
             </label>
             <label class="audio-size-axis">
-                <span>Altura · Y</span>
-                <input type="range" min="75" max="200" step="5" value="@ScaleY" aria-label="Altura do áudio"
+                <span>@Text.Get("Height · Y")</span>
+                <input type="range" min="75" max="200" step="5" value="@ScaleY" aria-label="@Text.Get("Audio height")"
                        @oninput="PreviewY" @onchange="SaveY" @onwheel:stopPropagation="true" />
                 <output>@ScaleY%</output>
             </label>
@@ -33,13 +33,13 @@
     </HitDisclosure>
 
     <label class="audio-setting-row">
-        <span>Esconder botões<small>Após 5 segundos sem interação, quando fixado.</small></span>
-        <input type="checkbox" class="appearance-switch" role="switch" aria-label="Esconder botões após inatividade"
+        <span>@Text.Get("Hide buttons")<small>@Text.Get("After 5 seconds of inactivity when pinned.")</small></span>
+        <input type="checkbox" class="appearance-switch" role="switch" aria-label="@Text.Get("Hide buttons when idle")"
                @bind:get="Settings.AudioHideControls" @bind:set="SetHide" />
     </label>
     <label class="audio-setting-row">
-        <span>Mostrar fonte<small>Aplicativo que está reproduzindo o áudio.</small></span>
-        <input type="checkbox" class="appearance-switch" role="switch" aria-label="Mostrar fonte do áudio"
+        <span>@Text.Get("Show source")<small>@Text.Get("The app currently playing audio.")</small></span>
+        <input type="checkbox" class="appearance-switch" role="switch" aria-label="@Text.Get("Show audio source")"
                @bind:get="Settings.AudioShowSource" @bind:set="SetSource" />
     </label>
     @if (Error is { } error) { <p class="audio-error" role="status">@error</p> }

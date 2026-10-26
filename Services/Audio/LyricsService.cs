@@ -44,7 +44,7 @@ public sealed class LyricsService : IDisposable
 
     public async Task<SyncedLyrics?> FindAsync(MediaSnapshot media, CancellationToken token)
     {
-        if (!media.HasMedia || media.Duration <= 0 || media.Artist is "" or "Mídia do sistema" || media.Title == "Áudio em reprodução") return null;
+        if (!media.HasMedia || media.Duration <= 0 || media.Artist is "" or "System media" || media.Title == "Audio playing") return null;
         var title = CleanTitle(media.Title, media.Artist);
         var key = title + "\n" + media.Artist + "\n" + Math.Round(media.Duration);
         lock (_sync)

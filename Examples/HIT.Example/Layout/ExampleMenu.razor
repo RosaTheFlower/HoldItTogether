@@ -1,0 +1,47 @@
+@namespace HIT.Example.Layout
+@using HIT.Sdk
+@using HIT.Example.Services
+@using Microsoft.AspNetCore.Components
+@using Microsoft.AspNetCore.Components.Web
+@using Microsoft.Extensions.DependencyInjection
+@inherits HitMenuComponent
+@implements IHitMenuSettings
+
+<section class="example-notes" data-no-drag @onclick:stopPropagation="true">
+    @if (IsSettingsOpen)
+    {
+        <button type="button" @onclick="CloseSettingsAsync">Back to notes</button>
+        <p>This menu uses HIT storage and the shared timer API.</p>
+        <p>Its CSS is editable in the installed extension folder.</p>
+    }
+    else
+    {
+        <label for="example-note">What are you working on?</label>
+        <textarea id="example-note" maxlength="2000" rows="4" value="@_notes?.Text" @onchange="SaveNote" placeholder="Write a short note…"></textarea>
+        <div class="example-actions">
+            <button type="button" @onclick="StartTimer">Start a 5-minute HIT timer</button>
+            <button type="button" data-hit-menu-trigger="settings" @oncontextmenu="OpenSettingsAsync" @oncontextmenu:preventDefault="true" @oncontextmenu:stopPropagation="true" @onclick="OpenSettingsAsync">Settings</button>
+        </div>
+        <p role="status">@_status</p>
+    }
+</section>
+
+@code {
+    private NotesService? _notes;
+    private string _status = "";
+    public bool IsSettingsOpen { get; private set; }
+    protected override async Task OnInitializedAsync()
+    {
+        _notes = Api.Services.GetRequiredService<NotesService>();
+        await _notes.LoadAsync(Api, Lifetime);
+    }
+    private async Task SaveNote(ChangeEventArgs args)
+    {
+        _notes!.Text = args.Value?.ToString() ?? "";
+        await _notes.SaveAsync(Api, Lifetime);
+        _status = "Saved on this device.";
+    }
+    private void StartTimer() { Api.Clock.StartTimer(TimeSpan.FromMinutes(5)); _status = "The HIT timer is running."; }
+    public async Task OpenSettingsAsync() { IsSettingsOpen = true; await Context.SetTitleAsync("Notes settings"); await InvokeAsync(StateHasChanged); }
+    public async Task CloseSettingsAsync() { IsSettingsOpen = false; await Context.SetTitleAsync("Notes"); await InvokeAsync(StateHasChanged); }
+}

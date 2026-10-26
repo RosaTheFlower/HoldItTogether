@@ -13,7 +13,7 @@
 @code {
     [Parameter] public string Mode { get; set; } = "system";
     [Parameter] public string Value { get; set; } = "00:00";
-    [Parameter] public string Label { get; set; } = "Relógio";
+    [Parameter] public string Label { get; set; } = Text.Get("Clock");
     [Parameter] public string? Detail { get; set; }
     [Parameter] public string? SecondaryValue { get; set; }
     [Parameter] public string? SecondaryLabel { get; set; }

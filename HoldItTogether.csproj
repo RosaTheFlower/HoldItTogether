@@ -6,16 +6,25 @@
     <SupportedOSPlatformVersion>10.0.17763.0</SupportedOSPlatformVersion>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <Version>1.0.0</Version>
+    <AssemblyVersion>1.0.0.0</AssemblyVersion>
+    <FileVersion>1.0.0.0</FileVersion>
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="Sdk/**;Examples/**;Tests/**" />
+    <Content Remove="Sdk/**;Examples/**;Tests/**" />
+    <None Remove="Sdk/**;Examples/**;Tests/**" />
+    <RazorComponent Remove="Sdk/**;Examples/**;Tests/**" />
+    <ProjectReference Include="Sdk/HIT.Sdk/HIT.Sdk.csproj" />
+    <EmbeddedResource Include="Resources/en.json" />
     <PackageReference Include="Photino.Blazor" Version="4.0.13" />
     <PackageReference Include="NAudio.Wasapi" Version="2.2.1" />
   </ItemGroup>
 
   <ItemGroup>
     <Content Update="wwwroot\**\*" CopyToOutputDirectory="PreserveNewest" />
-    <Content Include="README.md;HIT-MENUS.md;Design/**/*.md;Components/HitMenus/README.md;Services/Audio/README.md;Services/Clock/README.md"
+    <Content Include="Docs/**/*.md"
              CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <Content Remove="wwwroot/css/menus.css" />
     <Content Include="wwwroot/css/menus.css" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />

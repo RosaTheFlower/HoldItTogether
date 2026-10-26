@@ -4,7 +4,7 @@
 @using HoldItTogether.Services.HitMenus
 @using HoldItTogether.Components.Audio
 @using Microsoft.JSInterop
-@attribute [HitMenuTitle("Áudio")]
+@attribute [HitMenuTitle("Audio")]
 @implements IAsyncDisposable
 @implements IHitMenuSettings
 @inject IHitMediaService Media
@@ -70,8 +70,8 @@
             }
         </div>
         <div class="audio-metadata">
-            <p class="audio-source"><span class="audio-status @(_snapshot.Playing ? "is-playing" : "")"></span>@(_snapshot.HasMedia ? _snapshot.Source : "ÁUDIO DO SISTEMA")</p>
-            <h2 class="audio-title" title="@(_snapshot.HasMedia ? _snapshot.Title + " · Ctrl + clique para abrir o aplicativo" : _snapshot.Title)"
+            <p class="audio-source"><span class="audio-status @(_snapshot.Playing ? "is-playing" : "")"></span>@(_snapshot.HasMedia ? _snapshot.Source : Text.Get("SYSTEM AUDIO"))</p>
+            <h2 class="audio-title" title="@(_snapshot.HasMedia ? _snapshot.Title + " · Ctrl + click to open the app" : _snapshot.Title)"
                 data-ctrl-link="@(_snapshot.HasMedia ? "true" : null)" tabindex="@(_snapshot.HasMedia ? 0 : -1)"
                 @onclick="ActivateSourceAsync" @onkeydown="HandleSongKeyAsync">@_snapshot.Title</h2>
             <p class="audio-artist" title="@_snapshot.Artist">@_snapshot.Artist</p>
@@ -81,7 +81,7 @@
     <div class="audio-progress" data-no-drag>
         <input class="audio-timeline" type="range" min="0" max="@Number(Math.Max(1, _snapshot.Duration))" step="0.1"
                value="@Number(_seekPreview ?? _snapshot.Position)" style="@($"--audio-progress:{Number(Progress)}%")"
-               aria-label="Posição da reprodução" aria-valuetext="@($"{Time(_seekPreview ?? _snapshot.Position)} de {Time(_snapshot.Duration)}")"
+               aria-label="@Text.Get("Playback position")" aria-valuetext="@($"{Time(_seekPreview ?? _snapshot.Position)} of {Time(_snapshot.Duration)}")"
                disabled="@(_busy || !_snapshot.CanSeek)" @oninput="PreviewSeek" @onchange="CommitSeekAsync"
                @onwheel:stopPropagation="true" />
         <div class="audio-times">
@@ -92,32 +92,32 @@
 
     <div class="audio-toolbar" data-no-drag>
         <button type="button" class="audio-control audio-shuffle @(_snapshot.Shuffle ? "is-active" : "")"
-                aria-label="@(_snapshot.Shuffle ? "Desativar ordem aleatória" : "Ativar ordem aleatória")"
-                title="@(_snapshot.CanShuffle ? "Ordem aleatória" : "Este aplicativo não oferece ordem aleatória")"
+                aria-label="@(_snapshot.Shuffle ? "Disable shuffle" : "Enable shuffle")"
+                title="@(_snapshot.CanShuffle ? "Shuffle" : "This app does not support shuffle")"
                 aria-pressed="@(_snapshot.Shuffle ? "true" : "false")" disabled="@(_busy || !_snapshot.CanShuffle)"
                 @onclick="() => CommandAsync(MediaAction.ToggleShuffle)">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h3c5 0 7 12 12 12h3m-4-4 4 4-4 4M3 18h3c2 0 3-2 5-5m2-2c2-3 3-5 5-5h3m-4-4 4 4-4 4" /></svg>
         </button>
         <div class="audio-transport">
-            <button type="button" class="audio-control" aria-label="Faixa anterior" title="Anterior"
+            <button type="button" class="audio-control" aria-label="@Text.Get("Previous track")" title="@Text.Get("Previous")"
                     disabled="@(_busy || !_snapshot.CanPrevious)" @onclick="() => CommandAsync(MediaAction.Previous)">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5v14" /><path class="audio-glyph" d="m19 5-11 7 11 7Z" /></svg>
             </button>
-            <button type="button" class="audio-control audio-play" aria-label="@(_snapshot.Playing ? "Pausar" : "Reproduzir")"
-                    title="@(_snapshot.Playing ? "Pausar" : "Reproduzir")"
+            <button type="button" class="audio-control audio-play" aria-label="@(_snapshot.Playing ? "Pause" : "Play")"
+                    title="@(_snapshot.Playing ? "Pause" : "Play")"
                     disabled="@(_busy || !_snapshot.CanToggle)" @onclick="() => CommandAsync(MediaAction.TogglePlayback)">
                 <svg viewBox="0 0 24 24" aria-hidden="true">
                     @if (_snapshot.Playing) { <path class="audio-glyph" d="M7 5h3v14H7Zm7 0h3v14h-3Z" /> }
                     else { <path class="audio-glyph" d="m8 4 12 8-12 8Z" /> }
                 </svg>
             </button>
-            <button type="button" class="audio-control" aria-label="Próxima faixa" title="Próxima"
+            <button type="button" class="audio-control" aria-label="@Text.Get("Next track")" title="@Text.Get("Next")"
                     disabled="@(_busy || !_snapshot.CanNext)" @onclick="() => CommandAsync(MediaAction.Next)">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 5v14" /><path class="audio-glyph" d="m5 5 11 7-11 7Z" /></svg>
             </button>
         </div>
         <button type="button" class="audio-control audio-loop @(_snapshot.Loop != MediaLoop.Off ? "is-active" : "")"
-                aria-label="@LoopLabel" title="@(_snapshot.CanLoop ? LoopLabel : "Este aplicativo não oferece controle de loop")"
+                aria-label="@LoopLabel" title="@(_snapshot.CanLoop ? LoopLabel : "This app does not support repeat")"
                 aria-pressed="@(_snapshot.Loop != MediaLoop.Off ? "true" : "false")"
                 disabled="@(_busy || !_snapshot.CanLoop)" @onclick="() => CommandAsync(MediaAction.ToggleLoop)">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m17 2 4 4-4 4M3 11V9a3 3 0 0 1 3-3h15M7 22l-4-4 4-4m14-1v2a3 3 0 0 1-3 3H3" /></svg>
@@ -128,21 +128,21 @@
     <div class="hit-idle-collapse" data-hit-collapse="player"><div class="hit-idle-collapse-content">
     <div class="audio-tools" data-no-drag data-hit-idle-controls>
         <button type="button" class="audio-control audio-secondary audio-artwork-toggle @(_artworkMode ? "is-active" : "")"
-                aria-label="Modo capa e cores" title="Modo capa e cores · M2 para personalizar" data-hit-menu-trigger="appearance"
+                aria-label="@Text.Get("Artwork and colors")" title="@Text.Get("Artwork and colors · Right-click to customize")" data-hit-menu-trigger="appearance"
                 aria-pressed="@(_artworkMode ? "true" : "false")"
                 @onclick="ToggleArtwork" @oncontextmenu="OpenAppearance" @oncontextmenu:preventDefault="true" @oncontextmenu:stopPropagation="true" @onpointerup="HandleArtworkPointerUp">
             <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3" /><circle cx="8" cy="9" r="1.5" /><path d="m4 17 5-5 4 4 3-3 5 5" /></svg>
         </button>
         <div class="audio-tool-group">
             <button type="button" class="audio-control audio-secondary @(_showLyrics ? "is-active" : "")"
-                    aria-label="Letras sincronizadas" title="@(_lyricsLoading ? "Buscando letra sincronizada…" : _lyrics is null ? "Letra sincronizada não encontrada" : "Mostrar letras sincronizadas")"
+                    aria-label="@Text.Get("Synced lyrics")" title="@(_lyricsLoading ? "Finding synced lyrics…" : _lyrics is null ? "Synced lyrics not found" : "Show synced lyrics")"
                     aria-expanded="@(_showLyrics ? "true" : "false")" aria-controls="audio-lyrics-view"
                     disabled="@(_lyrics is null)" @onclick="ToggleLyrics">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14v13H9l-4 3Zm4 4h6m-6 4h4" /></svg>
             </button>
 <button type="button" class="audio-control audio-secondary audio-visualizer-toggle @(_showVisualizer ? "is-active" : "")"
-                aria-label="@(_showVisualizer ? "Ocultar visualizador de áudio" : "Mostrar visualizador de áudio")"
-                title="Visualizador de áudio"
+                aria-label="@(_showVisualizer ? "Hide audio visualizer" : "Show audio visualizer")"
+                title="@Text.Get("Audio visualizer")"
                 aria-pressed="@(_showVisualizer ? "true" : "false")" aria-controls="audio-background-spectrum" @onclick="ToggleVisualizer">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10v4m4-9v14m4-12v10m4-14v18m4-11v4" /></svg>
         </button>
@@ -204,7 +204,7 @@
     }
 
     private double Progress => _snapshot.Duration > 0 ? Math.Clamp((_seekPreview ?? _snapshot.Position) / _snapshot.Duration * 100, 0, 100) : 0;
-    private string LoopLabel => _snapshot.Loop switch { MediaLoop.Track => "Desativar loop da faixa", MediaLoop.List => "Desativar loop da lista", _ => "Repetir faixa" };
+    private string LoopLabel => _snapshot.Loop switch { MediaLoop.Track => Text.Get("Disable track repeat"), MediaLoop.List => Text.Get("Disable playlist repeat"), _ => Text.Get("Repeat track") };
     private static string Number(double value) => value.ToString("0.###", CultureInfo.InvariantCulture);
     private static string Time(double value)
     {
@@ -248,7 +248,7 @@
             _monitorTask = MonitorAsync(_monitorCts.Token);
         }
         if (!_visible) { _publishedTitle = null; return; }
-        var title = _showSettings ? "Configurações de áudio" : _showAppearance ? "Tema da música" : _showLyrics ? "Letras" : "Áudio";
+        var title = _showSettings ? Text.Get("Audio settings") : _showAppearance ? Text.Get("Music theme") : _showLyrics ? Text.Get("Lyrics") : Text.Get("Audio");
         if (_publishedTitle != title)
         {
             _publishedTitle = title;
@@ -301,7 +301,7 @@
                         {
                             if (_disposed) return;
                             _snapshot = MediaSnapshot.Empty;
-                            _connectionError = "Não foi possível acessar a mídia do Windows. Tentando novamente…";
+                            _connectionError = Text.Get("Could not access Windows media. Retrying…");
                             StateHasChanged();
                         });
                     }
@@ -337,13 +337,13 @@
         {
             var accepted = await Media.ExecuteAsync(action, generation ?? _snapshot.Generation, position, timeout.Token);
             if (!accepted) _actionError = action == MediaAction.ActivateSource
-                ? "Não foi possível trazer o aplicativo da música para frente."
-                : "O aplicativo não aceitou esse comando ou a mídia mudou.";
+                ? Text.Get("Could not bring the music app to the foreground.")
+                : Text.Get("The app rejected this command or the media changed.");
             await RefreshAsync(timeout.Token);
         }
         catch (OperationCanceledException) when (_lifetime.IsCancellationRequested) { }
         catch (Exception error) when (error is COMException or UnauthorizedAccessException or InvalidOperationException or OperationCanceledException)
-        { _actionError = "Não foi possível controlar o player agora. Tente novamente."; }
+        { _actionError = Text.Get("Could not control playback. Please try again."); }
         finally { _busy = false; }
     }
 
@@ -381,7 +381,7 @@
         _appearanceError = null;
         try { Settings.Update(change); _artworkMode = Settings.Current.AudioArtworkMode; }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException or InvalidOperationException or System.ComponentModel.Win32Exception)
-        { _appearanceError = "Não foi possível salvar a aparência."; }
+        { _appearanceError = Text.Get("Could not save appearance settings."); }
     }
 
     private void ToggleArtwork() => SaveAppearance(value => value with { AudioArtworkMode = !value.AudioArtworkMode });
@@ -496,13 +496,13 @@
         catch (Exception error) when (error is COMException or InvalidOperationException or System.ComponentModel.Win32Exception)
         {
             _visualizerFailed = true;
-            _visualizerError = "A saída de áudio não está disponível. Reabra o visualizador para tentar novamente.";
+            _visualizerError = Text.Get("Audio output is unavailable. Reopen the visualizer to try again.");
         }
         finally
         {
             try { await Task.Run(Spectrum.Stop); }
             catch (Exception error) when (error is COMException or InvalidOperationException)
-            { _visualizerFailed = true; _visualizerError = "A saída de áudio foi desconectada."; }
+            { _visualizerFailed = true; _visualizerError = Text.Get("Audio output was disconnected."); }
             _spectrumCts?.Dispose();
             _spectrumCts = null;
             _spectrumTask = null;
