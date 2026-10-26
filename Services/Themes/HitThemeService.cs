@@ -15,6 +15,9 @@ public sealed class HitThemeService
     public const int MaxCssBytes = 1024 * 1024;
     private readonly HitSettingsService _settings;
     private readonly string _bundledDirectory;
+    private readonly object _cacheSync = new();
+    private CachedCss? _baseCss, _selectedCss;
+    private sealed record CachedCss(string Path, long Length, DateTime LastWrite, DateTime Created, HitThemeSnapshot Snapshot);
     public string DirectoryPath { get; }
     public string? RuntimeError { get; internal set; }
 
@@ -49,7 +52,10 @@ public sealed class HitThemeService
     {
         var id = _settings.Current.Theme;
         if (id == "default")
+        {
+            lock (_cacheSync) _selectedCss = null;
             return ReadDefault();
+        }
         try
         {
             var bundled = HitBundledThemes.All.FirstOrDefault(theme => theme.Id == id);
@@ -71,6 +77,7 @@ public sealed class HitThemeService
         {
             if (!File.Exists(path)) return new("default:" + error, "", error);
             var snapshot = ReadCss(path, "default");
+            if (error is null) return snapshot;
             return snapshot with { Revision = snapshot.Revision + ":" + error, Error = error ?? snapshot.Error };
         }
         catch (Exception failure) when (failure is IOException or UnauthorizedAccessException)
@@ -79,7 +86,23 @@ public sealed class HitThemeService
         }
     }
 
-    private static HitThemeSnapshot ReadCss(string path, string id)
+    private HitThemeSnapshot ReadCss(string path, string id)
+    {
+        lock (_cacheSync)
+        {
+            var file = new FileInfo(path);
+            var cached = id == "default" ? _baseCss : _selectedCss;
+            if (cached is not null && cached.Path == path && cached.Length == file.Length &&
+                cached.LastWrite == file.LastWriteTimeUtc && cached.Created == file.CreationTimeUtc)
+                return cached.Snapshot;
+            var snapshot = LoadCss(path, id);
+            var next = new CachedCss(path, file.Length, file.LastWriteTimeUtc, file.CreationTimeUtc, snapshot);
+            if (id == "default") _baseCss = next; else _selectedCss = next;
+            return snapshot;
+        }
+    }
+
+    private static HitThemeSnapshot LoadCss(string path, string id)
     {
         if (new FileInfo(path).Length > MaxCssBytes)
             return new("large:" + id, "", "O tema deve ter no máximo 1 MB.");

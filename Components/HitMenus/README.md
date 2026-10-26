@@ -202,3 +202,11 @@ Listas roláveis devem preferir HitScrollRegion para preservar a rolagem nativa
 sem acionar a navegação do HIT. O uso de Clock, fusos e prazos está em
 [Services/Clock/README.md](../../Services/Clock/README.md); as classes públicas
 estão em [CLOCK-THEMES.md](../../Design/CLOCK-THEMES.md).
+
+Seções recolhidas que contêm listas grandes de opções devem criar esses
+campos apenas na expansão. Preserve o rascunho/preferências no componente,
+como ClockSystemSettingsView, sem manter centenas de opções escondidas no DOM.
+Renderizações periódicas devem comparar o estado efetivamente visível antes
+de reconstruir árvores grandes. Respeite IsVisible para suspender trabalho,
+mantendo contagens/serviços independentes quando a função exigir.
+Políticas e medições: [PERFORMANCE.md](../../Design/PERFORMANCE.md).

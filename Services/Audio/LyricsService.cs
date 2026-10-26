@@ -25,8 +25,12 @@ public sealed record SyncedLyrics(IReadOnlyList<LyricLine> Lines, string Source 
 /// <summary>Sequential timed-lyrics providers, bounded responses and cache. Never fabricates timestamps.</summary>
 public sealed class LyricsService : IDisposable
 {
+    public const int MaxCacheEntries = 40;
+    public const long MaxCacheBytes = 4 * 1024 * 1024;
     private readonly HttpClient _http;
-    private readonly Dictionary<string, (DateTimeOffset At, SyncedLyrics? Lyrics)> _cache = new();
+    private readonly Dictionary<string, CacheEntry> _cache = new();
+    private sealed record CacheEntry(DateTimeOffset At, SyncedLyrics? Lyrics, long Bytes);
+    private long _cacheBytes;
     private readonly Queue<DateTimeOffset> _syncLrcRequests = new();
     private readonly object _sync = new();
     private static readonly Regex Timestamps = new(@"\[(?<m>\d{1,4}):(?<s>\d{2}(?:\.\d{1,3})?)\]", RegexOptions.NonBacktracking);
@@ -44,8 +48,11 @@ public sealed class LyricsService : IDisposable
         var title = CleanTitle(media.Title, media.Artist);
         var key = title + "\n" + media.Artist + "\n" + Math.Round(media.Duration);
         lock (_sync)
+        {
+            PruneCache(DateTimeOffset.UtcNow);
             if (_cache.TryGetValue(key, out var cached) && DateTimeOffset.UtcNow - cached.At < TimeSpan.FromMinutes(cached.Lyrics is null ? 2 : 60))
                 return cached.Lyrics;
+        }
         var query = "track_name=" + Uri.EscapeDataString(title) + "&artist_name=" + Uri.EscapeDataString(media.Artist);
         var exactQuery = query + "&duration=" + Math.Round(media.Duration).ToString(CultureInfo.InvariantCulture);
         if (!string.IsNullOrWhiteSpace(media.Album)) exactQuery += "&album_name=" + Uri.EscapeDataString(media.Album);
@@ -101,10 +108,34 @@ public sealed class LyricsService : IDisposable
         token.ThrowIfCancellationRequested();
         lock (_sync)
         {
-            if (_cache.Count >= 40) _cache.Remove(_cache.Keys.First());
-            _cache[key] = (DateTimeOffset.UtcNow, found);
+            PruneCache(DateTimeOffset.UtcNow);
+            RemoveCached(key);
+            var bytes = EstimateBytes(key, found);
+            if (bytes <= MaxCacheBytes)
+            {
+                while (_cache.Count >= MaxCacheEntries || _cacheBytes + bytes > MaxCacheBytes)
+                    RemoveCached(_cache.Keys.First());
+                _cache[key] = new(DateTimeOffset.UtcNow, found, bytes);
+                _cacheBytes += bytes;
+            }
         }
         return found;
+    }
+
+    private static long EstimateBytes(string key, SyncedLyrics? lyrics) =>
+        160L + key.Length * 2L + (lyrics is null ? 0 :
+            (lyrics.Source.Length + (lyrics.SourceUrl?.Length ?? 0)) * 2L +
+            lyrics.Lines.Sum(line => 80L + line.Text.Length * 2L));
+
+    private void RemoveCached(string key)
+    {
+        if (_cache.Remove(key, out var entry)) _cacheBytes -= entry.Bytes;
+    }
+
+    private void PruneCache(DateTimeOffset now)
+    {
+        foreach (var key in _cache.Where(item => now - item.Value.At >= TimeSpan.FromMinutes(item.Value.Lyrics is null ? 2 : 60))
+                     .Select(item => item.Key).ToArray()) RemoveCached(key);
     }
 
     private bool AllowSyncLrc()
@@ -134,7 +165,7 @@ public sealed class LyricsService : IDisposable
                 if (buffer.Length + count > 1024 * 1024) return null;
                 buffer.Write(bytes, 0, count);
             }
-            return JsonDocument.Parse(buffer.ToArray());
+            return JsonDocument.Parse(buffer.GetBuffer().AsMemory(0, checked((int)buffer.Length)));
         }
         catch (OperationCanceledException) when (token.IsCancellationRequested) { throw; }
         catch (Exception error) when (error is HttpRequestException or OperationCanceledException or JsonException or IOException) { return null; }
@@ -184,7 +215,8 @@ public sealed class LyricsService : IDisposable
         var lines = new List<LyricLine>();
         var offsetMatch = Regex.Match(text, @"\[offset:([+-]?\d+)\]", RegexOptions.IgnoreCase | RegexOptions.NonBacktracking);
         var offset = offsetMatch.Success && int.TryParse(offsetMatch.Groups[1].Value, out var milliseconds) ? milliseconds / 1000d : 0;
-        foreach (var row in text.Split('\n').Take(3000))
+        using var rows = new StringReader(text);
+        for (var rowIndex = 0; rowIndex < 3000 && rows.ReadLine() is { } row; rowIndex++)
         {
             if (lines.Count >= 5000) break;
             var timestamps = Timestamps.Matches(row);
@@ -192,6 +224,7 @@ public sealed class LyricsService : IDisposable
             var content = Timestamps.Replace(row, "").Trim();
             foreach (Match timestamp in timestamps)
             {
+                if (lines.Count >= 5000) break;
                 var seconds = double.Parse(timestamp.Groups["s"].Value, CultureInfo.InvariantCulture);
                 if (seconds >= 60) continue;
                 var time = int.Parse(timestamp.Groups["m"].Value, CultureInfo.InvariantCulture) * 60 + seconds - offset;
@@ -202,5 +235,9 @@ public sealed class LyricsService : IDisposable
             ? new(lines.OrderBy(line => line.Time).Distinct().ToArray()) : null;
     }
 
-    public void Dispose() => _http.Dispose();
+    public void Dispose()
+    {
+        lock (_sync) { _cache.Clear(); _cacheBytes = 0; _syncLrcRequests.Clear(); }
+        _http.Dispose();
+    }
 }

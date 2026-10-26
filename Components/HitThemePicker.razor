@@ -38,7 +38,7 @@
             <button type="button" class="confirm-delete" aria-label="Confirmar exclusão do tema" @onclick="ConfirmDelete">Excluir</button>
         </div>
     </dialog>
-    @if ((_error ?? Themes.RuntimeError) is { Length: > 0 } error)
+    @if ((_error ?? _runtimeError) is { Length: > 0 } error)
     {
         <p class="settings-error" role="alert">@error</p>
     }
@@ -49,6 +49,7 @@
     private readonly CancellationTokenSource _lifetime = new();
     private Task? _monitor;
     private string? _error;
+    private string? _runtimeError;
     private bool _disposed;
     private string? _pendingDeleteId;
     private string? _pendingDeleteName;
@@ -78,7 +79,9 @@
     {
         try
         {
-            _themes = Themes.GetThemes();
+            var themes = Themes.GetThemes();
+            if (!_themes.SequenceEqual(themes)) _themes = themes;
+            _runtimeError = Themes.RuntimeError;
             if (_pendingDeleteId is not null &&
                 (_pendingDeleteId != Settings.Current.Theme || !CanDelete)) CancelDelete();
         }
@@ -97,8 +100,15 @@
         try
         {
             while (await timer.WaitForNextTickAsync(token))
-                if (MenuContext?.IsActive ?? true)
-                    await InvokeAsync(() => { Refresh(); StateHasChanged(); });
+                if ((MenuContext?.IsActive ?? true) && (MenuContext?.IsVisible ?? true))
+                    await InvokeAsync(() =>
+                    {
+                        var previous = _themes;
+                        var error = _error ?? _runtimeError;
+                        var pending = _pendingDeleteId;
+                        Refresh();
+                        if (!ReferenceEquals(previous, _themes) || error != (_error ?? _runtimeError) || pending != _pendingDeleteId) StateHasChanged();
+                    });
         }
         catch (OperationCanceledException) { }
     }

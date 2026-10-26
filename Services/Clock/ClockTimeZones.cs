@@ -7,18 +7,28 @@ public static class ClockTimeZones
 {
     public const string LocalId = "local";
     public const int MaxClocks = 12;
-    private static readonly IReadOnlyDictionary<string, TimeZoneInfo> Zones = TimeZoneInfo.GetSystemTimeZones()
-        .ToDictionary(zone => zone.Id, StringComparer.OrdinalIgnoreCase);
-    public static IReadOnlyList<ClockTimeZoneOption> Options { get; } = Array.AsReadOnly(
+    private static readonly object Sync = new();
+    private static readonly Dictionary<string, TimeZoneInfo> Zones = new(StringComparer.OrdinalIgnoreCase);
+    private static readonly Lazy<IReadOnlyList<ClockTimeZoneOption>> Catalog = new(() => Array.AsReadOnly(
         new[] { new ClockTimeZoneOption(LocalId, "Horário local do sistema") }
-            .Concat(Zones.Values.Select(zone => new ClockTimeZoneOption(zone.Id, zone.DisplayName))).ToArray());
+            .Concat(TimeZoneInfo.GetSystemTimeZones().Select(zone => new ClockTimeZoneOption(zone.Id, zone.DisplayName))).ToArray()));
+    public static IReadOnlyList<ClockTimeZoneOption> Options => Catalog.Value;
 
     public static TimeZoneInfo? Resolve(string? id)
     {
         if (string.IsNullOrWhiteSpace(id)) return null;
         if (id == LocalId) return TimeZoneInfo.Local;
-        if (Zones.TryGetValue(id, out var zone)) return zone;
-        try { return TimeZoneInfo.FindSystemTimeZoneById(id); }
+        lock (Sync) if (Zones.TryGetValue(id, out var cached)) return cached;
+        try
+        {
+            var zone = TimeZoneInfo.FindSystemTimeZoneById(id);
+            lock (Sync)
+            {
+                if (Zones.Count >= MaxClocks) Zones.Clear();
+                Zones[id] = zone;
+            }
+            return zone;
+        }
         catch (Exception error) when (error is TimeZoneNotFoundException or InvalidTimeZoneException) { return null; }
     }
 

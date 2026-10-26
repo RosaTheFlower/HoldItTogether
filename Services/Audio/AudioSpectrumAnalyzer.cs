@@ -82,12 +82,20 @@ public sealed class AudioSpectrumAnalyzer
 
     public double[] Read()
     {
+        var result = new double[BandCount];
+        CopyTo(result);
+        return result;
+    }
+
+    public void CopyTo(Span<double> destination)
+    {
+        if (destination.Length < BandCount) throw new ArgumentException("O buffer deve comportar todas as bandas.", nameof(destination));
         lock (_sync)
         {
             // WASAPI does not necessarily deliver buffers when the endpoint is silent.
             if (_lastData == 0 || Stopwatch.GetElapsedTime(_lastData).TotalMilliseconds > 250)
                 Array.Clear(_levels);
-            return (double[])_levels.Clone();
+            _levels.CopyTo(destination);
         }
     }
 }

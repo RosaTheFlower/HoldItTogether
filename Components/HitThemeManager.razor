@@ -15,6 +15,7 @@
     private bool? _motionDisabled;
     private bool? _tooltipsEnabled;
     private bool _disposed;
+    private bool _applying, _applyRequested;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -32,6 +33,18 @@
     }
 
     private async Task ApplyAsync()
+    {
+        if (_applying) { _applyRequested = true; return; }
+        _applying = true;
+        try
+        {
+            do { _applyRequested = false; await ApplyCoreAsync(); }
+            while (_applyRequested && !_disposed);
+        }
+        finally { _applying = false; }
+    }
+
+    private async Task ApplyCoreAsync()
     {
         if (_disposed || _module is null) return;
         if (_tooltipsEnabled != Settings.Current.ShowTooltips)

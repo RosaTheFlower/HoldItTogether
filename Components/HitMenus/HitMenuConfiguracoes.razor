@@ -93,7 +93,7 @@
 
     protected override void OnParametersSet()
     {
-        var active = MenuContext?.IsActive ?? true;
+        var active = (MenuContext?.IsActive ?? true) && (MenuContext?.IsVisible ?? true);
         if (active && _monitorCts is null)
         {
             _monitorCts = new CancellationTokenSource();

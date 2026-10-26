@@ -144,3 +144,19 @@ hit-menu-chrome.js; serviços não alteram tamanho ou tempo de animação.
 O estado Ctrl/Alt agora é do shell (hit-modifiers.js), sem listeners próprios
 do Áudio. Alt destaca título e botão de capa que anunciam configuração por M2.
 O contrato central de serviços/layout/configurações está em ../../HIT-MENUS.md.
+
+## Memória e recursos fora de vista
+
+O cache de letras tem até 40 resultados e orçamento estimado de 4 MiB. Letras
+maiores continuam sendo retornadas, mesmo quando não cabem no cache.
+O componente só renderiza os versos novamente quando muda o destaque ou um
+estado relevante. Ocultar a leitura desmonta sua árvore/observers e mantém
+o modelo da música para retomada, inclusive sem uma nova consulta.
+
+IHitMediaService.ReleaseArtworkAsync libera a capa transitória quando não há
+consumidor visível nem paleta global. O próximo ReadAsync recupera a imagem do
+player local. O JS descarta a fonte/paleta inativa e reutiliza a imagem ativa
+nos ajustes de blur; reuseArtwork no bridge evita reenviar base64 repetida.
+Qualidade da capa, 32 bandas e 20 quadros/s permanecem preservados.
+
+Medições e limites: [PERFORMANCE.md](../../Design/PERFORMANCE.md).

@@ -139,6 +139,17 @@ public sealed class WindowsMediaService : IHitMediaService, IDisposable
         catch (COMException) { return false; }
     }
 
+    public async Task ReleaseArtworkAsync()
+    {
+        await _gate.WaitAsync();
+        try
+        {
+            _artwork = null;
+            Interlocked.Exchange(ref _metadataDirty, 1);
+        }
+        finally { _gate.Release(); }
+    }
+
     private void ChangeSession(GlobalSystemMediaTransportControlsSession? session)
     {
         if (_session is not null) _session.MediaPropertiesChanged -= MetadataChanged;

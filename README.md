@@ -39,6 +39,7 @@ mostrador compacto da função selecionada após três segundos sem interação 
 [Design/CLOCK-THEMES.md](Design/CLOCK-THEMES.md) para serviço e estilos públicos.
 Para adicionar menus, siga [Components/HitMenus/README.md](Components/HitMenus/README.md).
 Para layout, estados, controles e temas, consulte [Design/README.md](Design/README.md).
+Políticas de memória e medições: [Design/PERFORMANCE.md](Design/PERFORMANCE.md).
 
 As preferências e os temas importados ficam em
 %LOCALAPPDATA%\HoldItTogether, fora dos arquivos do projeto.

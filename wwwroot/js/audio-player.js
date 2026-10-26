@@ -123,6 +123,7 @@ export async function syncScene(root, artwork, enabled, visible, lyrics, options
     if (!root) return;
     let scene = scenes.get(root);
     if (!scene) {scene={revision:0,source:null,colors:null,sphere:null};scenes.set(root,scene);}
+    if (options.reuseArtwork === true) artwork = scene.source;
     const revision=++scene.revision;
     const globalAccent=options.global === true;
     const blur=Number.isFinite(options.blur) ? Math.max(0,Math.min(40,options.blur)) : 8;
@@ -152,13 +153,15 @@ export async function syncScene(root, artwork, enabled, visible, lyrics, options
     if (!enabled || (!visible && !globalAccent) || !supported || !root.isConnected) {
         delete root.dataset.audioPalette;
         for(const name of artVariables)root.style.removeProperty(name);
+        scene.source = scene.colors = null;
         return;
     }
     if(scene.source!==artwork || !scene.colors) {
         const image=await loadCover(artwork);
-        if(revision!==scene.revision || !root.isConnected)return;
+        if(revision!==scene.revision || !root.isConnected) { image?.removeAttribute("src"); return; }
         scene.source=artwork;
         try {scene.colors=image?palette(image):null}catch{scene.colors=null;}
+        image?.removeAttribute("src");
     }
     if(revision!==scene.revision || !root.isConnected)return;
     if(!scene.colors) {

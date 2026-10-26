@@ -163,8 +163,11 @@ export function applyBase(css) {
 
 // Preserve accessible names. Only native hover tooltips are optional.
 let tooltipObserver;
-function stripTitles() {
-    for (const element of document.querySelectorAll(".sphere-area[title], .sphere-area [title]")) {
+function stripTitles(root = document) {
+    const nodes = root instanceof Element && root.hasAttribute("title") ? [root] : [];
+    if (root.querySelectorAll) nodes.push(...root.querySelectorAll("[title]"));
+    for (const element of nodes) {
+        if (!element.closest(".sphere-area")) continue;
         element.dataset.hitTooltip = element.getAttribute("title");
         element.removeAttribute("title");
     }
@@ -181,10 +184,14 @@ export function setTooltips(enabled) {
     stripTitles();
     tooltipObserver ??= new MutationObserver(records => {
         tooltipObserver.disconnect();
-        for (const record of records)
-            if (record.type === "attributes" && !record.target.hasAttribute("title"))
-                delete record.target.dataset.hitTooltip;
-        stripTitles();
+        for (const record of records) {
+            if (record.type === "attributes") {
+                if (!record.target.hasAttribute("title")) delete record.target.dataset.hitTooltip;
+                else stripTitles(record.target);
+            } else {
+                for (const node of record.addedNodes) if (node instanceof Element) stripTitles(node);
+            }
+        }
         tooltipObserver.observe(document.documentElement, {subtree:true, childList:true, attributes:true, attributeFilter:["title"]});
     });
     tooltipObserver.observe(document.documentElement, {subtree:true, childList:true, attributes:true, attributeFilter:["title"]});

@@ -32,4 +32,5 @@ public interface IHitMediaService
 {
     Task<MediaSnapshot> ReadAsync(CancellationToken token);
     Task<bool> ExecuteAsync(MediaAction action, long generation, double position, CancellationToken token);
+    Task ReleaseArtworkAsync() => Task.CompletedTask;
 }

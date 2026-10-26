@@ -39,7 +39,7 @@
                            HideControlsChanged="SetHideControls" ShowSourceChanged="SetShowSource" BackRequested="ReturnToPlayerAsync" />
     }
     <div class="audio-player-shell" hidden="@_showSettings">
-    @if (_showLyrics)
+    @if (_showLyrics && _visible)
     {
         <div class="audio-overlay-view">
         <AudioLyricsView Generation="@_snapshot.Generation" Lyrics="@_lyrics" Position="@(_seekPreview ?? _snapshot.Position)"
@@ -62,7 +62,7 @@
         <div class="audio-cover" aria-hidden="true">
             @if (_snapshot.Artwork is { } artwork)
             {
-                <img src="@artwork" alt="" draggable="false" />
+                <img src="@(_visible ? artwork : null)" alt="" draggable="false" />
             }
             else
             {
@@ -163,9 +163,12 @@
     private CancellationTokenSource? _monitorCts, _spectrumCts;
     private Task? _monitorTask, _spectrumTask;
     private IJSObjectReference? _module;
+    private Task<IJSObjectReference>? _moduleLoad;
     private ElementReference _spectrumElement;
     private ElementReference _root;
     private SceneState? _scene;
+    private string? _sceneArtwork;
+    private int _sceneVersion;
     private string? _publishedTitle;
     private sealed record SceneState(string? Artwork, bool Enabled, bool Visible, bool Lyrics, bool Customizing, int Blur, bool Global, bool Cover);
     private bool _artworkMode, _showLyrics, _showAppearance, _showSettings, _lyricsLoading;
@@ -225,13 +228,19 @@
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (_disposed || (_module is null && !ShouldMonitor)) return;
-        _module ??= await JS.InvokeAsync<IJSObjectReference>("import", "./js/audio-player.js");
+        _moduleLoad ??= JS.InvokeAsync<IJSObjectReference>("import", "./js/audio-player.js").AsTask();
+        _module = await _moduleLoad;
         if (_disposed) return;
-        var scene = new SceneState(_snapshot.Artwork, _artworkMode, _visible, _showLyrics, _showAppearance || _showSettings, ArtworkBlur, Settings.Current.AudioArtworkGlobalAccent, Settings.Current.AudioArtworkGlobalCover);
+        var scene = new SceneState(_artworkMode ? _snapshot.Artwork : null, _artworkMode, _visible, _showLyrics, _showAppearance || _showSettings, ArtworkBlur, Settings.Current.AudioArtworkGlobalAccent, Settings.Current.AudioArtworkGlobalCover);
         if (scene != _scene)
         {
             _scene = scene;
-            await _module.InvokeVoidAsync("syncScene", _root, scene.Artwork, scene.Enabled, scene.Visible, scene.Lyrics, new { blur = scene.Blur, @global = scene.Global, cover = scene.Cover, customizing = scene.Customizing });
+            var version = ++_sceneVersion;
+            var reuseArtwork = scene.Enabled && scene.Artwork is not null && scene.Artwork == _sceneArtwork;
+            if (!scene.Enabled || (!scene.Visible && !scene.Global)) _sceneArtwork = null;
+            await _module.InvokeVoidAsync("syncScene", _root, reuseArtwork ? null : scene.Artwork, scene.Enabled, scene.Visible, scene.Lyrics,
+                new { blur = scene.Blur, @global = scene.Global, cover = scene.Cover, customizing = scene.Customizing, reuseArtwork });
+            if (version == _sceneVersion && scene.Enabled && (scene.Visible || scene.Global)) _sceneArtwork = scene.Artwork;
         }
         if (_monitorTask is null && ShouldMonitor)
         {
@@ -265,11 +274,11 @@
                 _seekPreview = null;
                 _actionError = null;
             }
+            var changed = _snapshot != snapshot || _connectionError is not null;
             _snapshot = snapshot;
-
-            if (_visible) BeginLyricsLookup(snapshot);
+            var lyricsChanged = _visible && BeginLyricsLookup(snapshot);
             _connectionError = null;
-            StateHasChanged();
+            if (changed || lyricsChanged) StateHasChanged();
         });
     }
 
@@ -302,6 +311,14 @@
         catch (OperationCanceledException) { }
         finally
         {
+            if (!ShouldMonitor)
+            {
+                await Media.ReleaseArtworkAsync();
+                await InvokeAsync(() =>
+                {
+                    if (!ShouldMonitor) { _snapshot = _snapshot with { Artwork = null }; _sceneArtwork = null; }
+                });
+            }
             _monitorCts?.Dispose();
             _monitorCts = null;
             _monitorTask = null;
@@ -405,20 +422,21 @@
 
     private Task SeekLyricAsync(LyricSeekRequest request) => _snapshot.CanSeek
         ? CommandAsync(MediaAction.Seek, request.Position, request.Generation) : Task.CompletedTask;
-    private void BeginLyricsLookup(MediaSnapshot snapshot)
+    private bool BeginLyricsLookup(MediaSnapshot snapshot)
     {
         var key = snapshot.HasMedia ? snapshot.Title + "\n" + snapshot.Artist + "\n" + Math.Round(snapshot.Duration) : "";
-        if (_lyricsKey == key && (_lyricsTask is { IsCompleted: false } || _lyrics is not null)) return;
-        if (_lyricsKey == key && !_lyricsLoading && DateTimeOffset.UtcNow - _lastLyricsLookup < TimeSpan.FromMinutes(2)) return;
+        if (_lyricsKey == key && (_lyricsTask is { IsCompleted: false } || _lyrics is not null)) return false;
+        if (_lyricsKey == key && !_lyricsLoading && DateTimeOffset.UtcNow - _lastLyricsLookup < TimeSpan.FromMinutes(2)) return false;
         _lyricsCts?.Cancel();
         _lyricsKey = key;
         _lyrics = null;
-        if (key.Length == 0) { _lyricsLoading = false; return; }
+        if (key.Length == 0) { _lyricsLoading = false; return true; }
         _lyricsLoading = true;
         _lastLyricsLookup = DateTimeOffset.UtcNow;
         var source = CancellationTokenSource.CreateLinkedTokenSource(_lifetime.Token);
         _lyricsCts = source;
         _lyricsTask = LookupLyricsAsync(snapshot, key, source);
+        return true;
     }
 
     private async Task LookupLyricsAsync(MediaSnapshot snapshot, string key, CancellationTokenSource source)
@@ -450,6 +468,7 @@
     private async Task VisualizeAsync(CancellationToken token)
     {
         using var timer = new PeriodicTimer(TimeSpan.FromMilliseconds(50));
+        var levels = new double[AudioSpectrumAnalyzer.BandCount];
         try
         {
             await Task.Run(Spectrum.Start, token);
@@ -466,7 +485,10 @@
                 }
                 if (Spectrum.Error is { } error) throw new InvalidOperationException(error);
                 if (_module is not null)
-                    await _module.InvokeVoidAsync("renderSpectrum", token, _spectrumElement, Spectrum.Read());
+                {
+                    Spectrum.CopyTo(levels);
+                    await _module.InvokeVoidAsync("renderSpectrum", token, _spectrumElement, levels);
+                }
             } while (await timer.WaitForNextTickAsync(token));
         }
         catch (OperationCanceledException) { }
@@ -503,10 +525,11 @@
         if (_spectrumTask is { } spectrum) await spectrum;
         if (_lyricsTask is { } lookup) await lookup;
         _lifetime.Dispose();
-        if (_module is not null)
+        try
         {
-            try { await _module.InvokeVoidAsync("clearScene", _root); await _module.DisposeAsync(); }
-            catch (JSDisconnectedException) { }
+            if (_moduleLoad is not null) _module = await _moduleLoad;
+            if (_module is not null) { await _module.InvokeVoidAsync("clearScene", _root); await _module.DisposeAsync(); }
         }
+        catch (JSDisconnectedException) { }
     }
 }

@@ -1,6 +1,7 @@
 # HIT — padrão de design e implementação
 
 Contrato de menus/serviços/telas: [HIT-MENUS.md](../HIT-MENUS.md). Evolução para módulos externos: [MENU-PACKAGES.md](MENU-PACKAGES.md), ainda planejada.
+Políticas de retenção e medições de memória: [PERFORMANCE.md](PERFORMANCE.md).
 
 Esta é a referência para criar telas, controles e temas. O padrão oficial é
 **HIT Dark Theme** (anteriormente Obsidian Eyes), definido em:

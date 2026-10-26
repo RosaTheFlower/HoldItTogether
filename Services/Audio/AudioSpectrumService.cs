@@ -15,6 +15,7 @@ public sealed class AudioSpectrumService : IDisposable
 
     public string? Error => Volatile.Read(ref _error);
     public double[] Read() => _analyzer.Read();
+    public void CopyTo(Span<double> destination) => _analyzer.CopyTo(destination);
 
     public void Start()
     {
@@ -25,9 +26,10 @@ public sealed class AudioSpectrumService : IDisposable
             Volatile.Write(ref _error, null);
             using var enumerator = new MMDeviceEnumerator();
             var device = enumerator.GetDefaultAudioEndpoint(DataFlow.Render, Role.Multimedia);
-            var capture = new WasapiLoopbackCapture(device);
+            WasapiLoopbackCapture? capture = null;
             try
             {
+                capture = new WasapiLoopbackCapture(device);
                 capture.DataAvailable += (_, args) => _analyzer.AddPcm(args.Buffer.AsSpan(0, args.BytesRecorded), capture.WaveFormat);
                 capture.RecordingStopped += (_, args) =>
                 {
@@ -39,7 +41,7 @@ public sealed class AudioSpectrumService : IDisposable
                 _device = device;
                 _deviceId = device.ID;
             }
-            catch { capture.Dispose(); device.Dispose(); throw; }
+            catch { capture?.Dispose(); device.Dispose(); throw; }
         }
     }
 
