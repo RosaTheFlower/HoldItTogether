@@ -13,6 +13,11 @@
                aria-label="Blur da capa" @oninput="PreviewBlur" @onchange="SaveBlur" @onwheel:stopPropagation="true" />
     </div>
     <label class="appearance-global">
+        <span>Capa na tela de letras</span>
+        <input type="checkbox" class="appearance-switch" role="switch" aria-label="Mostrar capa no fundo das letras"
+               @bind:get="LyricsCover" @bind:set="SetLyricsCover" />
+    </label>
+    <label class="appearance-global">
         <span>Usar cores em todo o HIT</span>
         <input type="checkbox" class="appearance-switch" role="switch" aria-label="Usar cores da música em todo o HIT"
                @bind:get="GlobalAccent" @bind:set="SetGlobal" />
@@ -25,7 +30,6 @@
                    @bind:get="GlobalCover" @bind:set="SetCover" />
         </label>
     }
-    <p class="appearance-hint">Mantém as cores de destaque da música nos outros menus.</p>
     @if (Error is { } error) { <p class="audio-error" role="status">@error</p> }
 </section>
 
@@ -33,14 +37,17 @@
     [Parameter] public int Blur { get; set; } = 8;
     [Parameter] public bool GlobalAccent { get; set; }
     [Parameter] public bool GlobalCover { get; set; } = true;
+    [Parameter] public bool LyricsCover { get; set; }
     [Parameter] public string? Error { get; set; }
     [Parameter] public EventCallback<int> BlurPreview { get; set; }
     [Parameter] public EventCallback<int> BlurChanged { get; set; }
     [Parameter] public EventCallback<bool> GlobalAccentChanged { get; set; }
     [Parameter] public EventCallback<bool> GlobalCoverChanged { get; set; }
+    [Parameter] public EventCallback<bool> LyricsCoverChanged { get; set; }
     [Parameter] public EventCallback BackRequested { get; set; }
     private Task SetGlobal(bool enabled) => GlobalAccentChanged.InvokeAsync(enabled);
     private Task SetCover(bool enabled) => GlobalCoverChanged.InvokeAsync(enabled);
+    private Task SetLyricsCover(bool enabled) => LyricsCoverChanged.InvokeAsync(enabled);
     private Task ReturnAsync() => BackRequested.InvokeAsync();
     private Task HandlePointerUp(PointerEventArgs args) => args.Button == 2 ? ReturnAsync() : Task.CompletedTask;
     private Task PreviewBlur(ChangeEventArgs args) => int.TryParse(args.Value?.ToString(), out var value) ? BlurPreview.InvokeAsync(Math.Clamp(value,0,40)) : Task.CompletedTask;

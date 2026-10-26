@@ -14,6 +14,9 @@ M2 no **mostrador do sistema**, completo ou compacto, abre uma tela própria de 
 O primeiro da lista é o principal; o segundo aparece quando `ShowTwoClocks` está ativo. Os demais ficam salvos para reorganização. O padrão contém Sistema e Nova York, com a exibição dupla inicialmente desativada. Remover um relógio promove o seguinte na ordem; se restar apenas um, só ele é mostrado.
 
 `IsSettingsOpen` bloqueia a troca de menu por scroll nas duas telas de configuração. A lista de fusos tem rolagem própria via `HitScrollRegion` e `hit-local-scroll.js`.
+M2 no conteúdo de qualquer uma das duas configurações retorna ao Relógio pelo
+contrato compartilhado CloseSettingsAsync, sem desfixar e reiniciando o prazo
+de compactação. M2 no título continua abrindo as configurações gerais.
 
 A lista mostra linhas com nome, horário e posição (Principal/Secundário). `HitDisclosure` concentra nome/fuso e ações em uma expansão recolhida inicialmente; somente uma edição ou inclusão fica aberta. A edição acompanha o item ao reordenar. Adicionar recolhe e limpa o formulário após salvar com sucesso. Campos usam rótulos curtos e ícones SVG, conforme o padrão Obsidian.
 

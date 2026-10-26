@@ -3,11 +3,42 @@
 Contrato de menus/serviços/telas: [HIT-MENUS.md](../HIT-MENUS.md). Evolução para módulos externos: [MENU-PACKAGES.md](MENU-PACKAGES.md), ainda planejada.
 
 Esta é a referência para criar telas, controles e temas. O padrão oficial é
-**HIT Obsidian Eyes**, definido em:
+**HIT Dark Theme** (anteriormente Obsidian Eyes), definido em:
 
 - ../wwwroot/themes/HIT-OBSIDIAN-EYES.css — fonte canônica, distribuída e protegida.
 - ../wwwroot/css/theme-base.css — estrutura compartilhada de cabeçalho, seções e diálogos.
 - ../wwwroot/css/menus/ — estrutura pública de cada página.
+
+O aplicativo distribui três temas protegidos, registrados em
+Services/Themes/HitBundledThemes.cs:
+
+| Nome na interface | Identificador persistido | CSS público |
+| --- | --- | --- |
+| HIT Dark Theme | default | HIT-OBSIDIAN-EYES.css |
+| HIT OLED | bundled:HIT-OLED-OFF-WHITE.css | HIT-OLED-OFF-WHITE.css |
+| HIT Light Theme | bundled:HIT-LIGHT.css | HIT-LIGHT.css |
+
+Os arquivos ficam em wwwroot/themes e acompanham build/publicação. Os nomes
+internos do Dark/OLED preservam compatibilidade. O catálogo é explícito:
+arquivos antigos deixados na saída não viram opções automaticamente.
+O botão Excluir fica desabilitado para os três, e o serviço também rejeita
+a exclusão. Uma cópia importada continua sendo um tema pessoal independente.
+
+Dark permanece como seleção inicial, base de temas parciais e fallback.
+OLED usa preto #000000 e off-white #f2efe7. Light usa superfícies claras e
+texto escuro, preservando olhos, layout, movimentos e interações.
+
+### Prioridade da capa e paleta musical
+
+Todos os temas devem preservar as opções de capa, blur e cores da música.
+Não esconda .sphere-audio-backdrop/.audio-artwork-wash nem fixe as variáveis
+--audio-art-* com !important. Não sobrescreva --audio-foreground/muted/accent/surface
+em .audio-menu[data-audio-palette="true"] com a paleta fixa do tema.
+No conteúdo, use --audio-* com fallback para --hit-menu-*/--hit-*.
+O shell aplica as cores globais por data-audio-theme="global". O Relógio
+herda texto/destaque via --hit-menu-text, --hit-menu-muted e --hit-accent.
+Desligar a opção da música restaura o tema escolhido; escolher OLED não
+desliga nem neutraliza a capa ou a paleta musical.
 
 Há menus de Áudio e Relógio, além de Configurações. Menus e temas antigos não fazem parte do build. Não recrie variantes
 distribuídas sem uma decisão explícita de produto.
@@ -103,8 +134,8 @@ Excluir inicia uma confirmação; nunca apaga no primeiro clique.
 - Excluir exige um segundo clique, em um botão distinto.
 - Se a seleção mudar ou a seção recolher, descarte a confirmação pendente.
 - Vincule a confirmação ao identificador original, não apenas ao nome visível.
-- O tema padrão não pode ser apagado pela interface.
-- Ao apagar o tema pessoal ativo, restaure Obsidian Eyes antes de remover o arquivo.
+- Os três temas embutidos não podem ser apagados pela interface nem pelo serviço.
+- Ao apagar o tema pessoal ativo, restaure HIT Dark Theme antes de remover o arquivo.
 
 ## Criar páginas
 
@@ -220,7 +251,7 @@ O CSS dessa apresentação inicial fica em wwwroot/css/loading.css.
 
 ## Arquivos para versionar
 
-Versione código-fonte, CSS público, tema canônico, projeto/solução e documentação.
+Versione código-fonte, CSS público, os três temas embutidos, projeto/solução e documentação.
 bin, obj, artifacts, preferências da IDE e o índice gerado css/menus.css são
 ignorados. O build gera novamente esse índice e copia os recursos públicos
 para a saída. Não mantenha cópias exportadas do tema: o arquivo canônico já pode
@@ -239,6 +270,8 @@ paginação. Não adicione controles de janela dentro do componente do player.
 - O visualizador mostra dados reais. Não use números aleatórios ou animações decorativas.
 - A captura para fora de vista. O polling só continua no modo de cores globais, a cada dois segundos.
 - M2 no modo capa abre blur, cores globais e subopção de capa nos outros menus.
+- O painel da capa também permite imagem no fundo das Letras; a opção é
+  independente do alcance global e preserva blur, legibilidade e dimensões.
 - Mostrar tooltips é uma preferência global dos controles HTML, preservando aria-label.
 - Todo CSS permanece público em css/menus/HitMenuAudio.css, com escopo estável.
 
@@ -264,6 +297,9 @@ O CSS dessas opções continua público e usa as cores do tema/paleta atual.
 A interface IHitMenuSettings também expõe IsSettingsOpen; true bloqueia
 scroll entre menus automaticamente. Áudio inclui nessa regra suas
 configurações e a personalização da capa. Voltar libera a navegação.
+CloseSettingsAsync completa o contrato: M2 no conteúdo de uma configuração
+aberta retorna ao menu. O host preserva o gesto de abrir pelo título/objeto e
+não desfaz a fixação. Gatilhos de objeto usam stopPropagation no contextmenu.
 
 Interações com Ctrl: títulos de músicas e a fonte de letras usam
 data-ctrl-link. O cursor vira uma mão e o texto ganha sublinhado enquanto

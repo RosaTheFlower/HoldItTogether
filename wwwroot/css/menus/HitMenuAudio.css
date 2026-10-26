@@ -29,6 +29,7 @@
     filter: blur(var(--audio-cover-blur)) saturate(0.8); opacity: 0; transition: opacity 500ms ease;
 }
 :where(.hit-menu-panel[data-hit-menu="HoldItTogether.Components.HitMenus.HitMenuAudio"]) [data-audio-palette="true"]:not(.is-lyrics) .audio-artwork-wash { opacity: var(--audio-cover-opacity); }
+:where(.hit-menu-panel[data-hit-menu="HoldItTogether.Components.HitMenus.HitMenuAudio"]) .is-lyrics[data-audio-palette="true"][data-audio-lyrics-cover="true"] .audio-artwork-wash { opacity: var(--audio-cover-opacity); }
 :where(.hit-menu-panel[data-hit-menu="HoldItTogether.Components.HitMenus.HitMenuAudio"]) .audio-player-content,
 :where(.hit-menu-panel[data-hit-menu="HoldItTogether.Components.HitMenus.HitMenuAudio"]) .audio-lyrics-view { position: relative; z-index: 1; }
 :where(.hit-menu-panel[data-hit-menu="HoldItTogether.Components.HitMenus.HitMenuAudio"]) .audio-track { display: flex; align-items: center; gap: 16px; min-height: 68px; }
@@ -146,11 +147,11 @@
 :where(.hit-menu-panel[data-hit-menu="HoldItTogether.Components.HitMenus.HitMenuAudio"]) [data-audio-palette="true"] .audio-artwork-veil { opacity: 1; }
 :where(.hit-menu-panel[data-hit-menu="HoldItTogether.Components.HitMenus.HitMenuAudio"]) .has-spectrum[data-audio-palette="true"] .audio-spectrum { opacity: var(--audio-spectrum-art-opacity, 0.10); }
 :where(.hit-menu-panel[data-hit-menu="HoldItTogether.Components.HitMenus.HitMenuAudio"]) .audio-appearance-view { display: flex; flex-direction: column; height: 100%; min-height: 0; color: var(--audio-foreground); }
-:where(.hit-menu-panel[data-hit-menu="HoldItTogether.Components.HitMenus.HitMenuAudio"]) .appearance-heading { display: flex; align-items: center; margin-bottom: 12px; }
-:where(.hit-menu-panel[data-hit-menu="HoldItTogether.Components.HitMenus.HitMenuAudio"]) .appearance-blur { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 10px; margin-bottom: 12px; font-size: 11px; }
+:where(.hit-menu-panel[data-hit-menu="HoldItTogether.Components.HitMenus.HitMenuAudio"]) .appearance-heading { display: flex; align-items: center; margin-bottom: 8px; }
+:where(.hit-menu-panel[data-hit-menu="HoldItTogether.Components.HitMenus.HitMenuAudio"]) .appearance-blur { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 10px; margin-bottom: 8px; font-size: 11px; }
 :where(.hit-menu-panel[data-hit-menu="HoldItTogether.Components.HitMenus.HitMenuAudio"]) .appearance-blur output { color: var(--audio-muted); font-family: var(--hit-mono-font); font-size: 10px; font-variant-numeric: tabular-nums; }
 :where(.hit-menu-panel[data-hit-menu="HoldItTogether.Components.HitMenus.HitMenuAudio"]) .appearance-blur input { grid-column: 1/-1; width: 100%; height: 12px; margin: 0; accent-color: var(--audio-accent); cursor: pointer; }
-:where(.hit-menu-panel[data-hit-menu="HoldItTogether.Components.HitMenus.HitMenuAudio"]) .appearance-global { display: flex; align-items: center; justify-content: space-between; gap: 14px; min-height: 30px; font-size: 11px; }
+:where(.hit-menu-panel[data-hit-menu="HoldItTogether.Components.HitMenus.HitMenuAudio"]) .appearance-global { display: flex; align-items: center; justify-content: space-between; gap: 14px; min-height: 28px; font-size: 11px; }
 :where(.hit-menu-panel[data-hit-menu="HoldItTogether.Components.HitMenus.HitMenuAudio"]) .appearance-switch { appearance: none; position: relative; flex: 0 0 34px; width: 34px; height: 20px; margin: 0; border: 1px solid color-mix(in srgb,var(--audio-muted) 25%,transparent); border-radius: 12px; background: color-mix(in srgb,var(--audio-muted) 10%,transparent); cursor: pointer; }
 :where(.hit-menu-panel[data-hit-menu="HoldItTogether.Components.HitMenus.HitMenuAudio"]) .appearance-switch::after { content: ""; position: absolute; width: 12px; height: 12px; top: 3px; left: 3px; border-radius: 50%; background: var(--audio-muted); transition: transform 160ms ease; }
 :where(.hit-menu-panel[data-hit-menu="HoldItTogether.Components.HitMenus.HitMenuAudio"]) .appearance-switch:checked { background: var(--audio-accent); border-color: transparent; }

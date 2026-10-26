@@ -79,10 +79,17 @@ O visualizador é independente e pode ser ligado junto da capa.
 Letras e personalização mantêm as dimensões do player atual.
 
 M2 no botão de capa abre AudioAppearanceView, com blur de 0–40 px (padrão 8),
-opção de cores em todo o HIT e subopção de capa nos outros menus.
+opção de capa na tela de letras, cores em todo o HIT e subopção de capa nos outros menus.
 As preferências são salvas pelo HitSettingsService. O tema escolhido permanece
 preservado; ao desligar o modo, volta a aparecer. Em Letras, a imagem fica
-escondida e mantém apenas a cor predominante.
+escondida por padrão e mantém apenas a cor predominante. Ativar “Capa na tela
+de letras” exibe a imagem com o mesmo blur/intensidade do player, quando o modo
+capa está ligado. A preferência audioArtworkLyricsCover é independente das
+cores globais e da capa nos outros menus, e não altera o tamanho das Letras.
+
+M2 no conteúdo das configurações (tanto do menu quanto da capa) usa o padrão
+IHitMenuSettings.CloseSettingsAsync do host para voltar ao player. Título e
+gatilhos de objetos preservam prioridade para abrir suas próprias opções.
 
 O serviço e o botão de troca da saída de áudio foram removidos.
 O loopback do visualizador continua acompanhando a saída padrão do Windows.

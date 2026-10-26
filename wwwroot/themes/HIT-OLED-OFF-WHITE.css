@@ -1,0 +1,358 @@
+/*
+   HIT / OLED — formato de tema v1.
+   Preto absoluto #000000 e off-white #f2efe7. Tipografia discreta. Sem arquivos externos.
+   Requer a versao do HIT com suporte a --hit-track-pointer.
+   Os olhos usam ::before e ::after e ficam apenas na esfera recolhida.
+   "Remover animacoes" desativa piscadas/transicoes; a direcao continua atualizada.
+*/
+@layer sphere {
+    :root {
+        --hit-track-pointer: 1;
+        --hit-font: "Segoe UI Variable", "Segoe UI", sans-serif;
+        --hit-mono-font: "Cascadia Mono", "Consolas", monospace;
+        --hit-background: #000000;
+        --hit-open-background: #000000;
+        --hit-idle-background: #000000;
+        --hit-open-radius: 22px;
+        --hit-text: #f2efe7;
+        --hit-muted: #918e86;
+        --hit-accent: #f2efe7;
+        --sphere-text: #f2efe7;
+        --sphere-ease: cubic-bezier(0.16, 1, 0.3, 1);
+        --sphere-settle: cubic-bezier(0.22, 1, 0.36, 1);
+    }
+    .dynamic-sphere {
+        --hit-eye-size: 8px;
+        --hit-eye-gap: 8px;
+        background-image: linear-gradient(150deg, #ffffff05, transparent 65%);
+        box-shadow: inset 0 1px 0 #ffffff14, inset 0 0 0 1px #ffffff06,
+                    0 10px 20px -12px #00000090;
+        transition: width 620ms var(--sphere-ease), height 700ms var(--sphere-ease),
+                    border-radius 720ms var(--sphere-settle), background-color 350ms ease;
+    }
+    .dynamic-sphere.is-idle {
+        --hit-eye-size: 5px;
+        --hit-eye-gap: 5px;
+        width: 32px;
+        height: 32px;
+        border-radius: 16px;
+        background-color: var(--audio-surface, var(--hit-open-background, #000000));
+        box-shadow: inset 0 1px 0 #ffffff12, 0 5px 12px -7px #00000090;
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
+    }
+    .dynamic-sphere.is-away, .dynamic-sphere.is-hovered {
+        width: 56px;
+        height: 56px;
+        border-radius: 28px;
+    }
+    .dynamic-sphere.is-hovered { --hit-eye-size: 9px; }
+    .dynamic-sphere.is-open {
+        background-color: #000000;
+        box-shadow: inset 0 1px 0 #ffffff14, inset 0 0 0 1px #ffffff08,
+                    0 14px 24px -15px #000000b0;
+    }
+
+    /* Replaces the original reflection/rim with exactly two solid white eyes. */
+    .dynamic-sphere::before, .dynamic-sphere::after {
+        content: "";
+        position: absolute;
+        z-index: 2;
+        inset: auto;
+        top: calc(50% + var(--hit-pointer-y, 0) * 3px);
+        width: calc(var(--hit-eye-size) + var(--hit-pointer-abs-x, 0) * 2px);
+        height: calc(var(--hit-eye-size) + var(--hit-pointer-abs-y, 0) * 5px);
+        padding: 0;
+        border: 0;
+        border-radius: 50%;
+        background: #fff;
+        background-image: none;
+        opacity: 1;
+        filter: none;
+        box-shadow: 0 0 8px #ffffff12;
+        -webkit-mask: none;
+        mask: none;
+        -webkit-mask-composite: source-over;
+        mask-composite: add;
+        transform: translate(-50%, -50%) scaleY(1);
+        transform-origin: center;
+        pointer-events: none;
+        transition: left 140ms var(--sphere-settle), top 140ms var(--sphere-settle),
+                    width 200ms var(--sphere-settle), height 200ms var(--sphere-settle),
+                    opacity 100ms ease;
+        animation: oled-blink 7.4s linear infinite;
+    }
+    .dynamic-sphere::before {
+        left: calc(50% - var(--hit-eye-gap) + var(--hit-pointer-x, 0) * 3px);
+    }
+    .dynamic-sphere::after {
+        left: calc(50% + var(--hit-eye-gap) + var(--hit-pointer-x, 0) * 3px);
+    }
+    .dynamic-sphere.is-idle::before, .dynamic-sphere.is-idle::after {
+        animation: oled-blink 7.4s linear infinite;
+        opacity: 0.92;
+    }
+    .dynamic-sphere.is-hovered::before, .dynamic-sphere.is-hovered::after {
+        height: calc(var(--hit-eye-size) + 4px + var(--hit-pointer-abs-y, 0) * 4px);
+        opacity: 1;
+    }
+    .dynamic-sphere.is-dragging::before, .dynamic-sphere.is-dragging::after {
+        height: calc(var(--hit-eye-size) + 4px);
+        animation: none;
+    }
+    .dynamic-sphere.is-open::before, .dynamic-sphere.is-open::after {
+        opacity: 0;
+        animation: none;
+    }
+
+    .sphere-title {
+        color: var(--audio-foreground, var(--hit-menu-text, var(--hit-text)));
+        font-size: 14px;
+        font-weight: 600;
+        letter-spacing: -0.025em;
+    }
+    .sphere-action {
+        border-radius: 9px;
+        color: var(--audio-muted, var(--hit-menu-muted, var(--hit-muted)));
+        background: transparent;
+        box-shadow: none;
+    }
+    .sphere-action:hover { color: var(--audio-foreground, var(--hit-menu-text, var(--hit-text))); background: #ffffff08; }
+    .sphere-action-pin.is-active { color: white; background: #ffffff0c; }
+    .sphere-action-pin.is-active:hover { background: #ffffff12; }
+    .sphere-action-close:hover { color: white; background: #ffffff0c; }
+    .sphere-action svg { stroke-width: 1.6; }
+    .sphere-action:focus-visible { outline: 1px solid #f2efe7; outline-offset: 2px; }
+    .hit-menu-dot span { width: 4px; height: 4px; background: #ffffff26; box-shadow: none; }
+    .hit-menu-dot.is-current span, .hit-menu-dot.is-current:hover span { background: var(--audio-accent, var(--hit-accent)); box-shadow: none; }
+    .hit-menu-dot:hover span { background: #ffffff70; }
+
+    @keyframes oled-blink {
+        0%, 43%, 47%, 78%, 82%, 100% { transform: translate(-50%, -50%) scaleY(1); }
+        44.5%, 45.5%, 79.5%, 80.5% { transform: translate(-50%, -50%) scaleY(0.12); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+        .dynamic-sphere::before, .dynamic-sphere::after,
+        .dynamic-sphere.is-idle::before, .dynamic-sphere.is-idle::after {
+            animation: none;
+            transition: none;
+        }
+    }
+}
+
+@layer menus {
+    :root {
+        --hit-menu-font: "Segoe UI Variable", "Segoe UI", sans-serif;
+        --hit-menu-text: #f2efe7;
+        --hit-menu-muted: #918e86;
+        --hit-accent: #f2efe7;
+    }
+    h1, h2, h3 { color: var(--audio-foreground, var(--hit-menu-text, var(--hit-text))); font-weight: 500; letter-spacing: -0.035em; }
+    .menu-intro-title { font-size: 25px; line-height: 1.2; }
+    p, small { color: var(--audio-muted, var(--hit-menu-muted, var(--hit-muted))); }
+    strong { color: var(--audio-foreground, var(--hit-menu-text, var(--hit-text))); }
+    .eyebrow { color: var(--audio-muted, var(--hit-menu-muted, var(--hit-muted))); font-size: 9px; font-weight: 500; letter-spacing: 0.14em; }
+    .description { font-size: 12px; line-height: 1.8; color: var(--audio-muted, var(--hit-menu-muted, var(--hit-muted))); }
+    .status { color: var(--audio-muted, var(--hit-menu-muted, var(--hit-muted))); font-size: 10px; }
+    .status span { width: 4px; height: 4px; background: var(--audio-accent, var(--hit-accent)); box-shadow: none; }
+    article {
+        border: 1px solid #ffffff08;
+        border-radius: 12px;
+        background: #ffffff03;
+        box-shadow: none;
+    }
+    article p { color: var(--audio-muted, var(--hit-menu-muted, var(--hit-muted))); }
+.summary-grid strong { color: var(--audio-foreground, var(--hit-menu-text, var(--hit-text))); font-weight: 400; }
+.period, .timeline, .footnote { color: var(--audio-muted, var(--hit-menu-muted, var(--hit-muted))); }
+.meter { height: 2px; background: #ffffff09; }
+.setting-row { border-bottom: 1px solid #ffffff07; }
+    .setting-row strong { font-size: 12px; font-weight: 500; color: var(--audio-foreground, var(--hit-menu-text, var(--hit-text))); }
+    .setting-row small { color: var(--audio-muted, var(--hit-menu-muted, var(--hit-muted))); }
+    .switch { border: 1px solid #ffffff12; background: #ffffff07; }
+    .switch::after { background: #918e86; }
+    .switch:checked { background: var(--audio-accent, var(--hit-accent)); border-color: transparent; }
+    .switch:checked::after { background-color: var(--audio-surface, var(--hit-open-background, #000000)); }
+    .memory-row .memory { color: var(--audio-muted, var(--hit-menu-muted, var(--hit-muted))); font-size: 10px; }
+    .scroll-settings { border-bottom: 1px solid #ffffff07; }
+    .cooldown-toggle, .range-row > span { color: var(--audio-muted, var(--hit-menu-muted, var(--hit-muted))); }
+    .range-row output { color: var(--audio-foreground, var(--hit-menu-text, var(--hit-text))); }
+    input[type="range"] { accent-color: var(--audio-foreground, var(--hit-menu-text, var(--hit-text))); }
+    .theme-settings select {
+        color: var(--audio-foreground, var(--hit-menu-text, var(--hit-text)));
+        background-color: var(--audio-surface, var(--hit-open-background, #000000));
+        border: 1px solid #ffffff0f;
+        border-radius: 7px;
+    }
+    .theme-buttons button, .theme-button {
+        color: var(--audio-foreground, var(--hit-menu-text, var(--hit-text)));
+        background: #ffffff03;
+        border-color: #ffffff0d;
+        border-radius: 7px;
+    }
+    .theme-buttons button:hover:not(:disabled), .theme-button:hover { color: var(--audio-foreground, var(--hit-menu-text, var(--hit-text))); background: #ffffff08; }
+.settings-error { color: #c5bcb0; }
+}
+/* OLED: sem brilho, gradiente, vidro ou sombras nas superfícies.
+   Baseado em Obsidian Eyes: conserva olhos, dimensões, gestos e animações.
+   Capa, blur, intensidade e cores da música preservam as opções do HIT.
+   A miniatura da capa e o visualizador continuam disponíveis.
+   Para personalizar: off-white #f2efe7; muted #918e86; borda #f2efe71f.
+*/
+@layer sphere {
+    :root {
+        --hit-background: #000000;
+        --hit-idle-background: #000000;
+        --hit-accent: #f2efe7;
+        --sphere-text: #f2efe7;
+        --hit-link-hint-color: var(--audio-foreground, var(--hit-menu-text, var(--hit-text)));
+        --hit-menu-hint-color: var(--audio-foreground, var(--hit-menu-text, var(--hit-text)));
+    }
+    .dynamic-sphere,
+    .dynamic-sphere.is-idle,
+    .dynamic-sphere.is-away,
+    .dynamic-sphere.is-hovered,
+    .dynamic-sphere.is-open {
+        background-color: #000000;
+        background-image: none;
+        box-shadow: inset 0 0 0 1px #f2efe71a;
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
+    }
+    .dynamic-sphere::before, .dynamic-sphere::after {
+        background-color: var(--audio-foreground, var(--hit-menu-text, var(--hit-text)));
+        box-shadow: none;
+    }
+    .sphere-title { color: var(--audio-foreground, var(--hit-menu-text, var(--hit-text))); }
+    .sphere-action,
+    .sphere-action:hover,
+    .sphere-action-close:hover,
+    .sphere-action-pin.is-active,
+    .sphere-action-pin.is-active:hover {
+        background-color: #000000;
+        background-image: none;
+        box-shadow: none;
+    }
+    .sphere-action { color: var(--audio-muted, var(--hit-menu-muted, var(--hit-muted))); }
+    .sphere-action:hover, .sphere-action-close:hover, .sphere-action-pin.is-active { color: var(--audio-foreground, var(--hit-menu-text, var(--hit-text))); }
+    .hit-menu-dot span { background-color: #f2efe735; }
+    .hit-menu-dot:hover span { background-color: #f2efe780; }
+    .hit-menu-dot.is-current span, .hit-menu-dot.is-current:hover span { background-color: var(--audio-foreground, var(--hit-menu-text, var(--hit-text))); }
+    .clock-notice { background-color: #000000; background-image: none; box-shadow: none; border-color: #f2efe726; color: var(--audio-foreground, var(--hit-menu-text, var(--hit-text))); }
+    .clock-notice strong { color: var(--audio-foreground, var(--hit-menu-text, var(--hit-text))); }
+    .clock-notice p, .clock-notice button { color: var(--audio-muted, var(--hit-menu-muted, var(--hit-muted))); }
+    .theme-delete-dialog { background-color: #000000; background-image: none; box-shadow: none; border-color: #f2efe733; color: var(--audio-foreground, var(--hit-menu-text, var(--hit-text))); }
+    .theme-delete-dialog h2 { color: var(--audio-foreground, var(--hit-menu-text, var(--hit-text))); }
+    .theme-delete-dialog p { color: var(--audio-muted, var(--hit-menu-muted, var(--hit-muted))); }
+    .theme-delete-dialog::backdrop { background-color: #000000b3; backdrop-filter: none; }
+
+}
+@layer menus {
+    :root {
+        --hit-menu-text: #f2efe7;
+        --hit-menu-muted: #918e86;
+        --hit-accent: #f2efe7;
+        --hit-link-hint-color: var(--audio-foreground, var(--hit-menu-text, var(--hit-text)));
+        --hit-menu-hint-color: var(--audio-foreground, var(--hit-menu-text, var(--hit-text)));
+    }
+
+    .audio-status.is-playing { background-color: var(--audio-foreground, var(--hit-menu-text, var(--hit-text))); }
+    article, .clock-tabs, .clock-tab, .clock-tab.is-current, .clock-tab:hover,
+    .clock-button, .clock-button:hover, .audio-control:hover:not(:disabled),
+    .theme-settings select, .theme-buttons button, .theme-button,
+    .theme-buttons button:hover:not(:disabled), .theme-button:hover,
+    .dialog-actions button, .dialog-actions button:hover,
+    .disclosure-toggle:hover, .clock-world-icon:hover:not(:disabled),
+    .clock-world-remove:hover:not(:disabled) {
+        background-color: var(--audio-surface, var(--hit-open-background, #000000));
+        background-image: none;
+        box-shadow: none;
+        border-color: #f2efe71f;
+    }
+    input:not([type="range"]):not([type="checkbox"]), select,
+    .clock-form-field input, .clock-form-field select,
+    .clock-world-field input, .clock-world-field select,
+    .clock-duration input, .clock-setting-number input {
+        background-color: var(--audio-surface, var(--hit-open-background, #000000));
+        background-image: none;
+        color: var(--audio-foreground, var(--hit-menu-text, var(--hit-text)));
+        border-color: #f2efe726;
+        color-scheme: dark;
+    }
+    .clock-tab.is-current { color: var(--audio-foreground, var(--hit-menu-text, var(--hit-text))); box-shadow: inset 0 -1px 0 var(--hit-accent); }
+    .clock-tab { color: var(--audio-muted, var(--hit-menu-muted, var(--hit-muted))); }
+    .audio-play, .audio-play:hover:not(:disabled), .clock-button.is-primary, .clock-button.is-primary:hover {
+        background-color: var(--audio-accent, var(--hit-accent)); background-image: none; color: var(--audio-surface, var(--hit-open-background, #000000)); border-color: var(--audio-accent, var(--hit-accent));
+    }
+    .switch, .appearance-switch, .clock-switch { background-color: var(--audio-surface, var(--hit-open-background, #000000)); border-color: #f2efe735; }
+    .switch::after, .appearance-switch::after, .clock-switch::after { background-color: var(--audio-muted, var(--hit-menu-muted, var(--hit-muted))); }
+    .switch:checked, .appearance-switch:checked, .clock-switch:checked { background-color: var(--audio-accent, var(--hit-accent)); border-color: var(--audio-accent, var(--hit-accent)); }
+    .switch:checked::after, .appearance-switch:checked::after, .clock-switch:checked::after { background-color: var(--audio-surface, var(--hit-open-background, #000000)); }
+    .setting-row, .hit-disclosure, .clock-setting-row, .clock-world-entry { border-bottom-color: #f2efe712; }
+    .theme-buttons button, .theme-button, .dialog-actions button { color: var(--audio-foreground, var(--hit-menu-text, var(--hit-text))); }
+    .clock-secondary-digits, .clock-world-position, .clock-world-count,
+    .memory-row .memory, .range-row > span, .cooldown-toggle { color: var(--audio-muted, var(--hit-menu-muted, var(--hit-muted))); }
+    .range-row output { color: var(--audio-foreground, var(--hit-menu-text, var(--hit-text))); }
+    input[type="range"] { accent-color: var(--audio-foreground, var(--hit-menu-text, var(--hit-text))); }
+    .settings-error, .clock-error { color: #c5bcb0; }
+}
+
+/* Hover dos controles: luz discreta na base, borda inferior e degradê ascendente. */
+@layer sphere {
+    .sphere-action {
+        position: relative;
+        isolation: isolate;
+        overflow: hidden;
+        transition: color 220ms cubic-bezier(0.22, 1, 0.36, 1);
+    }
+    .sphere-action::before, .sphere-action::after {
+        content: "";
+        position: absolute;
+        z-index: 0;
+        inset: 0;
+        border-top-left-radius: inherit;
+        border-top-right-radius: inherit;
+        border-bottom-right-radius: inherit;
+        border-bottom-left-radius: inherit;
+        pointer-events: none;
+    }
+    .sphere-action::before {
+        background-image: linear-gradient(to top, #f2efe71a 0%, #f2efe709 38%, #f2efe700 80%);
+        opacity: 0;
+        transform: translateY(80%);
+        transition: transform 540ms cubic-bezier(0.16, 1, 0.3, 1), opacity 300ms ease;
+    }
+    .sphere-action::after {
+        border: 1px solid #f2efe7d9;
+        -webkit-mask-image: linear-gradient(to top, #000 0%, #00000090 22%, transparent 65%);
+        mask-image: linear-gradient(to top, #000 0%, #00000090 22%, transparent 65%);
+        opacity: 0;
+        transition: opacity 360ms cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .sphere-action svg { position: relative; z-index: 1; }
+    .sphere-action:hover::before, .sphere-action:focus-visible::before { transform: translateY(0); opacity: 1; }
+    .sphere-action:hover::after, .sphere-action:focus-visible::after { opacity: 1; }
+    .sphere-action:hover,
+    .sphere-action-close:hover,
+    .sphere-action-pin.is-active:hover,
+    .sphere-action:focus-visible,
+    .dynamic-sphere[data-audio-theme] .sphere-action:hover,
+    .dynamic-sphere[data-audio-theme] .sphere-action:focus-visible { color: var(--audio-foreground, var(--hit-menu-text, var(--hit-text))); }
+    @media (prefers-reduced-motion: reduce) {
+        .sphere-action, .sphere-action::before, .sphere-action::after { transition: none; }
+    }
+}
+
+/* Controles transparentes: o efeito só aparece durante hover/foco de teclado. */
+@layer sphere {
+    .sphere-action,
+    .sphere-action:hover,
+    .sphere-action-close:hover,
+    .sphere-action-pin.is-active,
+    .sphere-action-pin.is-active:hover,
+    .sphere-action:focus-visible {
+        background-color: transparent;
+        background-image: none;
+        border-color: transparent;
+        box-shadow: none;
+    }
+}

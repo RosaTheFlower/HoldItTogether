@@ -82,7 +82,8 @@ Scroll speed permite controlar sensibilidade e cooldown, inclusive navegar
 por vários menus com um único gesto. Remover animações atua apenas sobre CSS.
 Themes importa/seleciona/exclui temas pessoais sem modificar o CSS original.
 
-O padrão visual Obsidian Eyes, o contrato completo e exemplos estão em ../../Design/README.md.
+O padrão visual HIT Dark Theme, os temas embutidos HIT OLED e HIT Light Theme,
+o contrato completo e exemplos estão em ../../Design/README.md.
 Todos os menus devem seguir esse contrato e usar as variáveis públicas
 sempre que possível.
 
@@ -116,6 +117,10 @@ Exemplo mínimo:
             _settingsOpen = true;
             StateHasChanged();
         });
+        public Task CloseSettingsAsync() => InvokeAsync(() => {
+            _settingsOpen = false;
+            StateHasChanged();
+        });
         private void CloseSettings() => _settingsOpen = false;
     }
 
@@ -127,6 +132,11 @@ M2 no título tem prioridade sobre o gesto de voltar de uma subtela.
 IsSettingsOpen informa ao host que a configuração está aberta: enquanto true,
 a troca de menus por scroll fica bloqueada. Ao voltar, retorne false.
 Áudio também retorna true no painel de personalização da capa.
+O host encaminha M2 no conteúdo das configurações para CloseSettingsAsync.
+Esse retorno mantém a fixação, restaura o conteúdo e libera o scroll.
+O gesto precisa começar com a configuração já aberta; o mesmo M2 que abre
+um painel não pode fechá-lo. Objetos com configuração própria devem usar
+@oncontextmenu:stopPropagation="true" para preservar seu atalho.
 
 ## Escala e controles após inatividade
 

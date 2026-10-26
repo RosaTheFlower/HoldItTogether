@@ -26,6 +26,7 @@ as classes relativas abaixo. Para atingir só Áudio, inicie por .audio-menu.
 | .audio-menu[data-audio-palette="true"] | Capa válida com paleta calculada |
 | .audio-menu.has-spectrum | Visualizador ligado, independente do modo capa |
 | .audio-menu.is-lyrics | Tela de letras |
+| .audio-menu[data-audio-lyrics-cover="true"] | Preferência para mostrar capa nas letras |
 | .audio-menu.is-customizing | Personalização do modo capa |
 | .audio-menu.is-menu-settings | Configurações de Áudio, abertas por M2 no título |
 | .audio-menu.hide-source | Origem do áudio escondida pelo usuário |
@@ -121,14 +122,20 @@ Clique no botão Modo capa e cores para ativar/desativar imagem, paleta e player
 compacto. M2 no mesmo botão abre a personalização, mesmo com o modo desligado:
 
 - Blur de 0 a 40 px, com prévia enquanto arrasta e salvamento ao soltar.
+- Capa na tela de letras: desligada por padrão; permite imagem no fundo da
+  leitura quando o modo capa está ligado. Usa o blur e a intensidade existentes.
 - Usar cores em todo o HIT: mantém a paleta nos outros menus e na esfera recolhida.
 - Capa nos outros menus: subopção ligada por padrão; pode ocultar só a imagem
   global e manter as cores. O blur também vale para essa imagem.
 
 As preferências são persistidas em settings.json: audioArtworkMode,
-audioArtworkBlur, audioArtworkGlobalAccent e audioArtworkGlobalCover.
+audioArtworkBlur, audioArtworkGlobalAccent, audioArtworkGlobalCover e audioArtworkLyricsCover.
 
-Em Letras fica apenas a cor predominante escurecida. Com o modo desligado,
+Em Letras fica apenas a cor predominante escurecida por padrão. Com a nova
+opção ativa, .is-lyrics[data-audio-palette="true"][data-audio-lyrics-cover="true"]
+também exibe .audio-artwork-wash. É independente da capa nos outros menus e das
+cores globais; o fundo usa a mesma camada, sem duplicação no shell das Letras.
+Com o modo desligado,
 ou uma capa ausente/inválida, o tema escolhido volta a aparecer.
 Com alcance local, as cores saem ao trocar de menu ou recolher o HIT.
 Com alcance global, acompanham a música também quando Áudio está fora de vista.

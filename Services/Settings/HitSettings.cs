@@ -1,4 +1,5 @@
 using HoldItTogether.Services.Clock;
+using HoldItTogether.Services.Themes;
 
 namespace HoldItTogether.Services.Settings;
 
@@ -12,6 +13,7 @@ public sealed record HitSettings
     public int AudioArtworkBlur { get; init; } = 8;
     public bool AudioArtworkGlobalAccent { get; init; }
     public bool AudioArtworkGlobalCover { get; init; } = true;
+    public bool AudioArtworkLyricsCover { get; init; }
     public int AudioScaleX { get; init; } = 100;
     public int AudioScaleY { get; init; } = 100;
     public bool AudioHideControls { get; init; }
@@ -25,8 +27,7 @@ public sealed record HitSettings
     public HitSettings Normalize() => this with
     {
         Clock = (Clock ?? new()).Normalize(),
-        Theme = string.IsNullOrWhiteSpace(Theme) || Theme.Trim().StartsWith("bundled:", StringComparison.Ordinal)
-            ? "default" : Theme.Trim(),
+        Theme = HitBundledThemes.NormalizeSelection(Theme),
         AudioArtworkBlur = Math.Clamp(AudioArtworkBlur, 0, 40),
         AudioScaleX = Math.Clamp(AudioScaleX, 75, 200),
         AudioScaleY = Math.Clamp(AudioScaleY, 75, 200),

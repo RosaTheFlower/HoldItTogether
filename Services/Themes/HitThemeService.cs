@@ -11,7 +11,7 @@ public sealed record HitThemeSnapshot(string Revision, string Css, string? Error
 /// <summary>Reads public CSS. Selecting/deleting/importing themes never writes bundled files.</summary>
 public sealed class HitThemeService
 {
-    public const string DefaultFileName = "HIT-OBSIDIAN-EYES.css";
+    public const string DefaultFileName = HitBundledThemes.DefaultFileName;
     public const int MaxCssBytes = 1024 * 1024;
     private readonly HitSettingsService _settings;
     private readonly string _bundledDirectory;
@@ -32,8 +32,7 @@ public sealed class HitThemeService
 
     public IReadOnlyList<HitThemeOption> GetThemes()
     {
-        var themes = new List<HitThemeOption> { new("default", "HIT Obsidian Eyes", false) };
-        // Only the canonical default is bundled. Old build remnants are never offered as themes.
+        var themes = HitBundledThemes.All.Select(theme => new HitThemeOption(theme.Id, theme.Name, false)).ToList();
         AddCustomThemes(themes);
         return themes.AsReadOnly();
     }
@@ -49,19 +48,19 @@ public sealed class HitThemeService
     public HitThemeSnapshot ReadCurrent()
     {
         var id = _settings.Current.Theme;
-        // Compatibility with selections saved before Obsidian became the default.
-        if (id == "default" || id.StartsWith("bundled:", StringComparison.Ordinal))
+        if (id == "default")
             return ReadDefault();
         try
         {
-            var path = Resolve(id);
+            var bundled = HitBundledThemes.All.FirstOrDefault(theme => theme.Id == id);
+            var path = bundled is not null ? Path.Combine(_bundledDirectory, bundled.FileName) : Resolve(id);
             if (!File.Exists(path))
-                return ReadDefault("Tema não encontrado. O HIT está usando Obsidian Eyes.");
+                return ReadDefault("Tema não encontrado. O HIT está usando HIT Dark Theme.");
             return ReadCss(path, id);
         }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException or ArgumentException)
         {
-            return ReadDefault("Não foi possível ler o tema. O HIT está usando Obsidian Eyes.");
+            return ReadDefault("Não foi possível ler o tema. O HIT está usando HIT Dark Theme.");
         }
     }
 
@@ -142,7 +141,7 @@ public sealed class HitThemeService
     public void Delete(string id)
     {
         if (!id.StartsWith("custom:", StringComparison.Ordinal))
-            throw new InvalidOperationException("O tema padrão não pode ser excluído.");
+            throw new InvalidOperationException("Os temas embutidos não podem ser excluídos.");
         var path = Resolve(id);
         // Persist the fallback before deleting, so a failed save cannot strand the selection.
         if (_settings.Current.Theme == id) Select("default");
@@ -157,13 +156,12 @@ public sealed class HitThemeService
 
     private string Resolve(string id)
     {
-        var bundled = id.StartsWith("bundled:", StringComparison.Ordinal);
-        if (!bundled && !id.StartsWith("custom:", StringComparison.Ordinal))
+        if (!id.StartsWith("custom:", StringComparison.Ordinal))
             throw new ArgumentException("Identificador de tema inválido.");
-        var name = id[(bundled ? 8 : 7)..];
+        var name = id[7..];
         if (string.IsNullOrWhiteSpace(name) || name != Path.GetFileName(name) ||
             name.Contains('/') || name.Contains('\\') || !name.EndsWith(".css", StringComparison.OrdinalIgnoreCase))
             throw new ArgumentException("Nome de tema inválido.");
-        return Path.Combine(bundled ? _bundledDirectory : DirectoryPath, name);
+        return Path.Combine(DirectoryPath, name);
     }
 }

@@ -17,6 +17,7 @@
 <div @ref="_root" class="audio-menu @(!_snapshot.HasMedia ? "is-empty" : "") @(_artworkMode ? "is-artwork" : "") @(_showLyrics ? "is-lyrics" : "") @(_showAppearance ? "is-customizing" : "") @(_showSettings ? "is-menu-settings" : "") @(!Settings.Current.AudioShowSource ? "hide-source" : "") @(_showVisualizer ? "has-spectrum" : "")"
      data-hit-hide-controls="@(Settings.Current.AudioHideControls && !_showSettings && !_showAppearance ? "true" : "false")"
      data-hit-view="@(_showSettings ? "settings" : _showAppearance ? "appearance" : _showLyrics ? "lyrics" : "player")"
+     data-audio-lyrics-cover="@(Settings.Current.AudioArtworkLyricsCover ? "true" : null)"
      @onclick:stopPropagation="true" @onkeydown="HandleKey" @onkeydown:stopPropagation="true" @oncontextmenu:preventDefault="true">
     <div class="audio-scene" aria-hidden="true">
         <div class="audio-artwork-wash"></div>
@@ -50,6 +51,7 @@
     {
         <div class="audio-overlay-view">
             <AudioAppearanceView Blur="@ArtworkBlur" GlobalAccent="@Settings.Current.AudioArtworkGlobalAccent" GlobalCover="@Settings.Current.AudioArtworkGlobalCover"
+                                 LyricsCover="@Settings.Current.AudioArtworkLyricsCover" LyricsCoverChanged="SetLyricsArtworkCover"
                                  BlurPreview="PreviewArtworkBlur" BlurChanged="SaveArtworkBlur" GlobalAccentChanged="SetGlobalArtworkAccent"
                                  GlobalCoverChanged="SetGlobalArtworkCover" BackRequested="ReturnToPlayerAsync" Error="@_appearanceError" />
         </div>
@@ -128,7 +130,7 @@
         <button type="button" class="audio-control audio-secondary audio-artwork-toggle @(_artworkMode ? "is-active" : "")"
                 aria-label="Modo capa e cores" title="Modo capa e cores · M2 para personalizar" data-hit-menu-trigger="appearance"
                 aria-pressed="@(_artworkMode ? "true" : "false")"
-                @onclick="ToggleArtwork" @oncontextmenu="OpenAppearance" @oncontextmenu:preventDefault="true" @onpointerup="HandleArtworkPointerUp">
+                @onclick="ToggleArtwork" @oncontextmenu="OpenAppearance" @oncontextmenu:preventDefault="true" @oncontextmenu:stopPropagation="true" @onpointerup="HandleArtworkPointerUp">
             <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3" /><circle cx="8" cy="9" r="1.5" /><path d="m4 17 5-5 4 4 3-3 5 5" /></svg>
         </button>
         <div class="audio-tool-group">
@@ -370,10 +372,12 @@
     private void SaveArtworkBlur(int value) { _blurPreview = null; SaveAppearance(settings => settings with { AudioArtworkBlur = value }); }
     private void SetGlobalArtworkAccent(bool enabled) => SaveAppearance(value => value with { AudioArtworkGlobalAccent = enabled });
     private void SetGlobalArtworkCover(bool enabled) => SaveAppearance(value => value with { AudioArtworkGlobalCover = enabled });
+    private void SetLyricsArtworkCover(bool enabled) => SaveAppearance(value => value with { AudioArtworkLyricsCover = enabled });
     private void SetAudioSize((int X, int Y) size) => SaveAppearance(value => value with { AudioScaleX = size.X, AudioScaleY = size.Y });
     private void SetHideControls(bool enabled) => SaveAppearance(value => value with { AudioHideControls = enabled });
     private void SetShowSource(bool enabled) => SaveAppearance(value => value with { AudioShowSource = enabled });
     public bool IsSettingsOpen => _showSettings || _showAppearance;
+    public Task CloseSettingsAsync() => InvokeAsync(async () => { await ReturnToPlayerAsync(); StateHasChanged(); });
     public Task OpenSettingsAsync() => InvokeAsync(() =>
     {
         _showSettings = true;

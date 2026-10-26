@@ -22,7 +22,7 @@
              aria-label="@($"{ReadoutLabel}: {ReadoutValue}. Abrir controles do relógio")"
              title="Clique para abrir · Arraste para mover · M2 para configurar"
              @onclick="Expand" @onkeydown="HandleCompactKey" @onkeydown:stopPropagation="true"
-             @oncontextmenu="OpenReadoutSettingsAsync" @oncontextmenu:preventDefault="true">
+             @oncontextmenu="OpenReadoutSettingsAsync" @oncontextmenu:preventDefault="true" @oncontextmenu:stopPropagation="true">
             <ClockReadout Mode="@ModeId" Value="@ReadoutValue" Label="@ReadoutLabel" Compact="true" Alert="@HasNotice"
                           SecondaryValue="@SecondaryValue" SecondaryLabel="@SecondaryLabel" />
         </div>
@@ -54,7 +54,7 @@
                  aria-label="@(MenuContext?.IsPinned == true ? "Mostrar somente o relógio" : "Configurar relógios globais com M2")"
                  title="@(MenuContext?.IsPinned == true ? "Clique para compactar · M2 para configurar" : "M2 para configurar relógios globais")"
                  @onclick="ClickReadout" @onkeydown="HandleFullReadoutKey" @onkeydown:stopPropagation="true"
-                 @oncontextmenu="OpenReadoutSettingsAsync" @oncontextmenu:preventDefault="true">
+                 @oncontextmenu="OpenReadoutSettingsAsync" @oncontextmenu:preventDefault="true" @oncontextmenu:stopPropagation="true">
                 <ClockReadout Mode="@ModeId" Value="@ReadoutValue" Label="@ReadoutLabel" Detail="@ReadoutDetail" Alert="@HasNotice"
                               SecondaryValue="@SecondaryValue" SecondaryLabel="@SecondaryLabel" />
             </div>
@@ -206,6 +206,7 @@
     private void SelectMode(ClockMode mode) => Run(() => Settings.Update(value => value with { Clock = value.Clock with { SelectedMode = mode } }));
     private void SaveOptions(ClockPreferences value) => Run(() => Settings.Update(settings => settings with { Clock = value.Normalize() }));
     public Task OpenSettingsAsync() => InvokeAsync(() => { _view = ClockView.Settings; _error = null; StateHasChanged(); });
+    public Task CloseSettingsAsync() => InvokeAsync(() => { ReturnToMain(); StateHasChanged(); });
     private Task OpenReadoutSettingsAsync() => Mode == ClockMode.System
         ? InvokeAsync(() => { _view = ClockView.SystemSettings; _error = null; StateHasChanged(); }) : OpenSettingsAsync();
     private void ClickReadout() { if (MenuContext?.IsPinned == true) Compact(); }

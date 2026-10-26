@@ -4,7 +4,9 @@ O contrato principal de serviços, telas, configurações, interações e estilo
 
 Aplicativo desktop para Windows em .NET 8, Photino e Blazor, com uma esfera interativa,
 menus descobertos automaticamente e temas CSS externos. O padrão visual é
-HIT Obsidian Eyes.
+HIT Dark Theme. Também inclui HIT OLED e HIT Light Theme; os três são
+embutidos e protegidos contra exclusão. Capa e cores da música continuam
+funcionando quando habilitadas.
 
 ## Executar
 
@@ -24,7 +26,7 @@ Distribua a saída inteira, incluindo wwwroot e as dependências nativas.
 
 - Components: esfera, controles compartilhados e menus Razor.
 - Services: janela nativa, navegação, configurações, memória e temas.
-- wwwroot: CSS público, JavaScript, página inicial e tema canônico.
+- wwwroot: CSS público, JavaScript, página inicial e temas embutidos.
 - Design: padrão visual e contrato de temas.
 
 Os menus são Áudio e Relógio, além do menu fixo Configurações na última posição.

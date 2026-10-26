@@ -1,7 +1,9 @@
 # Padrão de Menus HIT
 
 Referência principal para desenvolver menus, serviços, configurações e layouts.
-Os exemplos funcionais são Áudio e Relógio. O padrão visual distribuído é HIT Obsidian Eyes.
+Os exemplos funcionais são Áudio e Relógio. O padrão visual inicial é HIT Dark Theme.
+HIT OLED e HIT Light Theme também são embutidos e protegidos contra exclusão.
+Os três preservam capa, blur e paleta musical quando habilitados.
 
 ## Situação atual e direção futura
 
@@ -164,12 +166,21 @@ Implemente IHitMenuSettings apenas quando o recurso tiver configurações:
             _settingsOpen = true;
             StateHasChanged();
         });
+        public Task CloseSettingsAsync() => InvokeAsync(() => {
+            _settingsOpen = false;
+            StateHasChanged();
+        });
         private void ReturnToContent() => _settingsOpen = false;
     }
 
 O host chama OpenSettingsAsync por M2 no título. IsSettingsOpen bloqueia
 scroll imediatamente, sem depender de um render posterior.
 Inclua nesse estado outros painéis de configuração do menu, como o da capa.
+M2 no conteúdo de uma configuração aberta chama CloseSettingsAsync e volta
+ao conteúdo, sem fechar nem desfixar o HIT. O host verifica o estado no início
+do gesto para não fechar imediatamente uma configuração que acabou de abrir.
+M2 no título continua reservado a OpenSettingsAsync; gatilhos próprios
+interrompem a propagação do evento de contexto.
 
 O título também aceita tecla de contexto, Shift+F10 e Enter quando focado.
 Configurações gerais não implementa a interface e não anuncia outro menu.
@@ -191,7 +202,7 @@ um menu pelo M2. Implemente o evento de contexto e evite a ação nativa do nave
 
     <button type="button" data-hit-menu-trigger="appearance" data-no-drag
             @onclick="ToggleObject"
-            @oncontextmenu="OpenObjectSettings" @oncontextmenu:preventDefault="true">
+            @oncontextmenu="OpenObjectSettings" @oncontextmenu:preventDefault="true" @oncontextmenu:stopPropagation="true">
         Configurável
     </button>
 

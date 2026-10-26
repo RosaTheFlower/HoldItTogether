@@ -3,7 +3,9 @@
 @inject HitMenuCatalog Catalog
 @inject HitSettingsService Settings
 
-<div class="hit-menu-host @(CurrentLayout == HitMenuLayout.Compact ? "is-compact" : "")">
+<div class="hit-menu-host @(CurrentLayout == HitMenuLayout.Compact ? "is-compact" : "")"
+     @onpointerdown="RememberContextStart" @oncontextmenu="ReturnFromSettingsAsync"
+     @oncontextmenu:preventDefault="true" @oncontextmenu:stopPropagation="true">
     <div class="hit-menu-measure">
         @if (Catalog.Menus.Count == 0)
         {
@@ -66,6 +68,7 @@
     private readonly HashSet<int> _visited = [];
     private readonly Dictionary<int, DynamicComponent> _components = [];
     private readonly Dictionary<int, HitMenuLayout> _layouts = [];
+    private bool _contextStartedInSettings;
     private HitMenuLayout CurrentLayout => _layouts.GetValueOrDefault(_navigation.SelectedIndex);
     private bool CurrentHasSettings => Catalog.Menus.Count > 0 &&
         typeof(IHitMenuSettings).IsAssignableFrom(Catalog.Menus[_navigation.SelectedIndex].ComponentType);
@@ -73,6 +76,23 @@
     public Task OpenCurrentSettingsAsync() => CurrentHasSettings &&
         _components.TryGetValue(_navigation.SelectedIndex, out var component) && component.Instance is IHitMenuSettings settings
             ? settings.OpenSettingsAsync() : Task.CompletedTask;
+
+    private void RememberContextStart(PointerEventArgs args)
+    {
+        if (args.Button == 2) _contextStartedInSettings =
+            _components.TryGetValue(_navigation.SelectedIndex, out var component) &&
+            component.Instance is IHitMenuSettings { IsSettingsOpen: true };
+    }
+
+    private Task ReturnFromSettingsAsync(MouseEventArgs args)
+    {
+        var canReturn = _contextStartedInSettings;
+        _contextStartedInSettings = false;
+        // Opening a configuration with this same right-click must never close it again.
+        return canReturn && _components.TryGetValue(_navigation.SelectedIndex, out var component) &&
+            component.Instance is IHitMenuSettings { IsSettingsOpen: true } settings
+                ? settings.CloseSettingsAsync() : Task.CompletedTask;
+    }
 
     private async Task PublishMenuAsync()
     {
