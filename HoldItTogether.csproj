@@ -2,6 +2,7 @@
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
+    <ApplicationIcon>Resources/hit.ico</ApplicationIcon>
     <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
     <SupportedOSPlatformVersion>10.0.17763.0</SupportedOSPlatformVersion>
     <ImplicitUsings>enable</ImplicitUsings>
@@ -25,6 +26,7 @@
     <RazorComponent Remove="Modules/**;Tests/**;Sdk/**;Examples/**" />
     <ProjectReference Include="Modules/HIT.Sdk/HIT.Sdk.csproj" />
     <EmbeddedResource Include="Resources/en.json" />
+    <Content Include="Resources/hit.ico" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <PackageReference Include="Photino.Blazor" Version="4.0.13" />
     <PackageReference Include="NAudio.Wasapi" Version="2.2.1" />
   </ItemGroup>

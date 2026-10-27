@@ -188,7 +188,7 @@ await using (var renderer = new HtmlRenderer(services, services.GetRequiredServi
 }
 Console.WriteLine("PASS: rendered board, SAN history/save/reload, last-move squares, checkmate flag, captures, White/Black buttons, no FF, new game, draws, clocks and compact/expand.");
 
-var fixture = Path.GetFullPath("artifacts/packages/dev.hit.chess-1.6.1.hitmenu");
+var fixture = Path.GetFullPath("artifacts/packages/dev.hit.chess-1.0.0.hitmenu");
 if (File.Exists(fixture))
 {
     var store = new ExtensionStore(Path.GetFullPath("obj/chess-tests/install-" + Guid.NewGuid().ToString("N")));

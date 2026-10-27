@@ -23,6 +23,11 @@ Every subview has a small Back control, supports Escape and follows the document
 
 ## Theme tokens and contrast
 
+The editable application logo is `wwwroot/icons/hit.svg`: the sphere's circular face and two eyes, preserving the CSS face's proportions.
+The window and tray icons are rasterized from that SVG with the active theme's collapsed-sphere background and eye colors, and refresh on theme selection or valid live CSS edits.
+`Resources/hit.ico` contains 16–256 px default artwork for the executable and the initial native window; rebuild it with `node Tools/Build-AppIcon.mjs` after changing the SVG.
+Explorer/executable file icons use this embedded default; running window/tray icons follow the live theme. No executable is rewritten on a theme change.
+
 Every menu inherits its active theme. Feature-specific variables may alias these shared tokens;
 they must not introduce an independent fixed palette for settings or confirmation screens.
 

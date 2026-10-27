@@ -39,7 +39,8 @@ Right-click (M2) a configurable title to open that menu's settings. Right-click 
 Alt highlights elements that offer configuration. Ctrl highlights special click actions, including lyric sources and media-app activation.
 Escape and explicit Back controls provide keyboard return where supported.
 
-HIT stays off the taskbar. Enable System Tray for its Show HIT, Hide HIT and Exit actions.
+HIT stays off the taskbar. Enable System Tray for its Show HIT, Hide HIT, Restart HIT and Exit actions.
+Settings -> Start with Windows optionally starts this distribution at user sign-in; it is off by default.
 If the tray is disabled, hiding the native window is not offered by that tray.
 
 ## Settings

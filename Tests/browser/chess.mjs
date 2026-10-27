@@ -44,7 +44,7 @@ createBuffer(...args){const buffer=super.createBuffer(...args);soundBuffers.push
 createBufferSource(){const source=super.createBufferSource(),start=source.start.bind(source);source.start=(...args)=>{soundStarts.push(source.buffer.duration);start(...args)};return source}
 };
 addEventListener('error',e=>errors.push(e.message));
-extensions.styles('dev.hit.chess:chess',[{url:'extensions/dev.hit.chess/1.6.1/Layout/css/chess.css',css:${JSON.stringify(readFileSync('Modules/HIT.Chess/Layout/css/chess.css', 'utf8'))}}]);
+extensions.styles('dev.hit.chess:chess',[{url:'extensions/dev.hit.chess/1.0.0/Layout/css/chess.css',css:${JSON.stringify(readFileSync('Modules/HIT.Chess/Layout/css/chess.css', 'utf8'))}}]);
 themes.setMotion(true);
 window.mountChess=()=>{const root=document.querySelector('.chess-menu');
 window.connection=connect(root,{async invokeMethodAsync(name){calls.push(name);if(name==='CompactAsync'){root.classList.add('is-compact');root.dataset.hitView='compact';delete root.dataset.hitIdleAction;document.querySelector('.sphere-header').hidden=true;document.querySelector('.hit-menu-host').classList.add('is-compact');}}});

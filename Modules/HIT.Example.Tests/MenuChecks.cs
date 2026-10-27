@@ -24,9 +24,11 @@ internal static class MenuChecks
         Check(saved.AudioScaleX == 25 && saved.AudioScaleY == 200 && saved.AudioVisualizerEnabled && saved.AudioLyricsTimeline && saved.AudioLyricsTimelineThickness == 6, "Audio scale, visualizer and timeline preferences must persist");
         Check(!saved.AudioLyricsShowTitle && !saved.AudioLyricsShowSource, "Lyrics title/source visibility must persist independently");
         Check((saved with { AudioScaleX = -1, AudioScaleY = 500, AudioLyricsTimelineThickness = 99 }).Normalize() is { AudioScaleX: 25, AudioScaleY: 200, AudioLyricsTimelineThickness: 6 }, "Audio preference limits");
-        settings.Update(value => value with { AlwaysOnTop=true, ForceAlwaysOnTop=true, MenuCompactDelayMs=0,
+        settings.Update(value => value with { StartWithWindows=true,AlwaysOnTop=true, ForceAlwaysOnTop=true, MenuCompactDelayMs=0,
             AudioArtworkOnBeat=true, AudioArtworkRadialBlur=true, AudioArtworkLens=65, AudioArtworkTemperature=-40,AudioArtworkColorEnabled=true });
         saved = new HitSettingsService(Path.Combine(root,"settings.json")).Current;
+        Check(saved.StartWithWindows&&!new HitSettings().StartWithWindows,"Start with Windows persists and is off by default");
+        Check(HoldItTogether.Services.Windows.WindowsStartup.Command(@"C:\Program Files\HIT\HoldItTogether.exe")=="\"C:\\Program Files\\HIT\\HoldItTogether.exe\"","Startup executable paths with spaces are quoted");
         Check(saved.ForceAlwaysOnTop && saved.MenuCompactDelayMs==0 && saved.AudioArtworkOnBeat && saved.AudioArtworkRadialBlur && saved.AudioArtworkLens==65 && saved.AudioArtworkTemperature==-40&&saved.AudioArtworkColorEnabled,"Experimental, departure timer and color-enable/optical preferences persist");
         Check(!new HitSettings().AudioArtworkColorEnabled,"Color adjustments are opt-in by default");
         Check(new HitSettings().MenuCompactDelayMs==5000 && (saved with {MenuCompactDelayMs=20000}).Normalize().MenuCompactDelayMs==10000,"Shared compact delay defaults to five seconds and is bounded");

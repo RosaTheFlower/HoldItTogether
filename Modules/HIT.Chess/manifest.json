@@ -3,7 +3,7 @@
   "id": "dev.hit.chess",
   "name": "HIT Chess",
   "author": "HIT",
-  "version": "1.6.1",
+  "version": "1.0.0",
   "hitContractVersion": "1",
   "entryAssembly": "Services/HIT.Chess.dll",
   "entryType": "HIT.Chess.Services.ChessModule",

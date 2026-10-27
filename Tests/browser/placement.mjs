@@ -13,7 +13,7 @@ import * as shell from '../../wwwroot/js/dynamic-sphere.js';import * as themes f
 window.shell=shell;window.themes=themes;window.views=${JSON.stringify(views)};window.errors=[];window.calls=[];window.cursor={x:0,y:0};window.grab=null;
 window.addEventListener('error',e=>errors.push(e.message));window.addEventListener('pointermove',e=>cursor={x:e.clientX,y:e.clientY},true);
 themes.applyBase(${JSON.stringify(readFileSync('wwwroot/themes/HIT-OBSIDIAN-EYES.css','utf8'))});themes.setMotion(false);
-extensions.styles('dev.hit.chess:chess',[{url:'extensions/dev.hit.chess/1.6.1/Layout/css/chess.css',css:${JSON.stringify(readFileSync('Modules/HIT.Chess/Layout/css/chess.css','utf8'))}}]);
+extensions.styles('dev.hit.chess:chess',[{url:'extensions/dev.hit.chess/1.0.0/Layout/css/chess.css',css:${JSON.stringify(readFileSync('Modules/HIT.Chess/Layout/css/chess.css','utf8'))}}]);
 window.initialize=async(kind,pivot)=>{
     if(window.area)shell.disconnect(area);
     document.querySelector('.sphere-area')?.remove();window.kind=kind;window.pivot=pivot;

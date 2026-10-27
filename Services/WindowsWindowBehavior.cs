@@ -28,15 +28,18 @@ internal sealed class WindowsWindowBehavior
     private readonly nint _handle;
     private readonly SubclassCallback _callback;
     private readonly WindowsTrayIcon? _tray;
+    private readonly WindowsApplicationIcon _icon;
     private bool _alwaysOnTop;
     private bool _forceAlwaysOnTop;
     private (int Left,int Top,int Right,int Bottom)? _contentRegion;
 
-    public WindowsWindowBehavior(nint handle, bool alwaysOnTop = true)
+    public WindowsWindowBehavior(nint handle, bool alwaysOnTop = true,Action? restart=null)
     {
         _handle = handle;
         _alwaysOnTop = alwaysOnTop;
-        _tray = new WindowsTrayIcon(handle);
+        _tray = new WindowsTrayIcon(handle,restart);
+        _icon=new WindowsApplicationIcon(handle);
+        _icon.LoadDefault();_tray.SetIcon(_icon.Small);
         _callback = WindowProcedure;
 
         if (!SetWindowSubclass(handle, _callback, SubclassId, 0))
@@ -74,6 +77,7 @@ internal sealed class WindowsWindowBehavior
         {
             // Never leave a native callback pointing at a failed, unrooted instance.
             RemoveWindowSubclass(handle, _callback, SubclassId);
+            _tray.Dispose();_icon.Dispose();
             throw;
         }
     }
@@ -81,6 +85,7 @@ internal sealed class WindowsWindowBehavior
         (style & ~(Layered | TransparentInput | NoActivate | AppWindow)) | ToolWindow;
 
     public bool IsVisible => IsWindowVisible(_handle);
+    public void SetIcon(byte[] png){_icon.SetPng(png);_tray?.SetIcon(_icon.Small);}
 
     public bool OwnsPointerWindow(Point point)
     {
@@ -210,6 +215,7 @@ internal sealed class WindowsWindowBehavior
                 KillTimer(handle, ForceTopmostTimer);
                 _forceAlwaysOnTop = false;
                 _tray?.Dispose();
+                _icon.Dispose();
                 RemoveWindowSubclass(handle, _callback, SubclassId);
                 break;
         }

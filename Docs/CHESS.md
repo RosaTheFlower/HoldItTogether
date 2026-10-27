@@ -11,9 +11,11 @@ It does not modify the built-in menus or require a network connection.
 powershell -NoProfile -ExecutionPolicy Bypass -File Tools/Pack-HitMenu.ps1 -Project Modules/HIT.Chess/HIT.Chess.csproj
 ```
 
-Install `artifacts/packages/dev.hit.chess-1.6.1.hitmenu` through Settings -> Extensions -> Install .hitmenu,
+Install `artifacts/packages/dev.hit.chess-1.0.0.hitmenu` through Settings -> Extensions -> Install .hitmenu,
 or drop the package on HIT. A new installation loads immediately; updating a loaded Chess version restarts HIT automatically.
-The stable menu ID is `dev.hit.chess:chess`. Version 1.6.1 requires the updated host with SDK 1.0.2 for its shared compact action.
+The stable menu ID is `dev.hit.chess:chess`. Version 1.0.0 requires the updated host with SDK 1.0.2 for its shared compact action.
+The current package is the former 1.6.1 development build renumbered to the initial 1.0.0 release; the features and saved-game format remain intact.
+Development packages numbered 1.0.1 through 1.6.1 are obsolete. Remove those installed versions before installing this release, because the standard installer correctly rejects a lower-version update. Preserve `Modules/State/dev.hit.chess` to keep the game and score.
 See [Extensions](EXTENSIONS.md) for package installation and lifecycle details.
 
 ## Playing

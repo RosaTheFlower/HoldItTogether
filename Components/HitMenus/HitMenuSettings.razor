@@ -43,6 +43,7 @@ else
         </label>
     }
     <label class="setting-row"><strong>System Tray</strong><input class="switch" type="checkbox" role="switch" aria-label="System Tray" disabled="@(!OperatingSystem.IsWindows())" @bind:get="Settings.Current.SystemTray" @bind:set="SetSystemTray" /></label>
+    <label class="setting-row"><strong>Start with Windows</strong><input class="switch" type="checkbox" role="switch" aria-label="Start with Windows" disabled="@(!OperatingSystem.IsWindows())" @bind:get="Settings.Current.StartWithWindows" @bind:set="SetStartWithWindows" /></label>
     <label class="setting-row"><strong>Remove animations</strong><input class="switch" type="checkbox" role="switch" aria-label="Remove animations" @bind:get="Settings.Current.RemoveAnimations" @bind:set="SetRemoveAnimations" /></label>
     <label class="setting-row"><strong>Show tooltips</strong><input class="switch" type="checkbox" role="switch" aria-label="Show tooltips" @bind:get="Settings.Current.ShowTooltips" @bind:set="SetShowTooltips" /></label>
     <label class="setting-row range-row setting-compact-delay" @onwheel:stopPropagation="true"><span><strong>Compact after</strong><small>After the pointer leaves HIT</small></span>
@@ -91,6 +92,7 @@ else
     private void SetCompactDelay(ChangeEventArgs args) { if (int.TryParse(args.Value?.ToString(),out var number)) Save(value => value with { MenuCompactDelayMs = number }); }
     private void SavePlacement(HitSettings updated)=>Save(value=>value with {WindowMagnetize=updated.WindowMagnetize,WindowAllowOtherMonitors=updated.WindowAllowOtherMonitors,WindowEdgeReachPercent=updated.WindowEdgeReachPercent});
     private void SetSystemTray(bool enabled) => Save(value => value with { SystemTray = enabled });
+    private void SetStartWithWindows(bool enabled) => Save(value => value with { StartWithWindows = enabled });
     private void SetShowTooltips(bool enabled) => Save(value => value with { ShowTooltips = enabled });
     private void SetRemoveAnimations(bool enabled) => Save(value => value with { RemoveAnimations = enabled });
     private void SetCooldown(bool enabled) => Save(value => value with { ScrollCooldownEnabled = enabled });

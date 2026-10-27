@@ -12,6 +12,7 @@ public sealed record HitSettings
     public bool WindowAllowOtherMonitors { get; init; } = true;
     public int WindowEdgeReachPercent { get; init; } = 98;
     public bool SystemTray { get; init; }
+    public bool StartWithWindows { get; init; }
     public bool ShowTooltips { get; init; } = true;
     public ClockPreferences Clock { get; init; } = new();
     public bool AudioArtworkMode { get; init; }

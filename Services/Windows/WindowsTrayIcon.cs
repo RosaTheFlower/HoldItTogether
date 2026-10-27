@@ -3,13 +3,15 @@ using System.Runtime.InteropServices;
 
 namespace HoldItTogether.Services.Windows;
 
-internal sealed class WindowsTrayIcon(nint window) : IDisposable
+internal sealed class WindowsTrayIcon(nint window,Action? restart=null) : IDisposable
 {
     private const uint CallbackMessage = 0x8031;
     private readonly uint _taskbarCreated = RegisterWindowMessage("TaskbarCreated");
     private bool _enabled;
     private bool _added;
     private bool _version4;
+    private nint _icon;
+    public void SetIcon(nint icon){_icon=icon;if(_added){var data=Data();ShellNotifyIcon(1,ref data);}}
 
     public bool Enabled => _enabled;
 
@@ -93,7 +95,7 @@ internal sealed class WindowsTrayIcon(nint window) : IDisposable
         Id = 1,
         Flags = 1 | 2 | 4 | 0x80, // MESSAGE | ICON | TIP | SHOWTIP
         Callback = CallbackMessage,
-        Icon = LoadIcon(0, new nint(32512)), // shared IDI_APPLICATION
+        Icon = _icon!=0?_icon:LoadIcon(0, new nint(32512)),
         Tip = "HIT · Hold It Together",
         Info = "",
         InfoTitle = ""
@@ -117,6 +119,7 @@ internal sealed class WindowsTrayIcon(nint window) : IDisposable
         {
             AppendMenu(menu, 0, 1, "Show HIT");
             AppendMenu(menu, 0, 2, "Hide HIT");
+            AppendMenu(menu, restart is null?1u:0u, 4, "Restart HIT");
             AppendMenu(menu, 0x800, 0, null); // separator
             AppendMenu(menu, 0, 3, "Exit");
             SetForegroundWindow(window);
@@ -126,6 +129,11 @@ internal sealed class WindowsTrayIcon(nint window) : IDisposable
                 case 1: Show(); break;
                 case 2: ShowWindow(window, 0); break;
                 case 3: PostMessage(window, 0x0010, 0, 0); break; // WM_CLOSE
+                case 4:
+                    try{restart?.Invoke();}
+                    catch(Exception error)when(error is InvalidOperationException or System.ComponentModel.Win32Exception or IOException)
+                    {MessageBox(window,"Could not restart HIT. Please close and reopen it.","Hold It Together",0x10);}
+                    break;
                 default:
                     var data = Data();
                     ShellNotifyIcon(3, ref data); // NIM_SETFOCUS
@@ -206,6 +214,8 @@ internal sealed class WindowsTrayIcon(nint window) : IDisposable
     [DllImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool DestroyMenu(nint menu);
+    [DllImport("user32.dll",EntryPoint="MessageBoxW",CharSet=CharSet.Unicode)]
+    private static extern int MessageBox(nint window,string message,string title,uint flags);
 
     [DllImport("user32.dll", EntryPoint = "PostMessageW")]
     [return: MarshalAs(UnmanagedType.Bool)]

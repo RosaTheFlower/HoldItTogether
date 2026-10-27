@@ -69,6 +69,7 @@ node Tests/browser/spectrum.mjs
 node Tests/browser/placement.mjs
 dotnet run --project Modules/HIT.Chess.Tests/HIT.Chess.Tests.csproj
 node Tests/browser/chess.mjs
+node Tests/browser/app-icon.mjs
 ```
 
 The menu browser test consumes `obj/menu-tests` emitted by the example tests. It checks shared controls in all themes,

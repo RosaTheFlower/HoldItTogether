@@ -6,12 +6,22 @@ Source: `Components/HitMenus/HitMenuSettings.razor`. Controls follow [Design](DE
 
 ## Screens
 
-The main screen contains Always on Top, System Tray, Remove animations, Show tooltips and Compact after,
+The main screen contains Always on Top, System Tray, Start with Windows, Remove animations, Show tooltips and Compact after,
 then forward rows for Window placement, Scroll speed, Info, Extensions and Themes, in that order.
 Themes is last and retains a combobox for immediate activation without opening the management screen.
 Each subview blocks wheel-based menu navigation and has Back, Escape and right-click return.
 The header cover icon temporarily hides music artwork for the current configuration screen, without changing Audio preferences.
 It resets when leaving that screen and is disabled when no artwork background is active.
+
+Start with Windows is off by default and saves `startWithWindows`. It registers only HIT for the current user in
+`HKCU\Software\Microsoft\Windows\CurrentVersion\Run`, quoting the executable path. Disabling it removes that entry.
+It launches at sign-in; Windows may delay startup or independently disable an entry in Startup Apps.
+The current executable location is refreshed on launch, so keep the published directory in its intended permanent location before enabling it.
+Registration failures are shown in Settings and the preference is rolled back. Resetting settings also disables startup on the next launch.
+See Microsoft's [Run key reference](https://learn.microsoft.com/en-us/windows/win32/setupapi/run-and-runonce-registry-keys).
+
+When System Tray is enabled, its context menu offers Show HIT, Hide HIT, Restart HIT and Exit.
+Restart HIT closes normally, saves window position and stops module/media workers before launching the same distribution again.
 
 Always on Top reveals Force Always on Top directly below it. This experimental switch has a warning icon
 and the tooltip "Experimental. Use at your own risk!". While enabled and visible, a native 500 ms timer

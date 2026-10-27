@@ -9,11 +9,12 @@ public sealed class DesktopWindowService
 {
     private readonly HitSettingsService? _settings;
     private readonly WindowPositionStore _positions;
+    private readonly HitApplicationService? _application;
     private HitSettings _options;
     private bool _positionLoaded,_restoring;
     private Rectangle? _dragBounds;
-    public DesktopWindowService(HitSettingsService? settings = null,WindowPositionStore? positions=null)
-    { _settings=settings;_positions=positions??new();_options=settings?.Current??new(); }
+    public DesktopWindowService(HitSettingsService? settings = null,WindowPositionStore? positions=null,HitApplicationService? application=null)
+    { _settings=settings;_positions=positions??new();_options=settings?.Current??new();_application=application; }
 
     private PhotinoWindow? _window;
     private WindowsWindowBehavior? _windowsBehavior;
@@ -25,6 +26,12 @@ public sealed class DesktopWindowService
     public readonly record struct WindowOrigin(double X, double Y);
 
     public bool UsesNativePointerTracking => OperatingSystem.IsWindows();
+    public void SetApplicationIcon(string png)
+    {
+        if(_window is not { } window||png.Length>350000)return;
+        try{var bytes=Convert.FromBase64String(png);window.Invoke(()=>_windowsBehavior?.SetIcon(bytes));}
+        catch(FormatException){}
+    }
 
     public void ConfigureInitialLocation(PhotinoWindow window)
     {
@@ -44,11 +51,12 @@ public sealed class DesktopWindowService
             if (OperatingSystem.IsWindows())
             {
                 _windowsBehavior = new WindowsWindowBehavior(
-                    window.WindowHandle, _settings?.Current.AlwaysOnTop ?? true);
+                    window.WindowHandle, _settings?.Current.AlwaysOnTop ?? true,()=>_application?.RestartAsync().GetAwaiter().GetResult());
             }
 
             _settings?.BindRuntime(value => window.Invoke(() =>
             {
+                HoldItTogether.Services.Windows.WindowsStartup.Apply(value.StartWithWindows);
                 var changed=value.WindowAllowOtherMonitors!=_options.WindowAllowOtherMonitors||value.WindowEdgeReachPercent!=_options.WindowEdgeReachPercent;
                 _options=value;
                 if (_windowsBehavior is { } behavior)

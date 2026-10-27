@@ -19,7 +19,14 @@ internal static class WindowGeometryChecks
         var region=CreateRectRgn(0,0,0,0);
         try
         {
-            behavior=Activator.CreateInstance(type,window,false)!;
+            behavior=Activator.CreateInstance(type,[window,false,null])!;
+            var ico=File.ReadAllBytes(Path.Combine(Environment.CurrentDirectory,"Resources/hit.ico"));
+            var entry=6+(BitConverter.ToUInt16(ico,4)-1)*16;
+            var png=ico.AsSpan((int)BitConverter.ToUInt32(ico,entry+12),(int)BitConverter.ToUInt32(ico,entry+8)).ToArray();
+            var userBefore=GetGuiResources(GetCurrentProcess(),1);
+            for(var index=0;index<40;index++)type.GetMethod("SetIcon")!.Invoke(behavior,[png]);
+            if(SendMessage(window,0x7f,0,0)==0||SendMessage(window,0x7f,1,0)==0)throw new Exception("The themed PNG must produce both native application icons.");
+            if(GetGuiResources(GetCurrentProcess(),1)>userBefore+4)throw new Exception("Theme changes leaked native icon handles.");
             var apply=type.GetMethod("SetContentRegion")!;
             var before=GetGuiResources(GetCurrentProcess(),0);
             foreach(var scale in new[]{1d,1.25,1.5,2})
@@ -47,4 +54,5 @@ internal static class WindowGeometryChecks
     [DllImport("gdi32.dll")]private static extern bool DeleteObject(nint region);
     [DllImport("kernel32.dll")]private static extern nint GetCurrentProcess();
     [DllImport("user32.dll")]private static extern uint GetGuiResources(nint process,uint flags);
+    [DllImport("user32.dll",EntryPoint="SendMessageW")]private static extern nint SendMessage(nint window,uint message,nuint parameter,nint data);
 }

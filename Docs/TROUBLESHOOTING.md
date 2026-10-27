@@ -69,7 +69,7 @@ does not repair host assembly resolution. The chess integration test covers this
 
 If a menu reports a display error and a later settings gesture throws `ObjectDisposedException` from `HitMenuComponent.Lifetime`,
 inspect `Modules/Logs/{packageId}.log` for the primary render error. `Failed to resolve module specifier` with a path starting
-`extensions/` means the extension omitted the `./` prefix required by native JavaScript imports. Chess 1.0.1 corrects that path
+`extensions/` means the extension omitted the `./` prefix required by native JavaScript imports. The current Chess package uses the correct path
 and ignores late callbacks; the host also clears settings references after an error boundary disposes a menu.
 
 Inbox files need to finish copying and be released for exclusive read. Success goes to Processed; invalid packages to Rejected.
