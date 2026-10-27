@@ -1,3 +1,4 @@
+@namespace HoldItTogether.Components.HitMenus
 @using System.Globalization
 @using System.Runtime.InteropServices
 @using HoldItTogether.Services.Audio
@@ -13,11 +14,12 @@
 @inject LyricsService Lyrics
 @inject HoldItTogether.Services.Settings.HitSettingsService Settings
 
-<HitMenuViewport ScaleX="@(_showSettings ? 100 : Settings.Current.AudioScaleX)" ScaleY="@(_showSettings ? 100 : Settings.Current.AudioScaleY)">
+<HitMenuViewport ScaleX="@Settings.Current.AudioScaleX" ScaleY="@Settings.Current.AudioScaleY">
 <div @ref="_root" class="audio-menu @(!_snapshot.HasMedia ? "is-empty" : "") @(_artworkMode ? "is-artwork" : "") @(_showLyrics ? "is-lyrics" : "") @(_showAppearance ? "is-customizing" : "") @(_showSettings ? "is-menu-settings" : "") @(!Settings.Current.AudioShowSource ? "hide-source" : "") @(_showVisualizer ? "has-spectrum" : "")"
-     data-hit-hide-controls="@(Settings.Current.AudioHideControls && !_showSettings && !_showAppearance ? "true" : "false")"
-     data-hit-view="@(_showSettings ? "settings" : _showAppearance ? "appearance" : _showLyrics ? "lyrics" : "player")"
+     data-hit-hide-controls="@(!IsSettingsOpen && (_showLyrics ? Settings.Current.AudioHideLyricsButtons : Settings.Current.AudioHidePlayerButtons) ? "true" : "false")"
+     data-hit-view="@(_showControls ? "controls" : _showColors ? "colors" : _showEffects ? "effects" : _showSettings ? "settings" : _showAppearance ? "appearance" : _showLyrics ? "lyrics" : "player")"
      data-audio-lyrics-cover="@(Settings.Current.AudioArtworkLyricsCover ? "true" : null)"
+     data-audio-neutral-lyrics="@(_showLyrics && Settings.Current.AudioLyricsNeutralBackground ? "true" : null)"
      @onclick:stopPropagation="true" @onkeydown="HandleKey" @onkeydown:stopPropagation="true" @oncontextmenu:preventDefault="true">
     <div class="audio-scene" aria-hidden="true">
         <div class="audio-artwork-wash"></div>
@@ -25,35 +27,42 @@
         @if (_showVisualizer)
         {
             <div id="audio-background-spectrum" @ref="_spectrumElement" class="audio-spectrum">
-                @for (var band = 0; band < AudioSpectrumAnalyzer.BandCount; band++)
-                {
-                    <span class="spectrum-bar"></span>
-                }
+                <canvas aria-hidden="true"></canvas>
             </div>
         }
     </div>
 
-    @if (_showSettings)
+    @if (_showControls)
+    {
+        <AudioControlsView Settings="Settings.Current" PlayerChanged="SetHidePlayerButtons" LyricsChanged="SetHideLyricsButtons" BackRequested="OpenSettingsAsync" Error="@_appearanceError" />
+    }
+    else if (_showColors)
+    {
+        <AudioColorView Settings="Settings.Current" Changed="SaveArtworkSettings" BackRequested="ReturnToEffects" Error="@_appearanceError" />
+    }
+    else if (_showEffects)
+    {
+        <AudioEffectsView Settings="Settings.Current" Changed="SaveArtworkSettings" ColorsRequested="OpenColors" BackRequested="ReturnToAppearance" Error="@_appearanceError" />
+    }
+    else if (_showAppearance)
+    {
+        <AudioAppearanceView Settings="Settings.Current" Changed="SaveArtworkSettings" EffectsRequested="OpenEffects" BackRequested="ReturnToPlayerAsync" Error="@_appearanceError" />
+    }
+    else if (_showSettings)
     {
         <AudioSettingsView Settings="@Settings.Current" Error="@_appearanceError" SizeChanged="SetAudioSize"
-                           HideControlsChanged="SetHideControls" ShowSourceChanged="SetShowSource" BackRequested="ReturnToPlayerAsync" />
+                           ShowSourceChanged="SetShowSource" BackRequested="ReturnToPlayerAsync" ControlsRequested="OpenControls"
+                           TimelineChanged="SetLyricsTimeline" TimelineThicknessChanged="SetTimelineThickness"
+                           LyricsTitleChanged="SetLyricsTitle" LyricsSourceChanged="SetLyricsSource" />
     }
-    <div class="audio-player-shell" hidden="@_showSettings">
+    <div class="audio-player-shell" hidden="@IsSettingsOpen">
     @if (_showLyrics && _visible)
     {
         <div class="audio-overlay-view">
         <AudioLyricsView Generation="@_snapshot.Generation" Lyrics="@_lyrics" Position="@(_seekPreview ?? _snapshot.Position)"
                          CanSeek="@_snapshot.CanSeek" Busy="@_busy" Loading="@_lyricsLoading"
+                         Title="@_snapshot.Title" ShowTitle="@Settings.Current.AudioLyricsShowTitle" ShowSource="@Settings.Current.AudioLyricsShowSource"
                          SeekRequested="SeekLyricAsync" BackRequested="ReturnToPlayerAsync" />
-        </div>
-    }
-    @if (_showAppearance)
-    {
-        <div class="audio-overlay-view">
-            <AudioAppearanceView Blur="@ArtworkBlur" GlobalAccent="@Settings.Current.AudioArtworkGlobalAccent" GlobalCover="@Settings.Current.AudioArtworkGlobalCover"
-                                 LyricsCover="@Settings.Current.AudioArtworkLyricsCover" LyricsCoverChanged="SetLyricsArtworkCover"
-                                 BlurPreview="PreviewArtworkBlur" BlurChanged="SaveArtworkBlur" GlobalAccentChanged="SetGlobalArtworkAccent"
-                                 GlobalCoverChanged="SetGlobalArtworkCover" BackRequested="ReturnToPlayerAsync" Error="@_appearanceError" />
         </div>
     }
     <div class="audio-player-content @(_showLyrics || _showAppearance ? "is-obscured" : "")"
@@ -167,11 +176,14 @@
     private ElementReference _spectrumElement;
     private ElementReference _root;
     private SceneState? _scene;
+    private bool _timelineActive;
+    private bool? _publishedVisualizer;
     private string? _sceneArtwork;
     private int _sceneVersion;
     private string? _publishedTitle;
-    private sealed record SceneState(string? Artwork, bool Enabled, bool Visible, bool Lyrics, bool Customizing, int Blur, bool Global, bool Cover);
-    private bool _artworkMode, _showLyrics, _showAppearance, _showSettings, _lyricsLoading;
+    private sealed record SceneState(string? Artwork, bool Enabled, bool Visible, bool Lyrics, bool Customizing, int Blur, bool Global, bool Cover, int Zoom, int Distortion, int Saturation, bool Drift, bool LyricsCover, bool Neutral, AudioEffectOptions Effects);
+    private bool _artworkMode, _showLyrics, _showAppearance, _showSettings, _showEffects, _showColors, _showControls, _lyricsLoading;
+    private DotNetObjectReference<HitMenuAudio>? _reference;
     private SyncedLyrics? _lyrics;
     private string? _lyricsKey, _appearanceError;
     private DateTimeOffset _lastLyricsLookup;
@@ -182,13 +194,17 @@
     private double? _seekPreview;
     private long? _seekGeneration;
 
-    private int? _blurPreview;
-    private int ArtworkBlur => _blurPreview ?? Settings.Current.AudioArtworkBlur;
+    private int ArtworkBlur => Settings.Current.AudioArtworkBlur;
     private bool ShouldMonitor => _visible || (_artworkMode && Settings.Current.AudioArtworkGlobalAccent);
+    private bool ShouldCapture => (_visible && _showVisualizer) ||
+        (_artworkMode && AudioEffectOptions.NeedsBeatSignal(Settings.Current) && _snapshot.Playing && !Settings.Current.RemoveAnimations && _snapshot.Artwork is not null &&
+            (_visible ? !_showLyrics || (Settings.Current.AudioArtworkLyricsCover && !Settings.Current.AudioLyricsNeutralBackground)
+                : MenuContext?.IsHostVisible == true && Settings.Current.AudioArtworkGlobalAccent && Settings.Current.AudioArtworkGlobalCover));
 
     protected override void OnInitialized()
     {
         _artworkMode = Settings.Current.AudioArtworkMode;
+        _showVisualizer = Settings.Current.AudioVisualizerEnabled;
         Settings.Changed += OnSettingsChanged;
     }
 
@@ -198,7 +214,9 @@
         _ = InvokeAsync(() =>
         {
             _artworkMode = Settings.Current.AudioArtworkMode;
+            _showVisualizer = Settings.Current.AudioVisualizerEnabled;
             if (!ShouldMonitor) _monitorCts?.Cancel();
+            if (!ShouldCapture) _spectrumCts?.Cancel();
             StateHasChanged();
         });
     }
@@ -218,7 +236,7 @@
         if (!_visible)
         {
             if (!ShouldMonitor) _monitorCts?.Cancel();
-            _spectrumCts?.Cancel();
+            if (!ShouldCapture) _spectrumCts?.Cancel();
             _lyricsCts?.Cancel();
             _seekPreview = null;
             _seekGeneration = null;
@@ -231,7 +249,19 @@
         _moduleLoad ??= JS.InvokeAsync<IJSObjectReference>("import", "./js/audio-player.js").AsTask();
         _module = await _moduleLoad;
         if (_disposed) return;
-        var scene = new SceneState(_artworkMode ? _snapshot.Artwork : null, _artworkMode, _visible, _showLyrics, _showAppearance || _showSettings, ArtworkBlur, Settings.Current.AudioArtworkGlobalAccent, Settings.Current.AudioArtworkGlobalCover);
+        _reference ??= DotNetObjectReference.Create(this);
+        if (_publishedVisualizer != _showVisualizer)
+        {
+            await _module.InvokeVoidAsync("syncSpectrum",_root);_publishedVisualizer = _showVisualizer;
+        }
+        var preferences = Settings.Current;
+        var timelineEnabled = _visible && _showLyrics && preferences.AudioLyricsTimeline;
+        if (timelineEnabled || _timelineActive)
+        {
+            await _module.InvokeVoidAsync("syncLyricsTimeline", _root, _reference, new { enabled = timelineEnabled, position = _seekPreview ?? _snapshot.Position, duration = _snapshot.Duration, thickness = preferences.AudioLyricsTimelineThickness, canSeek = _snapshot.CanSeek, busy = _busy, generation = _snapshot.Generation });
+            _timelineActive = timelineEnabled;
+        }
+        var scene = new SceneState(_artworkMode ? _snapshot.Artwork : null, _artworkMode, _visible, _showLyrics, IsSettingsOpen, ArtworkBlur, preferences.AudioArtworkGlobalAccent, preferences.AudioArtworkGlobalCover, preferences.AudioArtworkZoom, preferences.AudioArtworkDistortion, preferences.AudioArtworkSaturation, preferences.AudioArtworkDrift, preferences.AudioArtworkLyricsCover, preferences.AudioLyricsNeutralBackground, AudioEffectOptions.From(preferences));
         if (scene != _scene)
         {
             _scene = scene;
@@ -239,7 +269,7 @@
             var reuseArtwork = scene.Enabled && scene.Artwork is not null && scene.Artwork == _sceneArtwork;
             if (!scene.Enabled || (!scene.Visible && !scene.Global)) _sceneArtwork = null;
             await _module.InvokeVoidAsync("syncScene", _root, reuseArtwork ? null : scene.Artwork, scene.Enabled, scene.Visible, scene.Lyrics,
-                new { blur = scene.Blur, @global = scene.Global, cover = scene.Cover, customizing = scene.Customizing, reuseArtwork });
+                new { blur = scene.Blur, @global = scene.Global, cover = scene.Cover, customizing = scene.Customizing, reuseArtwork, zoom = scene.Zoom, distortion = scene.Distortion, saturation = scene.Saturation, drift = scene.Drift, lyricsCover = scene.LyricsCover, neutralLyrics = scene.Neutral, effects = scene.Effects });
             if (version == _sceneVersion && scene.Enabled && (scene.Visible || scene.Global)) _sceneArtwork = scene.Artwork;
         }
         if (_monitorTask is null && ShouldMonitor)
@@ -247,17 +277,17 @@
             _monitorCts = CancellationTokenSource.CreateLinkedTokenSource(_lifetime.Token);
             _monitorTask = MonitorAsync(_monitorCts.Token);
         }
+        if (ShouldCapture && !_visualizerFailed && _spectrumTask is null)
+        {
+            _spectrumCts = CancellationTokenSource.CreateLinkedTokenSource(_lifetime.Token);
+            _spectrumTask = VisualizeAsync(_spectrumCts.Token);
+        }
         if (!_visible) { _publishedTitle = null; return; }
-        var title = _showSettings ? Text.Get("Audio settings") : _showAppearance ? Text.Get("Music theme") : _showLyrics ? Text.Get("Lyrics") : Text.Get("Audio");
+        var title = _showControls ? "Hide buttons" : _showColors ? "Color adjustments" : _showEffects ? "Background effects" : _showSettings ? Text.Get("Audio settings") : _showAppearance ? "Artwork" : _showLyrics ? Text.Get("Lyrics") : Text.Get("Audio");
         if (_publishedTitle != title)
         {
             _publishedTitle = title;
             if (MenuContext is not null) await MenuContext.TitleRequested.InvokeAsync(title);
-        }
-        if (_showVisualizer && !_visualizerFailed && _spectrumTask is null)
-        {
-            _spectrumCts = CancellationTokenSource.CreateLinkedTokenSource(_lifetime.Token);
-            _spectrumTask = VisualizeAsync(_spectrumCts.Token);
         }
     }
 
@@ -274,7 +304,9 @@
                 _seekPreview = null;
                 _actionError = null;
             }
-            var changed = _snapshot != snapshot || _connectionError is not null;
+            // A running position does not redraw settings/sliders or an inactive global-cover menu.
+            var changed = _connectionError is not null || ((_visible && !IsSettingsOpen) ? _snapshot != snapshot :
+                _snapshot.Generation != snapshot.Generation || _snapshot.Artwork != snapshot.Artwork || _snapshot.HasMedia != snapshot.HasMedia || _snapshot.Playing != snapshot.Playing);
             _snapshot = snapshot;
             var lyricsChanged = _visible && BeginLyricsLookup(snapshot);
             _connectionError = null;
@@ -367,13 +399,15 @@
         _seekGeneration = null;
     }
 
-    private void ToggleVisualizer()
+    private async Task ToggleVisualizer()
     {
-        _showVisualizer = !_showVisualizer;
+        if (_showVisualizer && _module is not null) await _module.InvokeVoidAsync("disconnectSpectrum",_spectrumElement);
+        SaveAppearance(value => value with { AudioVisualizerEnabled = !value.AudioVisualizerEnabled });
+        _showVisualizer = Settings.Current.AudioVisualizerEnabled;
 
         _visualizerFailed = false;
         _visualizerError = null;
-        if (!_showVisualizer) _spectrumCts?.Cancel();
+        if (!ShouldCapture) _spectrumCts?.Cancel();
     }
 
     private void SaveAppearance(Func<HoldItTogether.Services.Settings.HitSettings, HoldItTogether.Services.Settings.HitSettings> change)
@@ -385,24 +419,48 @@
     }
 
     private void ToggleArtwork() => SaveAppearance(value => value with { AudioArtworkMode = !value.AudioArtworkMode });
-    private void PreviewArtworkBlur(int value) => _blurPreview = value;
-    private void SaveArtworkBlur(int value) { _blurPreview = null; SaveAppearance(settings => settings with { AudioArtworkBlur = value }); }
-    private void SetGlobalArtworkAccent(bool enabled) => SaveAppearance(value => value with { AudioArtworkGlobalAccent = enabled });
-    private void SetGlobalArtworkCover(bool enabled) => SaveAppearance(value => value with { AudioArtworkGlobalCover = enabled });
-    private void SetLyricsArtworkCover(bool enabled) => SaveAppearance(value => value with { AudioArtworkLyricsCover = enabled });
+    private void SaveArtworkSettings(HoldItTogether.Services.Settings.HitSettings updated)
+    {
+        var resetCapture = Settings.Current.AudioArtworkOnBeat != updated.AudioArtworkOnBeat;
+        SaveAppearance(current => current with {
+        AudioArtworkBlur = updated.AudioArtworkBlur, AudioArtworkZoom = updated.AudioArtworkZoom,
+        AudioArtworkDistortion = updated.AudioArtworkDistortion, AudioArtworkSaturation = updated.AudioArtworkSaturation,
+        AudioArtworkColorEnabled = updated.AudioArtworkColorEnabled,
+        AudioArtworkDrift = updated.AudioArtworkDrift, AudioLyricsNeutralBackground = updated.AudioLyricsNeutralBackground,
+        AudioArtworkLyricsCover = updated.AudioArtworkLyricsCover, AudioArtworkGlobalAccent = updated.AudioArtworkGlobalAccent,
+        AudioArtworkGlobalCover = updated.AudioArtworkGlobalCover,
+        AudioArtworkRadialBlur = updated.AudioArtworkRadialBlur, AudioArtworkLens = updated.AudioArtworkLens,
+        AudioArtworkChromatic = updated.AudioArtworkChromatic, AudioArtworkVignette = updated.AudioArtworkVignette,
+        AudioArtworkGrain = updated.AudioArtworkGrain, AudioArtworkBrightness = updated.AudioArtworkBrightness,
+        AudioArtworkContrast = updated.AudioArtworkContrast, AudioArtworkTemperature = updated.AudioArtworkTemperature,
+        AudioArtworkTint = updated.AudioArtworkTint, AudioArtworkHue = updated.AudioArtworkHue,
+        AudioArtworkSepia = updated.AudioArtworkSepia, AudioArtworkGrayscale = updated.AudioArtworkGrayscale,
+        AudioArtworkOnBeat = updated.AudioArtworkOnBeat, AudioArtworkBeatStrength = updated.AudioArtworkBeatStrength });
+        if (resetCapture) { _visualizerFailed = false; _visualizerError = null; }
+    }
     private void SetAudioSize((int X, int Y) size) => SaveAppearance(value => value with { AudioScaleX = size.X, AudioScaleY = size.Y });
-    private void SetHideControls(bool enabled) => SaveAppearance(value => value with { AudioHideControls = enabled });
     private void SetShowSource(bool enabled) => SaveAppearance(value => value with { AudioShowSource = enabled });
-    public bool IsSettingsOpen => _showSettings || _showAppearance;
-    public Task CloseSettingsAsync() => InvokeAsync(async () => { await ReturnToPlayerAsync(); StateHasChanged(); });
+    private void SetLyricsTimeline(bool enabled) => SaveAppearance(value => value with { AudioLyricsTimeline = enabled });
+    private void SetLyricsTitle(bool enabled) => SaveAppearance(value => value with { AudioLyricsShowTitle = enabled });
+    private void SetLyricsSource(bool enabled) => SaveAppearance(value => value with { AudioLyricsShowSource = enabled });
+    private void SetTimelineThickness(int thickness) => SaveAppearance(value => value with { AudioLyricsTimelineThickness = thickness });
+    private void SetHidePlayerButtons(bool enabled) => SaveAppearance(value => value with { AudioHidePlayerButtons = enabled });
+    private void SetHideLyricsButtons(bool enabled) => SaveAppearance(value => value with { AudioHideLyricsButtons = enabled });
+    public bool IsSettingsOpen => _showSettings || _showAppearance || _showEffects || _showColors || _showControls;
+    public Task CloseSettingsAsync() => InvokeAsync(async () => { if (_showControls) await OpenSettingsAsync(); else if (_showColors) await ReturnToEffects(); else if (_showEffects) await ReturnToAppearance(); else await ReturnToPlayerAsync(); StateHasChanged(); });
     public Task OpenSettingsAsync() => InvokeAsync(() =>
     {
         _showSettings = true;
-        _showLyrics = _showAppearance = false;
+        _showLyrics = _showAppearance = _showEffects = _showColors = _showControls = false;
         _appearanceError = null;
         StateHasChanged();
     });
-    private void OpenAppearance() { _showAppearance = true; _showLyrics = false; }
+    private void OpenAppearance() { _showAppearance = true; _showLyrics = _showSettings = _showEffects = _showColors = _showControls = false; }
+    private void OpenEffects() { _showEffects = true; _showAppearance = _showLyrics = _showSettings = _showColors = _showControls = false; }
+    private void OpenColors() { _showColors = true; _showAppearance = _showLyrics = _showSettings = _showEffects = _showControls = false; }
+    private void OpenControls() { _showControls = true; _showAppearance = _showLyrics = _showSettings = _showEffects = _showColors = false; }
+    private Task ReturnToEffects() { OpenEffects(); return Task.CompletedTask; }
+    private Task ReturnToAppearance() { OpenAppearance(); return Task.CompletedTask; }
     private void HandleArtworkPointerUp(PointerEventArgs args) { if (args.Button == 2) OpenAppearance(); }
 
     private void ToggleLyrics()
@@ -417,11 +475,16 @@
         _showLyrics = false;
         _showAppearance = false;
         _showSettings = false;
+        _showEffects = false;
+        _showColors = false;
+        _showControls = false;
         return Task.CompletedTask;
     }
 
     private Task SeekLyricAsync(LyricSeekRequest request) => _snapshot.CanSeek
         ? CommandAsync(MediaAction.Seek, request.Position, request.Generation) : Task.CompletedTask;
+    [JSInvokable] public Task SeekFromTimeline(long generation, double position) => !_disposed && _visible && _showLyrics && _snapshot.CanSeek && double.IsFinite(position)
+        ? InvokeAsync(() => CommandAsync(MediaAction.Seek, Math.Clamp(position,0,_snapshot.Duration), generation)) : Task.CompletedTask;
     private bool BeginLyricsLookup(MediaSnapshot snapshot)
     {
         var key = snapshot.HasMedia ? snapshot.Title + "\n" + snapshot.Artist + "\n" + Math.Round(snapshot.Duration) : "";
@@ -469,6 +532,8 @@
     {
         using var timer = new PeriodicTimer(TimeSpan.FromMilliseconds(50));
         var levels = new double[AudioSpectrumAnalyzer.BandCount];
+        var previous = new double[AudioSpectrumAnalyzer.BandCount];
+        var framePublished = false;
         try
         {
             await Task.Run(Spectrum.Start, token);
@@ -487,16 +552,21 @@
                 if (_module is not null)
                 {
                     Spectrum.CopyTo(levels);
-                    await _module.InvokeVoidAsync("renderSpectrum", token, _spectrumElement, levels);
+                    // Silence and unchanged spectra need no WebView IPC; JS completes any active envelope itself.
+                    if (!framePublished || !levels.AsSpan().SequenceEqual(previous))
+                    {
+                        await _module.InvokeVoidAsync("renderAudioFrame", token, _root, _spectrumElement, levels);
+                        levels.CopyTo(previous,0); framePublished = true;
+                    }
                 }
-            } while (await timer.WaitForNextTickAsync(token));
+            } while (ShouldCapture && await timer.WaitForNextTickAsync(token));
         }
         catch (OperationCanceledException) { }
         catch (JSDisconnectedException) { }
         catch (Exception error) when (error is COMException or InvalidOperationException or System.ComponentModel.Win32Exception)
         {
             _visualizerFailed = true;
-            _visualizerError = Text.Get("Audio output is unavailable. Reopen the visualizer to try again.");
+            _visualizerError = "Audio output is unavailable. Toggle OnBeat or the visualizer to try again.";
         }
         finally
         {
@@ -511,7 +581,7 @@
     }
 
     private Task HandleKey(KeyboardEventArgs args) => args.Key == "Escape"
-        ? (_showLyrics || _showAppearance || _showSettings ? ReturnToPlayerAsync() : MenuContext?.CloseRequested.InvokeAsync() ?? Task.CompletedTask) : Task.CompletedTask;
+        ? (_showControls ? OpenSettingsAsync() : _showColors ? ReturnToEffects() : _showEffects ? ReturnToAppearance() : _showLyrics || _showAppearance || _showSettings ? ReturnToPlayerAsync() : MenuContext?.CloseRequested.InvokeAsync() ?? Task.CompletedTask) : Task.CompletedTask;
 
     public async ValueTask DisposeAsync()
     {
@@ -531,5 +601,6 @@
             if (_module is not null) { await _module.InvokeVoidAsync("clearScene", _root); await _module.DisposeAsync(); }
         }
         catch (JSDisconnectedException) { }
+        _reference?.Dispose();
     }
 }

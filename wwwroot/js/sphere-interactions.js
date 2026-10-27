@@ -2,7 +2,7 @@ const dragThreshold = 6;
 const interactiveSelector =
     'button, a, input, textarea, select, [role="button"], [contenteditable], [data-no-drag]';
 
-export function connectDragging(sphere, dotnet, onSettled) {
+export function connectDragging(sphere, dotnet, onSettled, onStarting) {
     let gesture = null;
     let ending = false;
     let disposed = false;
@@ -51,12 +51,13 @@ export function connectDragging(sphere, dotnet, onSettled) {
         }
 
         suppressClick = false;
+        const surface=sphere.getBoundingClientRect();
         gesture = {
             id: event.pointerId,
             x: event.screenX,
             y: event.screenY,
-            offsetX: event.clientX - window.innerWidth / 2,
-            offsetFromBottom: window.innerHeight - event.clientY,
+            offsetX: event.clientX - surface.left,
+            offsetY: event.clientY - surface.top,
             scale: window.devicePixelRatio || 1,
             dragged: false,
             deferredCapture: !!handle,
@@ -86,11 +87,17 @@ export function connectDragging(sphere, dotnet, onSettled) {
 
             current.dragged = true;
             suppressClick = true;
+            const surface=sphere.getBoundingClientRect();
+            sphere.style.setProperty('--sphere-drag-width',surface.width+'px');
+            sphere.style.setProperty('--sphere-drag-height',surface.height+'px');
+            sphere.dataset.hitDragSizing='true';
             if (current.deferredCapture) sphere.setPointerCapture(current.id);
             sphere.classList.add("is-dragging");
-            current.start = dotnet.invokeMethodAsync(
-                "BeginDrag", current.offsetX, current.offsetFromBottom, current.scale
-            ).catch(error => {
+            current.start = (async()=>{
+                await onStarting?.();
+                if(disposed)return false;
+                return dotnet.invokeMethodAsync("BeginDrag",current.offsetX,current.offsetY,current.scale);
+            })().catch(error => {
                 report(error);
                 return false;
             });
@@ -113,6 +120,7 @@ export function connectDragging(sphere, dotnet, onSettled) {
 
         ending = true;
         let started = false;
+        let origin;
         try {
             await current.work;
             started = await current.start;
@@ -124,14 +132,17 @@ export function connectDragging(sphere, dotnet, onSettled) {
         } finally {
             try {
                 if (started && !disposed) {
-                    await dotnet.invokeMethodAsync("EndDrag");
+                    origin=await dotnet.invokeMethodAsync("EndDrag");
                 }
             } catch (error) {
                 report(error);
             } finally {
-                ending = false;
-                sphere.classList.remove("is-dragging");
-                if (!disposed) onSettled();
+                try {if(!disposed)await onSettled(origin);}
+                finally {
+                    ending=false;
+                    delete sphere.dataset.hitDragSizing;
+                    sphere.classList.remove('is-dragging');
+                }
             }
         }
     }
@@ -183,5 +194,6 @@ export function connectDragging(sphere, dotnet, onSettled) {
         sphere.removeEventListener("lostpointercapture", pointerEnd);
         sphere.removeEventListener("click", click, true);
         sphere.classList.remove("is-dragging");
+        delete sphere.dataset.hitDragSizing;
     };
 }

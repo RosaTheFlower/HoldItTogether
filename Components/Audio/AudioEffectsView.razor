@@ -1,0 +1,31 @@
+@using HoldItTogether.Services.Settings
+<section class="audio-effects-view" aria-label="Background effects" data-no-drag @onwheel:stopPropagation="true" @oncontextmenu="BackRequested" @oncontextmenu:preventDefault="true">
+    <button type="button" class="hit-back audio-view-back" @onclick="BackRequested"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m11 5-5 5 5 5M6 10h10" /></svg>Artwork</button>
+    <div class="audio-effects-scroll" data-hit-scroll tabindex="0" aria-label="Background effects">
+        <label class="hit-setting-row"><span>Blur style</span><select aria-label="Blur style" value="@(Settings.AudioArtworkRadialBlur ? "radial" : "gaussian")" @onchange="ChangeBlur"><option value="gaussian">Gaussian</option><option value="radial">Radial</option></select></label>
+        <AudioEffectSlider Label="Background blur" Value="Settings.AudioArtworkBlur" Max="40" Unit=" px" ValueChanged="number => Change(value => value with {AudioArtworkBlur=number})" />
+        <AudioEffectSlider Label="Zoom" Value="Settings.AudioArtworkZoom" Min="100" Max="180" Step="5" Unit="%" ValueChanged="number => Change(value => value with {AudioArtworkZoom=number})" />
+        <AudioEffectSlider Label="Distortion" Value="Settings.AudioArtworkDistortion" Max="30" ValueChanged="number => Change(value => value with {AudioArtworkDistortion=number})" />
+        <AudioEffectSlider Label="Lens" Value="Settings.AudioArtworkLens" Unit="%" ValueChanged="number => Change(value => value with {AudioArtworkLens=number})" />
+        <AudioEffectSlider Label="Chromatic shift" Value="Settings.AudioArtworkChromatic" Max="20" Unit=" px" ValueChanged="number => Change(value => value with {AudioArtworkChromatic=number})" />
+        <AudioEffectSlider Label="Vignette" Value="Settings.AudioArtworkVignette" Unit="%" ValueChanged="number => Change(value => value with {AudioArtworkVignette=number})" />
+        <AudioEffectSlider Label="Grain" Value="Settings.AudioArtworkGrain" Max="30" Unit="%" ValueChanged="number => Change(value => value with {AudioArtworkGrain=number})" />
+        <label class="hit-setting-row"><span>Slow drift</span><input type="checkbox" class="hit-switch" role="switch" aria-label="Slow background drift" checked="@Settings.AudioArtworkDrift" @onchange="args => Change(value => value with {AudioArtworkDrift=args.Value is true})" /></label>
+        <label class="hit-setting-row"><span>OnBeat<small>Blend effects with the music's beats.</small></span><input type="checkbox" class="hit-switch" role="switch" aria-label="OnBeat" checked="@Settings.AudioArtworkOnBeat" @onchange="args => Change(value => value with {AudioArtworkOnBeat=args.Value is true})" /></label>
+        @if (Settings.AudioArtworkOnBeat)
+        {
+            <AudioEffectSlider Label="Beat strength" Value="Settings.AudioArtworkBeatStrength" Max="200" Step="5" Unit="%" ValueChanged="number => Change(value => value with {AudioArtworkBeatStrength=number})" />
+        }
+        <button type="button" class="hit-link-row" @onclick="ColorsRequested"><span>Color adjustments</span><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m8 5 5 5-5 5" /></svg></button>
+    </div>
+    @if (Error is not null) { <p class="audio-error" role="alert">@Error</p> }
+</section>
+@code {
+    [Parameter] public HitSettings Settings { get; set; } = new();
+    [Parameter] public EventCallback<HitSettings> Changed { get; set; }
+    [Parameter] public EventCallback BackRequested { get; set; }
+    [Parameter] public EventCallback ColorsRequested { get; set; }
+    [Parameter] public string? Error { get; set; }
+    private Task Change(Func<HitSettings,HitSettings> update) => Changed.InvokeAsync(update(Settings).Normalize());
+    private Task ChangeBlur(ChangeEventArgs args) => Change(value => value with { AudioArtworkRadialBlur = args.Value?.ToString() == "radial" });
+}

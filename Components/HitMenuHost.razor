@@ -5,6 +5,7 @@
 @implements IDisposable
 
 <div class="hit-menu-host @(CurrentLayout == HitMenuLayout.Compact ? "is-compact" : "")"
+     data-hit-configuration="@(_selectedId == HitMenuCatalog.SettingsId || CurrentSettings?.IsSettingsOpen == true ? "true" : "false")"
      @onpointerdown="RememberContextStart" @oncontextmenu="ReturnFromSettingsAsync"
      @oncontextmenu:preventDefault="true" @oncontextmenu:stopPropagation="true">
     <div class="hit-menu-measure">
@@ -27,7 +28,7 @@
                              aria-label="@menu.Name" data-hit-menu="@menu.Id">
                         <CascadingValue Name="HitMenu" Value="@(new HitMenuContext(active, OnCloseRequested, active && IsVisible,
                             EventCallback.Factory.Create<string>(this, title => RequestTitleAsync(contextId, title)), IsPinned,
-                            EventCallback.Factory.Create<HitMenuLayout>(this, layout => RequestLayoutAsync(contextId, layout))))">
+                            EventCallback.Factory.Create<HitMenuLayout>(this, layout => RequestLayoutAsync(contextId, layout)), IsVisible))">
                             @if (menu.Api is null)
                             {
                                 <DynamicComponent @ref="_components[contextId]" Type="@menu.ComponentType" />
@@ -35,10 +36,11 @@
                             else
                             {
                                 <CascadingValue Name="HitExtension" Value="@(ExtensionContext(menu, active))">
-                                    <ExtensionErrorBoundary @key="menu.Id">
+                                    <ExtensionErrorBoundary @key="menu.Id" Api="menu.Api" OnFailure="_ => ExtensionFailedAsync(contextId)">
                                         <ChildContent>
-                                            <ExtensionStyles Menu="menu" />
-                                            <DynamicComponent @ref="_components[contextId]" Type="@menu.ComponentType" Parameters="@(new Dictionary<string, object> { ["Api"] = menu.Api })" />
+                                            <ExtensionStyles Menu="menu">
+                                                <DynamicComponent @ref="_components[contextId]" Type="@menu.ComponentType" Parameters="@(new Dictionary<string, object> { ["Api"] = menu.Api })" />
+                                            </ExtensionStyles>
                                         </ChildContent>
                                         <ErrorContent><p class="settings-error" role="alert">@Text.Get("This extension could not display its menu. Disable it in Extensions and check its compatibility.")</p></ErrorContent>
                                     </ExtensionErrorBoundary>
@@ -87,21 +89,44 @@
     private readonly HashSet<string> _visited = [];
     private readonly Dictionary<string, DynamicComponent> _components = [];
     private readonly Dictionary<string, HitMenuLayout> _layouts = [];
+    private readonly HashSet<string> _failedMenus = [];
     private bool _contextStartedInSettings;
     private HitMenuLayout CurrentLayout => _selectedId is null ? HitMenuLayout.Default : _layouts.GetValueOrDefault(_selectedId);
-    private bool CurrentHasSettings => _selectedId != HitMenuCatalog.SettingsId &&
+    private bool CurrentHasSettings => !_disposed && _selectedId != HitMenuCatalog.SettingsId && !_failedMenus.Contains(_selectedId ?? "") &&
         Catalog.Menus.FirstOrDefault(menu => menu.Id == _selectedId)?.ComponentType is { } type &&
         typeof(HIT.Sdk.IHitMenuSettings).IsAssignableFrom(type);
 
-    public Task OpenCurrentSettingsAsync() => CurrentHasSettings &&
+    private HIT.Sdk.IHitMenuSettings? CurrentSettings => !_disposed && !_failedMenus.Contains(_selectedId ?? "") &&
         _components.TryGetValue(_selectedId ?? "", out var component) && component.Instance is HIT.Sdk.IHitMenuSettings settings
-            ? settings.OpenSettingsAsync() : Task.CompletedTask;
+            ? settings : null;
+    private HIT.Sdk.IHitMenuCompact? CurrentCompact => !_disposed && !_failedMenus.Contains(_selectedId ?? "") &&
+        _components.TryGetValue(_selectedId ?? "", out var component) ? component.Instance as HIT.Sdk.IHitMenuCompact : null;
+    public async Task<bool> CompactCurrentAsync()
+    {
+        if (CurrentSettings?.IsSettingsOpen == true || CurrentCompact is not { } compact) return false;
+        var id = _selectedId;
+        await OnPinRequested.InvokeAsync(true);
+        if (_disposed || id != _selectedId) return false;
+        await compact.CompactNowAsync();return true;
+    }
+
+    public Task OpenCurrentSettingsAsync() => CurrentHasSettings && CurrentSettings is { } settings
+        ? settings.OpenSettingsAsync() : Task.CompletedTask;
+
+    private async Task ExtensionFailedAsync(string menuId)
+    {
+        if (_disposed) return;
+        // Error boundaries unmount their children; never retain a callable instance.
+        _failedMenus.Add(menuId);
+        _components.Remove(menuId);
+        _layouts.Remove(menuId);
+        _titles.Remove(menuId);
+        if (menuId == _selectedId) await PublishMenuAsync();
+    }
 
     private void RememberContextStart(PointerEventArgs args)
     {
-        if (args.Button == 2) _contextStartedInSettings =
-            _components.TryGetValue(_selectedId ?? "", out var component) &&
-            component.Instance is HIT.Sdk.IHitMenuSettings { IsSettingsOpen: true };
+        if (args.Button == 2) _contextStartedInSettings = CurrentSettings is { IsSettingsOpen: true };
     }
 
     private Task ReturnFromSettingsAsync(MouseEventArgs args)
@@ -109,8 +134,7 @@
         var canReturn = _contextStartedInSettings;
         _contextStartedInSettings = false;
         // Opening a configuration with this same right-click must never close it again.
-        return canReturn && _components.TryGetValue(_selectedId ?? "", out var component) &&
-            component.Instance is HIT.Sdk.IHitMenuSettings { IsSettingsOpen: true } settings
+        return canReturn && CurrentSettings is { IsSettingsOpen: true } settings
                 ? settings.CloseSettingsAsync() : Task.CompletedTask;
     }
 
@@ -132,8 +156,7 @@
 
     public async Task HandleWheelAsync(WheelEventArgs args)
     {
-        if (_components.TryGetValue(_selectedId ?? "", out var component) &&
-            component.Instance is HIT.Sdk.IHitMenuSettings { IsSettingsOpen: true }) return;
+        if (CurrentSettings is { IsSettingsOpen: true }) return;
         if (_navigation.Scroll(args.DeltaX, args.DeltaY, args.DeltaMode, args.CtrlKey,
                                Environment.TickCount64, Settings.Current))
         {
@@ -159,14 +182,14 @@
         SetTitleAsync(menuId, title);
     private Task SetTitleAsync(string menuId, string title)
     {
-        if (menuId != _selectedId) return Task.CompletedTask;
+        if (_disposed || _failedMenus.Contains(menuId) || menuId != _selectedId) return Task.CompletedTask;
         _titles[menuId] = title.Length > 100 ? title[..100] : title;
         return OnTitleChanged.InvokeAsync(_titles[menuId]);
     }
 
     private async Task RequestLayoutAsync(string menuId, HitMenuLayout layout)
     {
-        if (menuId != _selectedId || CurrentLayout == layout) return;
+        if (_disposed || _failedMenus.Contains(menuId) || menuId != _selectedId || CurrentLayout == layout) return;
         _layouts[menuId] = layout;
         await OnLayoutChanged.InvokeAsync(layout);
     }
@@ -180,6 +203,7 @@
         {
             var ids = Catalog.Menus.Select(menu => menu.Id).ToHashSet();
             _visited.RemoveWhere(id => !ids.Contains(id));
+            _failedMenus.RemoveWhere(id => !ids.Contains(id));
             foreach (var id in _components.Keys.Where(id => !ids.Contains(id)).ToArray()) { _components.Remove(id); _layouts.Remove(id); _titles.Remove(id); }
             _navigation = new HitMenuNavigator(Catalog.Menus.Count);
             var next = Catalog.Menus.ToList().FindIndex(menu => menu.Id == _selectedId);
@@ -198,8 +222,8 @@
     private HIT.Sdk.HitContext ExtensionContext(HitMenuDefinition menu, bool active) => new(active, active && IsVisible, IsPinned,
         title => RequestTitleAsync(menu.Id, title),
         layout => RequestLayoutAsync(menu.Id, (HitMenuLayout)(int)layout),
-        pinned => { menu.Api!.Demand("window.control"); return menu.Id == _selectedId && IsVisible ? OnPinRequested.InvokeAsync(pinned) : Task.CompletedTask; },
-        () => { menu.Api!.Demand("window.control"); return menu.Id == _selectedId && IsVisible ? OnCloseRequested.InvokeAsync() : Task.CompletedTask; });
+        pinned => { if (_disposed || _failedMenus.Contains(menu.Id)) return Task.CompletedTask; menu.Api!.Demand("window.control"); return menu.Id == _selectedId && IsVisible ? OnPinRequested.InvokeAsync(pinned) : Task.CompletedTask; },
+        () => { if (_disposed || _failedMenus.Contains(menu.Id)) return Task.CompletedTask; menu.Api!.Demand("window.control"); return menu.Id == _selectedId && IsVisible ? OnCloseRequested.InvokeAsync() : Task.CompletedTask; });
     public void Dispose() { _disposed = true; Catalog.Changed -= CatalogChanged; }
 
 }

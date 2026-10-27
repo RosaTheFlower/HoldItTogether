@@ -34,7 +34,7 @@ public sealed class ExtensionStore
                 var state = JsonSerializer.Deserialize<ExtensionRegistry>(File.ReadAllText(path), Json) ?? new();
                 if (state.Packages is null || state.Packages.Length > 100 || state.Order is null || state.DisabledMenus is null) throw new InvalidDataException("Invalid extension registry.");
                 foreach (var package in state.Packages) package.Manifest.Validate();
-                _state = state;
+                _state = state with { Order = state.Order.Select(NormalizeMenuId).Distinct().ToArray(), DisabledMenus = state.DisabledMenus.Select(NormalizeMenuId).Distinct().ToArray() };
             }
         }
         catch (Exception ex) when (ex is IOException or InvalidDataException or JsonException or UnauthorizedAccessException or ArgumentException or NullReferenceException)
@@ -42,6 +42,13 @@ public sealed class ExtensionStore
     }
     public string PackagePath(ExtensionManifest manifest) => Path.Combine(Root, "Installed", manifest.Id, manifest.Version);
     public bool IsEnabled(string menuId) => !State.DisabledMenus.Contains(menuId, StringComparer.Ordinal);
+    // Migrate historical serialized CLR names while keeping all current source identifiers English.
+    private static string NormalizeMenuId(string id) => id switch
+    {
+        "HoldItTogether.Components.HitMenus.HitMenu\u0043onfiguracoes" => HitMenus.HitMenuCatalog.SettingsId,
+        "HoldItTogether.Components.HitMenus.HitMenu\u0052elogio" => "HoldItTogether.Components.HitMenus.HitMenuClock",
+        _ => id
+    };
 
     private void Update(Func<ExtensionRegistry, ExtensionRegistry> change)
     {
@@ -63,6 +70,66 @@ public sealed class ExtensionStore
     }
     public void SetOrder(IEnumerable<string> ids) => Update(state => state with { Order = ids.Distinct(StringComparer.Ordinal).Take(2100).ToArray() });
     public void Remove(string id) => Update(state => state with { Packages = state.Packages.Select(item => item.Manifest.Id == id ? item with { PendingDelete = true } : item).ToArray() });
+    public async Task<ExtensionCleanupResult> ClearOldVersionsAsync(IReadOnlyDictionary<string,string> loadedVersions, CancellationToken token = default)
+    {
+        await _gate.WaitAsync(token);
+        try
+        {
+            return await Task.Run(() =>
+            {
+                int removed = 0, skipped = 0;
+                var clearedPrevious = new HashSet<string>();
+                lock (_sync)
+                {
+                    if (HasLink(ExtensionManifest.SafePath(Root,"Installed"))) return new ExtensionCleanupResult(0,1);
+                    try
+                    {
+                        foreach (var package in _state.Packages)
+                        {
+                            token.ThrowIfCancellationRequested();
+                            var directory = ExtensionManifest.SafePath(Root, "Installed/" + package.Manifest.Id);
+                            if (!Directory.Exists(directory) || HasLink(directory)) continue;
+                            foreach (var path in Directory.EnumerateDirectories(directory))
+                            {
+                                token.ThrowIfCancellationRequested();
+                                var version = Path.GetFileName(path);
+                                if (!Version.TryParse(version, out _) || version == package.Manifest.Version || version == loadedVersions.GetValueOrDefault(package.Manifest.Id)) continue;
+                                try
+                                {
+                                    if (HasLinkedDescendant(path)) { skipped++; continue; }
+                                    DeleteTree(path); removed++;
+                                    if (version == package.PreviousVersion) clearedPrevious.Add(package.Manifest.Id);
+                                }
+                                catch (Exception error) when (error is IOException or UnauthorizedAccessException) { skipped++; }
+                            }
+                        }
+                    }
+                    finally
+                    {
+                        // A canceled view must not leave a rollback pointer to files already removed.
+                        if (clearedPrevious.Count > 0)
+                            Update(state => state with { Packages = state.Packages.Select(package => clearedPrevious.Contains(package.Manifest.Id) ? package with { PreviousVersion = null } : package).ToArray() });
+                    }
+                }
+                return new ExtensionCleanupResult(removed, skipped);
+            },token);
+        }
+        finally { _gate.Release(); }
+    }
+    private static bool HasLink(string path) => (File.GetAttributes(path) & FileAttributes.ReparsePoint) != 0;
+    private static bool HasLinkedDescendant(string root)
+    {
+        if (HasLink(root)) return true;
+        var pending = new Stack<string>(); pending.Push(root);
+        while (pending.TryPop(out var directory))
+            foreach (var entry in Directory.EnumerateFileSystemEntries(directory))
+            {
+                var attributes = File.GetAttributes(entry);
+                if ((attributes & FileAttributes.ReparsePoint) != 0) return true;
+                if ((attributes & FileAttributes.Directory) != 0) pending.Push(entry);
+            }
+        return false;
+    }
 
     public void RestorePrevious(string id)
     {

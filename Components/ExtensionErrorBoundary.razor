@@ -1,6 +1,7 @@
 @inherits ErrorBoundaryBase
 @inject Microsoft.Extensions.Logging.ILogger<ExtensionErrorBoundary> Logger
 @using Microsoft.Extensions.Logging
+@using HIT.Sdk
 
 @if (CurrentException is null)
 {
@@ -12,9 +13,14 @@ else
 }
 
 @code {
-    protected override Task OnErrorAsync(Exception exception)
+    [Parameter] public IHitApi? Api { get; set; }
+    [Parameter] public EventCallback<Exception> OnFailure { get; set; }
+
+    protected override async Task OnErrorAsync(Exception exception)
     {
         Logger.LogError(exception, "An extension menu failed to render.");
-        return Task.CompletedTask;
+        try { Api?.Log("Menu render failure: " + exception); }
+        catch (Exception logError) when (logError is IOException or UnauthorizedAccessException) { }
+        await OnFailure.InvokeAsync(exception);
     }
 }

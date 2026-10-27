@@ -44,8 +44,8 @@ Bundled themes are intentionally protected. Create/import a copy for a personal 
 
 ## Extensions
 
-New packages activate after restart. Check Settings -> Extensions for load errors, a disabled switch or pending deletion.
-If the package was disabled at startup, enabling it requires restart to load its code.
+New packages activate immediately; replacing loaded code restarts HIT automatically. Check Settings -> Extensions for load errors, a disabled switch or pending deletion.
+Enabling a package skipped at startup loads its code without a restart.
 Removing one menu's package removes all menus declared by that package; saved State remains.
 Loaded module services finish at exit even after a view is disabled.
 
@@ -56,11 +56,21 @@ Do not zip an extra wrapper directory around manifest.json. Use forward-slash pa
 Load failures: verify entry/component assembly and type names, public module constructor,
 HitMenuComponent inheritance, private dependencies/.deps.json and one shared SDK/framework identity.
 Do not package a different executable's internals or duplicate conflicting managed assembly identities.
-Use Restore previous version for an incompatible update, then restart. Data migration/rollback compatibility remains the author's responsibility.
+Use Restore previous version for an incompatible update; HIT restarts automatically if a different version is loaded. Data migration/rollback compatibility remains the author's responsibility.
 
 Api.Services resolves the private module container; injecting a private service with normal Blazor [Inject] is not equivalent.
 Missing declared capabilities throw before host API commands. Supported media commands can still be rejected by the source app.
 A menu-local render failure should leave built-in navigation available; check the corresponding UI/log rather than replacing host CSS.
+
+If an extension using JavaScript interop is followed by a `RenderTreeDiffBuilder` NullReferenceException during pointer updates,
+inspect the first exception. `Package dependency not found: Microsoft.JSInterop` means the host loader failed to share
+the renderer's interop assembly. Rebuild/update HIT with the corrected loader and restart; reinstalling the same `.hitmenu`
+does not repair host assembly resolution. The chess integration test covers this failure through the actual installed assembly.
+
+If a menu reports a display error and a later settings gesture throws `ObjectDisposedException` from `HitMenuComponent.Lifetime`,
+inspect `Modules/Logs/{packageId}.log` for the primary render error. `Failed to resolve module specifier` with a path starting
+`extensions/` means the extension omitted the `./` prefix required by native JavaScript imports. Chess 1.0.1 corrects that path
+and ignores late callbacks; the host also clears settings references after an error boundary disposes a menu.
 
 Inbox files need to finish copying and be released for exclusive read. Success goes to Processed; invalid packages to Rejected.
 Package log files are under Modules/Logs if the extension calls Api.Log. Startup failures also appear in the manager.

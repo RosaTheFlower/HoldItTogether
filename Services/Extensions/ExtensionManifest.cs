@@ -74,6 +74,7 @@ public sealed record ExtensionManifest
 }
 
 public sealed record InstalledExtension(ExtensionManifest Manifest, string Hash, bool PendingDelete = false, string? PreviousVersion = null);
+public sealed record ExtensionCleanupResult(int Removed, int Skipped);
 public sealed record ExtensionRegistry
 {
     public InstalledExtension[] Packages { get; init; } = [];

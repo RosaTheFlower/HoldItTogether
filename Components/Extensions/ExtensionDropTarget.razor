@@ -4,6 +4,8 @@
 @inject IJSRuntime JS
 @inject ExtensionStore Store
 @inject ExtensionUi Ui
+@inject HoldItTogether.Services.Themes.HitThemeService Themes
+@inject ExtensionActivationService Activation
 @code {
     private IJSObjectReference? _module;
     private DotNetObjectReference<ExtensionDropTarget>? _reference;
@@ -22,12 +24,23 @@
         await using (reference)
         {
             if (_busy || _disposed) return;
-            _busy = true; Ui.Open(); Ui.Report("Installing extension…");
+            var css = filename.EndsWith(".css", StringComparison.OrdinalIgnoreCase);
+            _busy = true;
+            if (css) Ui.OpenThemes(); else Ui.Open();
+            Ui.Report(css ? "Importing theme…" : "Installing extension…");
             try
             {
-                await using var stream = await reference.OpenReadStreamAsync(ExtensionStore.MaxPackageBytes, _lifetime.Token);
-                var package = await Store.InstallAsync(stream, filename, _lifetime.Token);
-                Ui.Report($"{package.Manifest.Name} installed. Restart HIT to activate it.");
+                await using var stream = await reference.OpenReadStreamAsync(css ? HoldItTogether.Services.Themes.HitThemeService.MaxCssBytes : ExtensionStore.MaxPackageBytes, _lifetime.Token);
+                if (css)
+                {
+                    var id = await Themes.ImportAsync(filename, stream);
+                    Ui.OpenThemes(id); Ui.Report("Theme imported. Double-click it to activate.");
+                }
+                else
+                {
+                    var package = await Store.InstallAsync(stream, filename, _lifetime.Token);
+                    await Activation.ActivateAsync(package.Manifest.Id, package.Manifest.Name);
+                }
             }
             catch (OperationCanceledException) { }
             catch (Exception error) { Ui.Report("Installation failed: " + error.GetBaseException().Message, true); }

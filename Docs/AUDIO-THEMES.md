@@ -2,7 +2,7 @@
 
 Use the global [theme contract](THEMES.md). Imported themes wrap these relative selectors in `@layer menus`.
 Built-in structural CSS is `wwwroot/css/menus/HitMenuAudio.css`; shell-wide artwork is in `wwwroot/css/audio-shell.css`.
-Behavior: `wwwroot/js/audio-player.js`. Styling must not invent media state or intercept real actions.
+Behavior: `wwwroot/js/audio-player.js` and `wwwroot/js/audio-effects.js`. Styling must not invent media state or intercept real actions.
 
 ## Root, state and layout
 
@@ -17,6 +17,12 @@ The natural player width is 360 px before host margins/scale. The runtime viewpo
 | `.audio-menu.is-lyrics` | Dedicated reading view |
 | `.audio-menu.is-customizing` | Artwork appearance view |
 | `.audio-menu.is-menu-settings` | Menu preferences |
+| `[data-hit-view="effects"]` | Dedicated background effects screen |
+| `[data-hit-view="colors"]` | Dedicated color-adjustment screen |
+| `[data-hit-view="controls"]` | Hide buttons screen with independent Player/Lyrics switches |
+| `.dynamic-sphere[data-audio-effects="true"]` | Runtime optical layers own filtering and transforms |
+| `[data-audio-neutral-lyrics="true"]` | Theme-derived black/white reading surface |
+| `.dynamic-sphere[data-audio-reading-hidden="true"]` | Temporary configuration-screen cover override; preserve it |
 | `.audio-menu.has-spectrum` | Visualizer enabled |
 | `.audio-menu.hide-source` | Source label preference off |
 | `[data-hit-view="player/lyrics/appearance/settings"]` | Actual current view; values are alternatives, not the literal slash string |
@@ -35,12 +41,18 @@ Runtime palette attributes are independent of classes rewritten by Blazor and mu
 | Timeline | `.audio-progress`, `.audio-timeline`, `.audio-times` |
 | Transport | `.audio-toolbar`, `.audio-transport`, `.audio-control`, `.audio-play`, `.audio-shuffle`, `.audio-loop-one`, `.audio-glyph` |
 | Secondary actions | `.audio-tools`, `.audio-tool-group`, `.audio-artwork-toggle`, `[aria-controls="audio-lyrics-view"]`, `.audio-visualizer-toggle` |
-| Background | `.audio-scene`, `.audio-artwork-wash`, `.audio-artwork-veil`, `.audio-spectrum`, `.spectrum-bar` |
+| Background | `.audio-scene`, `.audio-artwork-wash`, `.audio-artwork-veil`, `.audio-spectrum`, `.audio-spectrum canvas`; `.spectrum-bar` is a legacy hook |
 | Overlays | `.audio-overlay-view`, `.audio-player-shell`, `.audio-view-back`, `.audio-error` |
 | Lyrics | `.audio-lyrics-view`, `.lyrics-heading`, `.lyrics-provider`, `.lyrics-viewport`, `.lyrics-lines`, `.lyric-line`, `.lyrics-empty`, `.lyrics-back` |
+| Lyrics metadata | `.lyrics-attribution`, `.lyrics-track-name`, `.lyrics-provider` |
+| Edge timeline | `.sphere-lyrics-timeline`, an unscaled child of the sphere; style in `@layer sphere` |
 | Current timing | `.lyric-line.is-current`, `.is-past`, `.is-future`, `[aria-current="true"]` |
 | Artwork form | `.audio-appearance-view`, `.appearance-blur`, `.appearance-global`, `.appearance-suboption`, `.appearance-switch` |
 | Menu form | `.audio-settings-view`, `.audio-size-disclosure`, `.audio-size-uniform`, `.audio-size-axis`, `.audio-setting-row` |
+| Effects form | `.audio-effects-view`, `.audio-effect-row` |
+| Color form / scrolling | `.audio-color-view`, `.audio-effects-scroll` |
+| Button-hiding form | `.audio-controls-view` |
+| Optical layers | `.audio-artwork-optics`, `.audio-artwork-copy`, `.audio-artwork-lens`, `.audio-artwork-chromatic`, `.audio-artwork-vignette`, `.audio-artwork-grain` |
 | Scaling | `.hit-menu-scale`, `.hit-menu-viewport`, `.hit-menu-surface` |
 
 Check the canonical CSS/component when adding a selector: classes describe the current markup, not a permanent arbitrary DOM extension API.
@@ -57,6 +69,10 @@ Check the canonical CSS/component when adding a selector: classes describe the c
 | `--audio-spectrum-art-opacity` | 0.10 with artwork |
 | `--audio-cover-opacity` | 0.32 |
 | `--audio-cover-blur` | 8 px default; runtime preference can supply 0-40 px |
+| `--audio-cover-zoom` | 1-1.8, runtime preference |
+| `--audio-cover-saturation` | 0-2, runtime preference |
+| `--audio-distortion-filter` | Legacy fallback filter hook; the effects engine owns SVG distortion on `.audio-artwork-optics` |
+| `--hit-neutral-surface/text/muted` | Black/white lyrics surface tokens, defined on the sphere area |
 | `--audio-lyric-size` | 20 px |
 | `--audio-lyric-gap` | 18 px |
 | `--audio-lyric-future-blur` | 0.6 px |
@@ -71,16 +87,25 @@ Natural size/scale variables under `--hit-menu-*` are maintained by the viewport
 
 ## Layer order and artwork preservation
 
-The scene places cover wash behind its readability veil, then the transparent spectrum, with controls/lyrics above.
+The unscaled sphere backdrop owns the cover; the local scene retains the readability veil and transparent spectrum, with controls/lyrics above.
+Legacy `.audio-artwork-wash` markup remains a styling hook but no longer duplicates the shell image.
+With `data-audio-effects`, the backdrop is a container rather than a second background image.
+Its optical child combines independent Gaussian/radial blur, SVG displacement/color balance and CSS color filters.
+Enable color adjustments gates the complete color stack. Temperature/tint never enable turbulence; inactive optional layers are absent.
+Lens/chromatic image layers inherit the same cover; vignette/grain stay above the optical filter.
+Inline filter/transform values follow saved settings and the real OnBeat envelope. Preserve these ownership boundaries.
+Animations stop when the cover is hidden, neutral lyrics are active, HIT closes or reduced motion applies.
+Disposal removes the SVG filter, layers, observers, media-query listener and pending animation frame.
 Background layers ignore pointer input. Spectrum and artwork must work separately and together with unchanged geometry.
 Prefer adjusting public opacity variables over replacing the scene with an opaque generic background.
 
 Local cover mode moves title/artist above the timeline and uses the cover as background rather than a side thumbnail.
-In Lyrics, palette can remain without cover; `[data-audio-lyrics-cover="true"]` allows the image.
+In Lyrics, palette can remain without cover; `[data-audio-lyrics-cover="true"]` allows the image unless neutral reading is selected.
 Do not use a generic `.is-lyrics` rule to suppress an explicitly enabled lyrics cover.
 The same user blur value applies; do not force another blur with !important.
 
 Global music styling lives on `.dynamic-sphere[data-audio-theme="global"]`.
+Local music backgrounds also override the shell's solid theme surface, including Light, so white cannot wash out the cover.
 `[data-audio-cover="true"] > .sphere-audio-backdrop` controls the shared cover surface.
 Customize shell backgrounds through `@layer sphere`; controls/lyrics through `@layer menus`.
 Do not neutralize global music variables with fixed theme colors. When music mode turns off, the selected base theme must reappear.
@@ -91,7 +116,9 @@ The current verse follows real timestamps and is highlighted/scrolled by JS. Cli
 Keep `.lyrics-viewport` bounded/local-scroll and its text/button focus legible.
 Do not use pseudo-elements to replace real song/verse text, fake timing or create extra controls.
 
-Five-second pinned inactivity hides the header/secondary controls, including the Lyrics Back button, but leaves the lyric source and main actions usable.
+The shared pointer-departure delay (five seconds by default, 0-10 seconds in Settings) hides the header/secondary controls,
+including the Lyrics Back button, but leaves the lyric source and main actions usable. Hover anywhere over HIT prevents compaction.
+Audio settings -> Hide buttons independently opts Player and Lyrics into this policy; configuration screens never compact.
 The player contracts top/tool space; Lyrics uses that space for reading and compensates for scale Y to keep physical window height unchanged.
 `--hit-menu-padding-top` (normally 64 px), `--hit-menu-idle-padding-top` (normally 24 px) and shared focus progress must stay coordinated.
 Do not undo hidden/inert controls with CSS. Transitions follow the shared [menu contract](MENUS.md).
@@ -116,5 +143,5 @@ Do not put a permanently clickable cursor on disabled or modifier-only actions w
 ```
 
 Test with and without media/capabilities, all four view states, arbitrary cover brightness,
-visualizer alone/cover alone/both, lyrics cover on/off, global cover/colors on/off, scales 75/100/200,
+visualizer alone/cover alone/both, lyrics cover and neutral mode on/off, global cover/colors on/off, scales 25/100/200,
 idle reversal, Ctrl/Alt, reduced motion and keyboard focus. See [Audio](AUDIO.md) for supported behavior.

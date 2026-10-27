@@ -14,7 +14,7 @@ public sealed record HitMenuDefinition(string Id, string Name, Type? ComponentTy
 
 public sealed class HitMenuCatalog : IDisposable
 {
-    public const string SettingsId = "HoldItTogether.Components.HitMenus.HitMenuConfiguracoes";
+    public const string SettingsId = "HoldItTogether.Components.HitMenus.HitMenuSettings";
     private readonly ExtensionStore? _store;
     private readonly ExtensionRuntime? _runtime;
     public event Action? Changed;
@@ -22,7 +22,7 @@ public sealed class HitMenuCatalog : IDisposable
     public IReadOnlyList<HitMenuDefinition> All { get; private set; } = [];
     public HitMenuCatalog() => Refresh();
     public HitMenuCatalog(ExtensionStore store, ExtensionRuntime runtime)
-    { _store = store; _runtime = runtime; store.Changed += Refresh; Refresh(); }
+    { _store = store; _runtime = runtime; store.Changed += Refresh; runtime.Changed += Refresh; Refresh(); }
     public void Refresh()
     {
         var menus = Discover(typeof(HitMenuCatalog).Assembly).ToList();
@@ -48,7 +48,16 @@ public sealed class HitMenuCatalog : IDisposable
         if (from < 0 || to < 0) return;
         ids.RemoveAt(from); ids.Insert(to, source); _store.SetOrder(ids);
     }
-    public void Dispose() { if (_store is not null) _store.Changed -= Refresh; }
+    public void Place(string source, string target, bool after)
+    {
+        if (_store is null || source == SettingsId || target == SettingsId || source == target) return;
+        var ids = All.Where(menu => menu.Id != SettingsId).Select(menu => menu.Id).ToList();
+        if (!ids.Remove(source)) return;
+        var index = ids.IndexOf(target);
+        if (index < 0) return;
+        ids.Insert(index + (after ? 1 : 0), source); _store.SetOrder(ids);
+    }
+    public void Dispose() { if (_store is not null) _store.Changed -= Refresh; if (_runtime is not null) _runtime.Changed -= Refresh; }
 
     public static IReadOnlyList<HitMenuDefinition> Discover(Assembly assembly)
     {
@@ -63,14 +72,14 @@ public sealed class HitMenuCatalog : IDisposable
                  type.Namespace?.StartsWith(menuNamespace + ".", StringComparison.Ordinal) == true) &&
                 type.Name.StartsWith(prefix, StringComparison.Ordinal) &&
                 type.Name.Length > prefix.Length)
-            .OrderBy(type => type.FullName == menuNamespace + ".HitMenuConfiguracoes" ? 1 : 0)
+            .OrderBy(type => type.FullName == menuNamespace + ".HitMenuSettings" ? 1 : 0)
             .ThenBy(type => type.Name, StringComparer.OrdinalIgnoreCase)
             .ThenBy(type => type.FullName, StringComparer.Ordinal)
             .Select(type => new HitMenuDefinition(
                 type.FullName!,
                 !string.IsNullOrWhiteSpace(type.GetCustomAttribute<HitMenuTitleAttribute>()?.Title)
                     ? type.GetCustomAttribute<HitMenuTitleAttribute>()!.Title.Trim()
-                    : type.FullName == menuNamespace + ".HitMenuConfiguracoes"
+                    : type.FullName == menuNamespace + ".HitMenuSettings"
                     ? "Settings"
                     : Regex.Replace(type.Name[prefix.Length..], @"([a-z0-9])([A-Z])", "$1 $2"),
                 type))

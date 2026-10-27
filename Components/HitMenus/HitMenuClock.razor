@@ -1,3 +1,4 @@
+@namespace HoldItTogether.Components.HitMenus
 @using System.Globalization
 @using HoldItTogether.Components.Clock
 @using HoldItTogether.Services.Clock
@@ -7,13 +8,14 @@
 @attribute [HitMenuTitle("Clock")]
 @implements IHitMenuSettings
 @implements IAsyncDisposable
+@implements HIT.Sdk.IHitMenuCompact
 @inject HitClockService Clock
 @inject HitSettingsService Settings
 @inject IJSRuntime JS
 
 <section @ref="_element" class="clock-menu @(IsCompact ? "is-compact" : "")" data-clock-view="@_view.ToString().ToLowerInvariant()"
          data-hit-idle-action="@((MenuContext?.IsPinned ?? false) && _view == ClockView.Main && !IsCompact ? "compact" : null)"
-         data-hit-idle-delay="3000"
+         data-hit-idle-delay="@Settings.Current.MenuCompactDelayMs"
          data-hit-view="@_view.ToString().ToLowerInvariant()"
          @onclick:stopPropagation="true" @onkeydown="HandleKey" @onkeydown:stopPropagation="true" @oncontextmenu:preventDefault="true">
     @if (IsCompact)
@@ -109,7 +111,7 @@
     private bool _expanded = true, _lastPinned, _visible, _disposed;
     private ElementReference _element;
     private IJSObjectReference? _idleModule;
-    private DotNetObjectReference<HitMenuRelogio>? _idleReference;
+    private DotNetObjectReference<HitMenuClock>? _idleReference;
     private Task? _idleConnect;
     private string? _error, _publishedTitle;
     private HitMenuLayout? _publishedLayout;
@@ -212,6 +214,7 @@
     private void ClickReadout() { if (MenuContext?.IsPinned == true) Compact(); }
     private void Expand() { _expanded = true; _view = ClockView.Main; }
     private void Compact() { _expanded = false; _view = ClockView.Main; }
+    public Task CompactNowAsync() => InvokeAsync(() => { if (!_disposed && _visible && !IsSettingsOpen) { Compact(); StateHasChanged(); } });
     private void ReturnToMain() { Expand(); _error = null; }
     [JSInvokable]
     public Task CompactAfterInactivity() => InvokeAsync(() =>

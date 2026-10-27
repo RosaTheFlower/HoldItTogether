@@ -142,7 +142,7 @@
     box-shadow: 0 16px 48px #00000060;
 }
 .theme-delete-dialog:not([open]) { display: none !important; }
-.theme-delete-dialog::backdrop { background: #090b10a6; backdrop-filter: blur(3px); }
+.theme-delete-dialog::backdrop { background: transparent; backdrop-filter: none; }
 .theme-delete-dialog h2 { margin: 0 0 8px; font-size: 16px; font-weight: 600; letter-spacing: -0.025em; }
 .theme-delete-dialog p { margin: 0; font-size: 12px; line-height: 1.6; color: var(--hit-muted); overflow-wrap: anywhere; }
 .dialog-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 20px; }

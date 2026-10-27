@@ -134,7 +134,7 @@ public sealed class HitThemeService
         }
         var name = Path.GetFileNameWithoutExtension(fileName);
         name = string.Concat(name.Where(character => char.IsLetterOrDigit(character) || character is '-' or '_' or ' ')).Trim();
-        if (string.IsNullOrEmpty(name)) name = "Meu tema";
+        if (string.IsNullOrEmpty(name)) name = "My theme";
         name = name[..Math.Min(name.Length, 64)];
         Directory.CreateDirectory(DirectoryPath);
         for (var suffix = 0; ; suffix++)

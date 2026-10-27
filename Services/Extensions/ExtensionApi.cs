@@ -144,11 +144,14 @@ public sealed class ExtensionUi
     public void Notify(string title, string message) { Notice = (title, message); NoticeChanged?.Invoke(); }
     public void DismissNotice() { Notice = null; NoticeChanged?.Invoke(); }
     public bool ShowExtensions { get; set; }
+    public bool ShowThemes { get; set; }
+    public string? SelectedThemeId { get; private set; }
     public event Action? OpenRequested;
     public event Action? Changed;
     public string? Message { get; private set; }
     public bool IsError { get; private set; }
-    public void Open() { ShowExtensions = true; OpenRequested?.Invoke(); }
+    public void Open() { ShowThemes = false; ShowExtensions = true; OpenRequested?.Invoke(); }
+    public void OpenThemes(string? selected = null) { SelectedThemeId = selected; ShowExtensions = false; ShowThemes = true; OpenRequested?.Invoke(); }
     public void Report(string message, bool error = false) { Message = message; IsError = error; Changed?.Invoke(); }
     public void Clear() { Message = null; Changed?.Invoke(); }
 }

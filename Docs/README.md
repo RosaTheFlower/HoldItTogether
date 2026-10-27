@@ -12,6 +12,8 @@ use English, matching the interface. Commands run from the repository root unles
 | Understand release versions, implemented features and limits | [Version 1.0](VERSION-1.0.md) |
 | Understand components, services, persistence and startup | [Architecture](ARCHITECTURE.md) |
 | Follow the shared interaction/layout contract | [Menus](MENUS.md) |
+| Apply shared controls, confirmations, spacing and theme rules | [Design system](DESIGN.md) |
+| Manage settings, themes, updates and personal data | [Settings](SETTINGS.md) |
 | Add a menu compiled into the application | [Internal menus](INTERNAL-MENUS.md) |
 | Build, install and distribute an independent `.hitmenu` | [Extensions](EXTENSIONS.md) |
 | Call the public SDK: media, clock, storage, theme and window | [API reference](API.md) |
@@ -20,6 +22,7 @@ use English, matching the interface. Commands run from the repository root unles
 | Understand the music player, lyrics and capture | [Audio](AUDIO.md) |
 | Style the player, artwork, lyrics and visualizer | [Audio theme reference](AUDIO-THEMES.md) |
 | Understand clocks, timer, Pomodoro and persistence | [Clock](CLOCK.md) |
+| Build, install and play the independent chess menu | [Chess extension](CHESS.md) |
 | Style full/compact/world clocks | [Clock theme reference](CLOCK-THEMES.md) |
 | Respect memory budgets and interpret measurements | [Performance](PERFORMANCE.md) |
 | Add English messages and prepare translation support | [Localization](LOCALIZATION.md) |
@@ -31,7 +34,7 @@ use English, matching the interface. Commands run from the repository root unles
 **Users:** Getting started, then Audio/Clock and Troubleshooting as needed.
 
 **Extension authors:** Menus -> Extensions -> API -> Code conventions -> Themes.
-Use the Notes example in `Examples/HIT.Example` and the `HIT.Sdk` project.
+Use the Notes example in `Modules/HIT.Example` and the `HIT.Sdk` project.
 
 **Theme authors:** Themes -> Audio themes -> Clock themes. A theme changes CSS presentation;
 it does not need a compiled extension.
@@ -43,8 +46,8 @@ Built-in menu source remains the reference for integration details, while the SD
 
 | Item | Version |
 | --- | --- |
-| Application release | 1.0.0 |
-| Public SDK package | 1.0.1 |
+| Application release | v2710 (27 October) |
+| Public SDK package | 1.0.2 |
 | SDK assembly identity | 1.0.0.0 |
 | `.hitmenu` format / `hitContractVersion` | `1` / `"1"` |
 | Imported CSS theme contract | 1 |

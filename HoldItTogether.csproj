@@ -6,17 +6,24 @@
     <SupportedOSPlatformVersion>10.0.17763.0</SupportedOSPlatformVersion>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <Version>1.0.0</Version>
+    <!-- Published builds and tools are outputs, never source or application content. -->
+    <DefaultItemExcludes>$(DefaultItemExcludes);artifacts/**;**/bin/**;**/obj/**</DefaultItemExcludes>
+    <HitReleaseDate>2026-10-27</HitReleaseDate>
+    <Version>$([System.DateTime]::Parse('$(HitReleaseDate)').ToString('yyyy.MM.dd'))</Version>
+    <InformationalVersion>v$([System.DateTime]::Parse('$(HitReleaseDate)').ToString('ddMM'))</InformationalVersion>
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
     <AssemblyVersion>1.0.0.0</AssemblyVersion>
-    <FileVersion>1.0.0.0</FileVersion>
+    <FileVersion>$(Version).0</FileVersion>
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Remove="Sdk/**;Examples/**;Tests/**" />
-    <Content Remove="Sdk/**;Examples/**;Tests/**" />
-    <None Remove="Sdk/**;Examples/**;Tests/**" />
-    <RazorComponent Remove="Sdk/**;Examples/**;Tests/**" />
-    <ProjectReference Include="Sdk/HIT.Sdk/HIT.Sdk.csproj" />
+    <AssemblyMetadata Include="HitReleaseDate" Value="$(HitReleaseDate)" />
+    <InternalsVisibleTo Include="HIT.Example.Tests" />
+    <Compile Remove="Modules/**;Tests/**;Sdk/**;Examples/**" />
+    <Content Remove="Modules/**;Tests/**;Sdk/**;Examples/**" />
+    <None Remove="Modules/**;Tests/**;Sdk/**;Examples/**" />
+    <RazorComponent Remove="Modules/**;Tests/**;Sdk/**;Examples/**" />
+    <ProjectReference Include="Modules/HIT.Sdk/HIT.Sdk.csproj" />
     <EmbeddedResource Include="Resources/en.json" />
     <PackageReference Include="Photino.Blazor" Version="4.0.13" />
     <PackageReference Include="NAudio.Wasapi" Version="2.2.1" />

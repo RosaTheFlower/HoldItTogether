@@ -1,55 +1,21 @@
-<section class="audio-appearance-view" aria-label="@Text.Get("Customize music theme")" data-no-drag
-         @oncontextmenu:preventDefault="true" @onpointerup="HandlePointerUp">
-    <div class="appearance-heading">
-        <button type="button" class="lyrics-back audio-view-back" aria-label="@Text.Get("Back to Audio")" title="@Text.Get("Back to Audio")" @onclick="ReturnAsync">
-            <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m11 5-5 5 5 5M6 10h10" /></svg>
-            <span>@Text.Get("Audio")</span>
-        </button>
-    </div>
-    <div class="appearance-blur">
-        <label for="audio-artwork-blur">@Text.Get("Background blur")</label>
-        <output>@Blur px</output>
-        <input id="audio-artwork-blur" type="range" min="0" max="40" step="1" value="@Blur"
-               aria-label="@Text.Get("Artwork blur")" @oninput="PreviewBlur" @onchange="SaveBlur" @onwheel:stopPropagation="true" />
-    </div>
-    <label class="appearance-global">
-        <span>@Text.Get("Artwork behind lyrics")</span>
-        <input type="checkbox" class="appearance-switch" role="switch" aria-label="@Text.Get("Show artwork behind lyrics")"
-               @bind:get="LyricsCover" @bind:set="SetLyricsCover" />
-    </label>
-    <label class="appearance-global">
-        <span>@Text.Get("Use colors throughout HIT")</span>
-        <input type="checkbox" class="appearance-switch" role="switch" aria-label="@Text.Get("Use music colors throughout HIT")"
-               @bind:get="GlobalAccent" @bind:set="SetGlobal" />
-    </label>
-    @if (GlobalAccent)
+@using HoldItTogether.Services.Settings
+<section class="audio-appearance-view" aria-label="Artwork settings" data-no-drag @oncontextmenu="BackRequested" @oncontextmenu:preventDefault="true">
+    <button type="button" class="hit-back audio-view-back" @onclick="BackRequested"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m11 5-5 5 5 5M6 10h10" /></svg>Audio</button>
+    <label class="hit-setting-row"><span>OLED / white lyrics background</span><input class="hit-switch" type="checkbox" role="switch" aria-label="OLED or white lyrics background" checked="@Settings.AudioLyricsNeutralBackground" @onchange="args => Change(value => value with { AudioLyricsNeutralBackground = args.Value is true })" /></label>
+    <label class="hit-setting-row"><span>Artwork behind lyrics</span><input class="hit-switch" type="checkbox" role="switch" aria-label="Artwork behind lyrics" disabled="@Settings.AudioLyricsNeutralBackground" checked="@Settings.AudioArtworkLyricsCover" @onchange="args => Change(value => value with { AudioArtworkLyricsCover = args.Value is true })" /></label>
+    <label class="hit-setting-row"><span>Use color throughout HIT</span><input class="hit-switch" type="checkbox" role="switch" aria-label="Use color throughout HIT" checked="@Settings.AudioArtworkGlobalAccent" @onchange="args => Change(value => value with { AudioArtworkGlobalAccent = args.Value is true })" /></label>
+    @if (Settings.AudioArtworkGlobalAccent)
     {
-        <label class="appearance-global appearance-suboption">
-            <span>@Text.Get("Artwork behind other menus")</span>
-            <input type="checkbox" class="appearance-switch" role="switch" aria-label="@Text.Get("Keep artwork behind other menus")"
-                   @bind:get="GlobalCover" @bind:set="SetCover" />
-        </label>
+        <label class="hit-setting-row"><span>Artwork behind other menus</span><input class="hit-switch" type="checkbox" role="switch" aria-label="Artwork behind other menus" checked="@Settings.AudioArtworkGlobalCover" @onchange="args => Change(value => value with { AudioArtworkGlobalCover = args.Value is true })" /></label>
     }
-    @if (Error is { } error) { <p class="audio-error" role="status">@error</p> }
+    <button type="button" class="hit-link-row" @onclick="EffectsRequested"><span>Background effects</span><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m8 5 5 5-5 5" /></svg></button>
+    @if (Error is not null) { <p class="audio-error" role="alert">@Error</p> }
 </section>
-
 @code {
-    [Parameter] public int Blur { get; set; } = 8;
-    [Parameter] public bool GlobalAccent { get; set; }
-    [Parameter] public bool GlobalCover { get; set; } = true;
-    [Parameter] public bool LyricsCover { get; set; }
-    [Parameter] public string? Error { get; set; }
-    [Parameter] public EventCallback<int> BlurPreview { get; set; }
-    [Parameter] public EventCallback<int> BlurChanged { get; set; }
-    [Parameter] public EventCallback<bool> GlobalAccentChanged { get; set; }
-    [Parameter] public EventCallback<bool> GlobalCoverChanged { get; set; }
-    [Parameter] public EventCallback<bool> LyricsCoverChanged { get; set; }
+    [Parameter] public HitSettings Settings { get; set; } = new();
+    [Parameter] public EventCallback<HitSettings> Changed { get; set; }
     [Parameter] public EventCallback BackRequested { get; set; }
-    private Task SetGlobal(bool enabled) => GlobalAccentChanged.InvokeAsync(enabled);
-    private Task SetCover(bool enabled) => GlobalCoverChanged.InvokeAsync(enabled);
-    private Task SetLyricsCover(bool enabled) => LyricsCoverChanged.InvokeAsync(enabled);
-    private Task ReturnAsync() => BackRequested.InvokeAsync();
-    private Task HandlePointerUp(PointerEventArgs args) => args.Button == 2 ? ReturnAsync() : Task.CompletedTask;
-    private Task PreviewBlur(ChangeEventArgs args) => int.TryParse(args.Value?.ToString(), out var value) ? BlurPreview.InvokeAsync(Math.Clamp(value,0,40)) : Task.CompletedTask;
-    private Task SaveBlur(ChangeEventArgs args) => int.TryParse(args.Value?.ToString(), out var value) ? BlurChanged.InvokeAsync(Math.Clamp(value,0,40)) : Task.CompletedTask;
+    [Parameter] public EventCallback EffectsRequested { get; set; }
+    [Parameter] public string? Error { get; set; }
+    private Task Change(Func<HitSettings,HitSettings> update) => Changed.InvokeAsync(update(Settings));
 }

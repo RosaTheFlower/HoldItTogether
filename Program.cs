@@ -18,6 +18,9 @@ internal static class Program
     [STAThread]
     private static void Main(string[] args)
     {
+        System.Globalization.CultureInfo.DefaultThreadCurrentCulture = System.Globalization.CultureInfo.GetCultureInfo("en-US");
+        System.Globalization.CultureInfo.DefaultThreadCurrentUICulture = System.Globalization.CultureInfo.GetCultureInfo("en-US");
+        HitDataService.ApplyPending();
         var builder = PhotinoBlazorAppBuilder.CreateDefault(args);
 
         builder.Services.AddLogging();
@@ -27,13 +30,18 @@ internal static class Program
         builder.Services.AddSingleton(provider => new HitClockService(provider.GetRequiredService<HitSettingsService>()));
         builder.Services.AddSingleton<IExternalLinkService, ExternalLinkService>();
         builder.Services.AddSingleton<HitSettingsService>();
+        builder.Services.AddSingleton<WindowPositionStore>();
         builder.Services.AddSingleton<HitMemorySampler>();
+        builder.Services.AddSingleton<HitUpdateService>();
+        builder.Services.AddSingleton<HitDataService>();
+        builder.Services.AddSingleton<HitApplicationService>();
         builder.Services.AddSingleton<HitThemeService>();
         builder.Services.AddSingleton<DesktopWindowService>();
         builder.Services.AddSingleton<HitMenuCatalog>();
         builder.Services.AddSingleton<ExtensionStore>();
         builder.Services.AddSingleton<ExtensionUi>();
         builder.Services.AddSingleton<ExtensionRuntime>();
+        builder.Services.AddSingleton<ExtensionActivationService>();
         builder.Services.AddSingleton<ExtensionInbox>();
         builder.Services.AddSingleton<IFileProvider>(provider => new CompositeFileProvider(
             new ExtensionFileProvider(provider.GetRequiredService<ExtensionStore>()),
@@ -46,6 +54,7 @@ internal static class Program
         var extensions = app.Services.GetRequiredService<ExtensionRuntime>();
         extensions.InitializeAsync().GetAwaiter().GetResult();
         app.Services.GetRequiredService<HitMenuCatalog>().Refresh();
+        if (args.Contains("--hit-open=extensions")) app.Services.GetRequiredService<ExtensionUi>().ShowExtensions = true;
         var inbox = app.Services.GetRequiredService<ExtensionInbox>();
         inbox.Start();
 
@@ -58,14 +67,18 @@ internal static class Program
             .SetUseOsDefaultSize(false)
             .SetUseOsDefaultLocation(false)
             .SetResizable(false)
-            .SetSize(104, 104)
-            .Center();
+            .SetZoom(100)
+            .SetSize(104, 104);
 
-        app.Services.GetRequiredService<DesktopWindowService>().Attach(app.MainWindow);
+        var desktop=app.Services.GetRequiredService<DesktopWindowService>();
+        desktop.ConfigureInitialLocation(app.MainWindow);
+        desktop.Attach(app.MainWindow);
+        app.Services.GetRequiredService<HitApplicationService>().BindClose(() => app.MainWindow.Invoke(() => app.MainWindow.Close()));
 
         try { app.Run(); }
         finally
         {
+            app.Services.GetRequiredService<DesktopWindowService>().SavePosition();
             inbox.DisposeAsync().AsTask().GetAwaiter().GetResult();
             extensions.DisposeAsync().AsTask().GetAwaiter().GetResult();
             settings.UnbindRuntime();
@@ -73,6 +86,7 @@ internal static class Program
             app.Services.GetRequiredService<AudioSpectrumService>().Dispose();
             app.Services.GetRequiredService<LyricsService>().Dispose();
             (app.Services.GetRequiredService<IHitMediaService>() as IDisposable)?.Dispose();
+            app.Services.GetRequiredService<HitApplicationService>().StartPending();
         }
     }
 }

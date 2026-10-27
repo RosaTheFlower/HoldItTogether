@@ -11,7 +11,7 @@ Measurements below record the controlled optimization review from 2026-10-26, no
 | Global CSS | Cache only base and selected snapshots; check length/write/creation metadata before reread/hash |
 | Theme application | Coalesce overlapping requests; keep unchanged picker lists; update visible errors/options only when changed |
 | Theme/extension CSS edits | Global monitor 1 second; visible extension styles 2 seconds; unchanged files are not retransmitted/recompiled |
-| RAM display | Sample only when Settings is active and visible; report private resident HIT memory, excluding WebView children |
+| RAM display | Sample only when Info is mounted and Settings is visible; report private resident HIT memory, excluding WebView children |
 | Lyrics cache | At most 40 entries / estimated 4 MiB; positive 60 minutes, negative 2 minutes; prune expired entries |
 | Large lyrics | Return full supported result without requiring it to remain cached |
 | Lyrics parsing | 3,000 rows / 5,000 timestamps, bounded provider response; streaming line enumeration |
@@ -22,13 +22,23 @@ Measurements below record the controlled optimization review from 2026-10-26, no
 | JS modules | Share pending import per view and dispose references/observers on teardown |
 | Tooltips | Process changed/added subtrees instead of rescanning all UI for every mutation |
 | Time zones | Lazy option catalog; cache used zones with a bound; folded settings do not render hundreds of options |
-| Spectrum | 32 bands / up to 20 UI updates per second; reusable buffer; release capture/device on startup failure |
+| Spectrum | 32 real bands / up to 20 inputs per second; one full-DPI canvas with bounded interpolation; no per-band DOM mutation; skip identical FFT frames |
+| OnBeat | Shares spectrum capture; 85 ms attack / bounded decay; no idle synthetic beat loop; frames only during drift or an active envelope |
+| Cover effects | Reuse one cover URL; construct optional layers/graphs only when configured; keep temperature/tint separate from distortion/turbulence |
+| Optical writes | Cache unchanged filters/SVG attributes/layer visibility; drift changes compositor transform only; beat filters update at most about 30 Hz |
+| Audio rendering | Position-only polling does not redraw settings or inactive global covers; disabled timelines skip JS synchronization |
+| Compact policy | Shared 0-10-second departure timer only for Player/Lyrics, board and main clock; page-specific Audio hide switches; settings/forms never compact |
+| Experimental topmost | 500 ms native UI-thread timer only while Force Always on Top is enabled; no focus activation |
 | Extension persistence | 1 MiB/value and 16 MiB/package JSON disk quota; these are storage limits, not memory limits |
 | Extension Inbox/logs | 2-second stable-file checks; bounded scan/history/log messages and log rotation |
 
-Capture and ordinary view polling stop while hidden. Clock deadlines deliberately run independently of the view.
+Capture and ordinary view polling stop while hidden unless an enabled OnBeat global cover is visible on another menu.
+Closing HIT stops capture. Clock deadlines deliberately run independently of the view.
 Global music palette metadata can continue at about two-second intervals to keep other menus' cover/colors current.
 These exceptions have explicit owners and shutdown paths.
+Color adjustments require the persisted Enable color adjustments switch, off by default. Disabled colors add no CSS/SVG filter work.
+Steady artwork drift is a compositor animation, with zero per-frame JS/DOM writes. Spectrum tests also verify zero DOM mutations
+while drawing changing FFT input, full native-DPI buffers and release on disposal. These are focused regression checks, not a measured FPS claim.
 
 No production forced GC, working-set emptying, image-quality reduction or WebView process termination is used to make RAM look lower.
 Layouts must not add resize feedback loops or use animation timers to fabricate data.

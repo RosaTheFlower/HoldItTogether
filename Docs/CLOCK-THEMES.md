@@ -1,8 +1,8 @@
 # Clock theme reference
 
 Behavior is documented in [Clock](CLOCK.md); common styling in [Themes](THEMES.md).
-The page uses public `wwwroot/css/menus/HitMenuRelogio.css`; global notices use `wwwroot/css/clock-notifications.css`.
-Built-in menu ID: `HoldItTogether.Components.HitMenus.HitMenuRelogio`.
+The page uses public `wwwroot/css/menus/HitMenuClock.css`; global notices use `wwwroot/css/clock-notifications.css`.
+Built-in menu ID: `HoldItTogether.Components.HitMenus.HitMenuClock`.
 
 ## Selectors and views
 
@@ -62,7 +62,7 @@ Do not force them visible or alter pin state with CSS. The full pinned readout c
 and supports real native drag through `data-hit-drag-handle`. A theme cannot implement dragging.
 The second compact readout should remain small/muted and centered below the primary, without a second full label row.
 
-The main pinned view uses `data-hit-idle-action="compact"` and `data-hit-idle-delay="3000"`.
+The main pinned view uses `data-hit-idle-action="compact"`; the host's shared `data-hit-compact-delay` supplies 0-10000 ms, default 5000.
 These are removed in compact/settings states; they are not the Audio `data-hit-hide-controls` policy.
 Hover alone must not expand compact Clock. Preserve trigger roles, focus states and hit targets.
 

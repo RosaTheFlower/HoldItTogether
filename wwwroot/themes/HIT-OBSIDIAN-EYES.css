@@ -1,10 +1,5 @@
-/*
-   HIT / OBSIDIAN EYES — formato de tema v1.
-   Grafite, branco, tipografia discreta. Sem arquivos externos.
-   Requer a versao do HIT com suporte a --hit-track-pointer.
-   Os olhos usam ::before e ::after e ficam apenas na esfera recolhida.
-   "Remover animacoes" desativa piscadas/transicoes; a direcao continua atualizada.
-*/
+/* HIT theme contract v1. Self-contained typography and pointer-responsive eyes.
+   Eyes use ::before and ::after only while collapsed. Remove animations disables motion. */
 @layer sphere {
     :root {
         --hit-track-pointer: 1;

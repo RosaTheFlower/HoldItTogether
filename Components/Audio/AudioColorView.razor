@@ -1,0 +1,25 @@
+@using HoldItTogether.Services.Settings
+<section class="audio-color-view" aria-label="Color adjustments" data-no-drag @onwheel:stopPropagation="true" @oncontextmenu="BackRequested" @oncontextmenu:preventDefault="true">
+    <button type="button" class="hit-back audio-view-back" @onclick="BackRequested"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m11 5-5 5 5 5M6 10h10" /></svg>Background effects</button>
+    <div class="audio-effects-scroll" data-hit-scroll tabindex="0" aria-label="Color adjustments">
+        <label class="hit-setting-row"><span>Enable color adjustments</span><input class="hit-switch" type="checkbox" role="switch" aria-label="Enable color adjustments" checked="@Settings.AudioArtworkColorEnabled" @onchange="args => Change(value => value with {AudioArtworkColorEnabled = args.Value is true})" /></label>
+        <fieldset class="audio-color-sliders" disabled="@(!Settings.AudioArtworkColorEnabled)">
+        <AudioEffectSlider Label="Saturation" Value="Settings.AudioArtworkSaturation" Max="200" Step="5" Unit="%" ValueChanged="number => Change(value => value with {AudioArtworkSaturation=number})" />
+        <AudioEffectSlider Label="Brightness" Value="Settings.AudioArtworkBrightness" Min="20" Max="200" Step="5" Unit="%" ValueChanged="number => Change(value => value with {AudioArtworkBrightness=number})" />
+        <AudioEffectSlider Label="Contrast" Value="Settings.AudioArtworkContrast" Min="25" Max="200" Step="5" Unit="%" ValueChanged="number => Change(value => value with {AudioArtworkContrast=number})" />
+        <AudioEffectSlider Label="Temperature" Value="Settings.AudioArtworkTemperature" Min="-100" Max="100" ValueChanged="number => Change(value => value with {AudioArtworkTemperature=number})" />
+        <AudioEffectSlider Label="Tint" Value="Settings.AudioArtworkTint" Min="-100" Max="100" ValueChanged="number => Change(value => value with {AudioArtworkTint=number})" />
+        <AudioEffectSlider Label="Hue" Value="Settings.AudioArtworkHue" Min="-180" Max="180" Unit="°" ValueChanged="number => Change(value => value with {AudioArtworkHue=number})" />
+        <AudioEffectSlider Label="Sepia" Value="Settings.AudioArtworkSepia" Unit="%" ValueChanged="number => Change(value => value with {AudioArtworkSepia=number})" />
+        <AudioEffectSlider Label="Grayscale" Value="Settings.AudioArtworkGrayscale" Unit="%" ValueChanged="number => Change(value => value with {AudioArtworkGrayscale=number})" />
+        </fieldset>
+    </div>
+    @if (Error is not null) { <p class="audio-error" role="alert">@Error</p> }
+</section>
+@code {
+    [Parameter] public HitSettings Settings { get; set; } = new();
+    [Parameter] public EventCallback<HitSettings> Changed { get; set; }
+    [Parameter] public EventCallback BackRequested { get; set; }
+    [Parameter] public string? Error { get; set; }
+    private Task Change(Func<HitSettings,HitSettings> update) => Changed.InvokeAsync(update(Settings).Normalize());
+}

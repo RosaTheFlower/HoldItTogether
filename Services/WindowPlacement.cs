@@ -6,7 +6,7 @@ internal readonly record struct WindowAnchor(double X, double Y, double PivotX, 
 
 internal static class WindowPlacement
 {
-    public static WindowAnchor SelectAnchor(Rectangle bounds, Rectangle? workArea)
+    public static WindowAnchor SelectAnchor(RectangleF bounds, Rectangle? workArea)
     {
         var pivotX = 0.5;
         var pivotY = 0.5;
@@ -31,7 +31,7 @@ internal static class WindowPlacement
         return AnchorAt(bounds, pivotX, pivotY);
     }
 
-    public static WindowAnchor AnchorAt(Rectangle bounds, double pivotX, double pivotY) =>
+    public static WindowAnchor AnchorAt(RectangleF bounds, double pivotX, double pivotY) =>
         new(bounds.Left + bounds.Width * pivotX, bounds.Top + bounds.Height * pivotY, pivotX, pivotY);
 
     public static Rectangle Calculate(
@@ -40,6 +40,44 @@ internal static class WindowPlacement
             (int)Math.Round(anchor.X - width * anchor.PivotX),
             (int)Math.Round(anchor.Y - height * anchor.PivotY),
             width, height), workArea);
+
+    public static Rectangle PlaceSurface(WindowAnchor anchor, int canvasWidth, int canvasHeight,
+        RectangleF localSurface, Rectangle? workArea)
+    {
+        var surface = ConstrainSurface(new RectangleF(
+            (float)(anchor.X - localSurface.Width * anchor.PivotX),
+            (float)(anchor.Y - localSurface.Height * anchor.PivotY),localSurface.Width,localSurface.Height),workArea);
+        // Transparent backing storage may extend beyond the monitor. Only visible content is constrained.
+        return new Rectangle((int)Math.Round(surface.Left-localSurface.Left),
+            (int)Math.Round(surface.Top-localSurface.Top),canvasWidth,canvasHeight);
+    }
+
+    public static RectangleF ConstrainSurface(RectangleF surface, Rectangle? workArea) =>
+        workArea is { Width: > 0, Height: > 0 } area ? new RectangleF(
+            Math.Clamp(surface.Left,area.Left,Math.Max(area.Left,area.Right-surface.Width)),
+            Math.Clamp(surface.Top,area.Top,Math.Max(area.Top,area.Bottom-surface.Height)),surface.Width,surface.Height) : surface;
+
+    public static Rectangle DragSurface(Rectangle canvas,RectangleF visible,Point cursor,PointF grab,Rectangle? workArea,
+        bool magnetize=false,Rectangle? snapArea=null,double threshold=12)
+    {
+        var moved=ConstrainSurface(new RectangleF(cursor.X-grab.X,cursor.Y-grab.Y,visible.Width,visible.Height),workArea);
+        if(magnetize&&snapArea is { } edge)
+        {
+            var left=Math.Abs(moved.Left-edge.Left);var right=Math.Abs(moved.Right-edge.Right);
+            var top=Math.Abs(moved.Top-edge.Top);var bottom=Math.Abs(moved.Bottom-edge.Bottom);
+            if(Math.Min(left,right)<=threshold)moved.X=left<=right?edge.Left:edge.Right-moved.Width;
+            if(Math.Min(top,bottom)<=threshold)moved.Y=top<=bottom?edge.Top:edge.Bottom-moved.Height;
+        }
+        return new Rectangle((int)Math.Round(moved.Left-(visible.Left-canvas.Left)),
+            (int)Math.Round(moved.Top-(visible.Top-canvas.Top)),canvas.Width,canvas.Height);
+    }
+
+    public static Rectangle InsetWorkArea(Rectangle area,int reachPercent)
+    {
+        var inset=(100-Math.Clamp(reachPercent,85,100))/200d;
+        var padding=(int)Math.Round(Math.Min(area.Width,area.Height)*inset);
+        return new Rectangle(area.Left+padding,area.Top+padding,Math.Max(1,area.Width-2*padding),Math.Max(1,area.Height-2*padding));
+    }
 
     public static Rectangle Constrain(Rectangle bounds, Rectangle? workArea)
     {

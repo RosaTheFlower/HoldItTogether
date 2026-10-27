@@ -33,6 +33,8 @@ static void Check(bool condition, string message) { if (!condition) throw new Ex
 async Task<InstalledExtension> Install(byte[] bytes, string name = "sample.hitmenu")
 { await using var stream = new MemoryStream(bytes); return await store.InstallAsync(stream, name); }
 var original = await File.ReadAllBytesAsync(fixture);
+await runtime.InitializeAsync();
+Check(runtime.Menus.Count == 0, "Empty startup should not load a module");
 var installed = await Install(original);
 Check(installed.Manifest.Id == "dev.hit.example", "Package identity");
 Check(!System.Runtime.Loader.AssemblyLoadContext.Default.Assemblies.Any(assembly => assembly.GetName().Name == "HIT.Example"), "Import must not execute/load the plugin");
@@ -80,7 +82,7 @@ await Reject(Alter(manifest: m => m.Set("capabilities", new[] { "unknown.permiss
 await Reject(Alter(manifest: m => m.Set("menus", Array.Empty<object>())), "empty menus");
 Console.WriteLine("PASS: package validation, traversal/links/collisions, compatibility, idempotence and failed-install atomicity.");
 
-await runtime.InitializeAsync();
+Check(await runtime.ActivateAsync(installed.Manifest.Id), "A new module should activate without restarting HIT");
 Check(runtime.Errors.Count == 0, string.Join("; ", runtime.Errors.Values));
 Check(runtime.Menus.Count == 1, "Standalone SDK component load");
 var menu = runtime.Menus.Single();
@@ -101,6 +103,10 @@ using var catalog = new HitMenuCatalog(store, runtime);
 var firstId = catalog.Menus[0].Id;
 catalog.Move(menu.Id, firstId);
 Check(catalog.Menus[0].Id == menu.Id && catalog.Menus[^1].Id == HitMenuCatalog.SettingsId, "Persistent menu order");
+catalog.Place(menu.Id, firstId, true);
+Check(catalog.Menus.ToList().FindIndex(item => item.Id == menu.Id) == catalog.Menus.ToList().FindIndex(item => item.Id == firstId) + 1, "Pointer drop must honor the insertion edge");
+catalog.Place(menu.Id, firstId, false);
+Check(catalog.Menus[0].Id == menu.Id, "Pointer drop before target");
 store.SetEnabled(menu.Id, false);
 Check(catalog.Menus.All(item => item.Id != menu.Id), "Disabled menu still navigable");
 store.SetEnabled(HitMenuCatalog.SettingsId, false);
@@ -113,7 +119,9 @@ var services = new ServiceCollection().AddLogging().AddSingleton(store).AddSingl
     .AddSingleton(settings).AddSingleton(themes).AddSingleton(clock).AddSingleton<IHitMediaService>(media)
     .AddSingleton<HoldItTogether.Services.Diagnostics.HitMemorySampler>().AddSingleton<AudioSpectrumService>()
     .AddSingleton(new LyricsService(new HttpClient())).AddSingleton<IExternalLinkService, NoLinks>()
-    .AddSingleton<IJSRuntime, NoJs>();
+    .AddSingleton<HoldItTogether.Services.HitApplicationService>().AddSingleton<ExtensionActivationService>()
+            .AddSingleton<HoldItTogether.Services.Diagnostics.HitUpdateService>().AddSingleton<HoldItTogether.Services.Settings.HitDataService>()
+            .AddSingleton<IJSRuntime, NoJs>();
 await using var provider = services.BuildServiceProvider();
 await using var renderer = new HtmlRenderer(provider, provider.GetRequiredService<ILoggerFactory>());
 await renderer.Dispatcher.InvokeAsync(async () =>
@@ -144,18 +152,30 @@ await using (var interactive = new InteractiveRenderer(provider, provider.GetReq
         await interactive.DispatchEventAsync(interactive.Event(id, "input", "aria-label", "Enable Audio", "onchange"), null, new ChangeEventArgs { Value = false });
         Check(catalog.Menus.All(item => item.ComponentType?.Name != "HitMenuAudio"), "Builtin disable failed");
         await interactive.DispatchEventAsync(interactive.Event(id, "section", "class", "extensions-view", "oncontextmenu"), null, new MouseEventArgs { Button = 2 });
-        Check(interactive.Graph(id).Any(frame => frame.FrameType == RenderTreeFrameType.Text && frame.TextContent == "Themes"), "Right-click did not return to Settings");
+        Check(interactive.Graph(id).Any(frame => frame.FrameType == RenderTreeFrameType.Attribute && frame.AttributeName == "aria-label" && Equals(frame.AttributeValue, "Manage themes")), "Right-click did not return to Settings: " + string.Join("; ",interactive.Errors));
         Check(interactive.Errors.Count == 0, string.Join("; ", interactive.Errors.Select(error => error.ToString())));
     });
 }
 Console.WriteLine("PASS: real host navigation, reorder with stable selection, builtin disable, blocked scroll and right-click return.");
+await MenuChecks.RunAsync(provider, root, repo);
+WindowGeometryChecks.Run();
+PlacementChecks.Run();
 
 var update = Alter(manifest: m => m.Set("version", "1.1.0"));
 await Install(update);
+Check(!await runtime.ActivateAsync(installed.Manifest.Id), "Replacing loaded code must request a graceful restart");
 Check(store.State.Packages.Single().PreviousVersion == "1.0.0", "Previous version lost");
 Check(Directory.Exists(Path.Combine(store.Root, "Installed/dev.hit.example/1.0.0")), "Loaded version overwritten");
+await Install(Alter(manifest:m=>m.Set("version","1.2.0")));
+var cleared = await runtime.ClearOldVersionsAsync();
+Check(cleared.Removed==1 && cleared.Skipped==0,"Cleanup removes obsolete unloaded version");
+Check(Directory.Exists(Path.Combine(store.Root,"Installed/dev.hit.example/1.0.0")) && Directory.Exists(Path.Combine(store.Root,"Installed/dev.hit.example/1.2.0")),"Cleanup preserves loaded and selected versions");
+Check(store.State.Packages.Single().PreviousVersion is null && File.Exists(Path.Combine(store.Root,"State/dev.hit.example/test.json")),"Cleanup clears unavailable rollback and preserves user data");
+Check((await runtime.ClearOldVersionsAsync()).Removed==0,"Cleanup is idempotent");
+// Reinstall a rollback target to exercise the existing rollback/removal path.
+await Install(Alter(manifest:m=>m.Set("version","1.3.0")));
 store.RestorePrevious("dev.hit.example");
-Check(store.State.Packages.Single().Manifest.Version == "1.0.0", "Rollback failed");
+Check(store.State.Packages.Single().Manifest.Version == "1.2.0", "Rollback failed");
 store.Remove("dev.hit.example");
 Check(catalog.Menus.All(item => item.ExtensionId != "dev.hit.example"), "Deleted package still visible");
 Check(File.Exists(Path.Combine(store.Root, "State/dev.hit.example/test.json")), "Deletion removed user data");

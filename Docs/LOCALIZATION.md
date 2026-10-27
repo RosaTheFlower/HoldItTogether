@@ -1,8 +1,10 @@
 # English source messages and future language packs
 
 The canonical interface/source documentation language is English (`en-US`).
-Existing user-entered labels, provider metadata and Windows time-zone display strings retain their source language.
-Stable built-in CLR IDs, theme IDs and persisted JSON keys are not translated/renamed with visible labels.
+Existing user-entered labels and provider metadata retain their source language.
+Time-zone choices use stable English Windows IDs and UTC offsets rather than OS-localized display names.
+Current built-in CLR IDs use English names; the registry migrates historical Clock/Settings IDs.
+Theme IDs and persisted JSON keys remain independent of visible labels.
 
 `Resources/en.json` is embedded as `HoldItTogether.Resources.en.json`.
 `Services/Localization/HitText.cs` loads it lazily. Components receive the `Text` alias from `_Imports.razor`.

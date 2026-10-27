@@ -1,6 +1,6 @@
 # HIT extension packages — format 1 / SDK 1
 
-Application 1.0; SDK NuGet 1.0.1. Complete signatures, DTOs, capability rules and examples are in [API](API.md).
+Application v2710; SDK NuGet 1.0.2. Complete signatures, DTOs, capability rules and examples are in [API](API.md).
 Shared UI rules are in [Menus](MENUS.md); code/lifetime rules are in [Code conventions](CODE-CONVENTIONS.md).
 
 The `.hitmenu` installer, startup loader, public SDK and extension manager are implemented.
@@ -18,32 +18,33 @@ The user does not need the .NET SDK or the HIT source to install a package.
 7. Implement IHitMenuSettings only when the menu provides settings; show Back and support the common right-click contract.
 8. Save through Api.Storage on deliberate changes, handle missing data and keep a schema version when migrations are needed.
 9. Use visibility/module cancellation, dispose workers/JS/scopes and test hidden/disabled/restarted states.
-10. Pack, import into HIT, restart and exercise all three bundled themes plus user menu reorder/disable.
+10. Pack, import into HIT and exercise all three bundled themes plus user menu reorder/disable. New packages activate immediately; replacing loaded code restarts HIT automatically.
 
-The executable example is split into [module/service](../Examples/HIT.Example/Services/ExampleModule.cs),
-[Razor layout](../Examples/HIT.Example/Layout/ExampleMenu.razor),
-[CSS](../Examples/HIT.Example/Layout/css/notes.css) and [manifest](../Examples/HIT.Example/manifest.json).
+The executable example is split into [module/service](../Modules/HIT.Example/Services/ExampleModule.cs),
+[Razor layout](../Modules/HIT.Example/Layout/ExampleMenu.razor),
+[CSS](../Modules/HIT.Example/Layout/css/notes.css) and [manifest](../Modules/HIT.Example/manifest.json).
 It contains note persistence, a settings subview and a deliberate call to the shared HIT timer.
 The template changes the project/namespace from HIT.Example; review the visible manifest name/author and remove sample actions/capabilities you do not need.
 Public component names do not have to begin with HitMenu for external packages: the manifest supplies their exact types.
 
 ## User flow
 
-Open **Settings → Extensions**, the last settings row, immediately below **Themes**.
+Open **Settings → Extensions**, immediately above the final **Themes** row.
 The row opens a separate page. Right-click or the Back button returns to Settings.
 The mouse wheel scrolls the extension list without changing HIT menus.
 
-- Drag rows or use their Up/Down buttons to reorder menus. Order is saved immediately.
+- Drag the grip beside a name or use Up/Down to reorder menus. Pointer dragging starts after six pixels, shows the insertion edge and saves the result immediately.
 - Disable a menu with its switch. Built-in Audio and Clock can be disabled; Settings always remains available and last.
-- Choose **Install .hitmenu**, or drop one `.hitmenu` file anywhere on HIT, including the collapsed sphere.
-- Installation opens the manager and reports success or a useful error. Restart HIT to activate new code.
+- Choose **Install .hitmenu**, or drop one `.hitmenu` file anywhere on HIT, including the collapsed sphere. Dropped `.css` files instead open Themes after importing.
+- Installation opens the manager and reports success or a useful error. A new module starts immediately. If its assembly is already loaded at another version, HIT shuts down gracefully and restarts automatically, reopening Extensions.
 - Remove an external extension with the trash button and confirmation dialog. All of its menus disappear. Files are deleted on the next startup; saved data remains.
-- A newer version is installed alongside the old one. **Restore previous version** selects the previous installed version for the next startup.
+- A newer version is installed alongside the old one. **Restore previous version** selects the retained version, restarting automatically if a different version is loaded.
 
-Reordering and navigation visibility update immediately. DLL replacement/unloading is not performed live.
+Reordering and navigation visibility update immediately. Built-in rows show disabled trash icons; their files cannot be removed.
+New modules are loaded live; replacement/unloading of executing DLLs is not performed live.
 Disabling an already loaded menu disposes its component; module-level background services stop when HIT exits.
 If all menus of a package are disabled, its module is not loaded on the next startup.
-Enabling a package that was skipped at startup requires a restart.
+Enabling a package skipped at startup initializes it immediately.
 
 ## On-disk layout
 
@@ -105,10 +106,13 @@ the installer does not compile loose `.cs` or `.razor` files.
 IDs contain lowercase letters, digits, dots or hyphens. Menu identity is `{packageId}:{menuId}`.
 Names, translations and version updates must not change IDs. Versions use three or four numeric components.
 An update must increase the version. Reimporting identical bytes is idempotent.
+Clear old versions at the bottom of Extensions removes obsolete installed version directories.
+It preserves both the registry-selected and currently loaded versions, State and Logs; linked/locked trees are skipped.
+Deleting the previous rollback target clears its registry pointer. Cleanup and activation are serialized.
 
 ## Public SDK and services
 
-`Sdk/HIT.Sdk` is an independent .NET 8 library. Extensions reference `HIT.Sdk`, not the executable.
+`Modules/HIT.Sdk` is an independent .NET 8 library. Extensions reference `HIT.Sdk`, not the executable.
 Use the Razor SDK and `Microsoft.AspNetCore.App` framework reference for Blazor layouts.
 The module entry implements `IHitModule` with a public parameterless constructor:
 
@@ -188,18 +192,30 @@ No `.razor.css` or generated scoped stylesheet is required.
 - `@media`, `@supports`, `@font-face` and `@keyframes` are supported. `@import` and CSS nesting are rejected.
 - Use `--hit-menu-text`, `--hit-menu-muted`, `--hit-accent`, `--hit-menu-font` and the existing theme variables.
 - The global theme remains separate and can style the extension. Reduced motion remains authoritative.
-- JavaScript modules may be imported with `Api.AssetUrl(...)`; dispose references and observers with the component.
+- JavaScript modules may be imported with `"./" + Api.AssetUrl(...)`; dispose references and observers with the component.
 - The asset provider serves supported CSS/JS/JSON/image/font/audio types, not DLLs or arbitrary disk paths.
 
 Scoping prevents ordinary styling collisions; trusted .NET/JS extension code is not a sandbox.
+The host applies an extension's styles before mounting its component, preventing measurements of unstyled markup.
+For asynchronous initial loading, `data-hit-layout-pending="true"` on the root defers opening until the view removes it.
+
+`AssetUrl` returns a document-relative URL such as `extensions/dev.example.notes/1.0.0/Assets/menu.js`.
+Native JavaScript `import()` requires the explicit `./` prefix for a relative module specifier:
+
+```csharp
+var module = await JS.InvokeAsync<IJSObjectReference>("import", "./" + Api.AssetUrl("Assets/menu.js"));
+```
+
+When an extension fails, the error boundary logs the primary exception through `Api.Log` and disables that menu's settings routing.
+Disposed components must ignore delayed callbacks and must not start workers or request layout/title changes after disposal.
 
 ## Build the example and SDK
 
 From the repository root:
 
 ```powershell
-dotnet pack Sdk/HIT.Sdk/HIT.Sdk.csproj -c Release -o artifacts/sdk
-powershell -NoProfile -ExecutionPolicy Bypass -File Tools/Pack-HitMenu.ps1 -Project Examples/HIT.Example/HIT.Example.csproj
+dotnet pack Modules/HIT.Sdk/HIT.Sdk.csproj -c Release -o artifacts/sdk
+powershell -NoProfile -ExecutionPolicy Bypass -File Tools/Pack-HitMenu.ps1 -Project Modules/HIT.Example/HIT.Example.csproj
 ```
 
 The ready-to-install example is `artifacts/packages/dev.hit.example-1.0.0.hitmenu`.
@@ -209,7 +225,7 @@ It is not automatically installed into the user's profile.
 For a project outside this repository:
 
 ```powershell
-dotnet new install ./Examples/HIT.Example
+dotnet new install ./Modules/HIT.Example
 dotnet new hitmenu -n MyNotes --extensionId dev.example.notes -o ../MyNotes
 dotnet restore ../MyNotes/MyNotes.csproj --source ./artifacts/sdk
 powershell -NoProfile -ExecutionPolicy Bypass -File Tools/Pack-HitMenu.ps1 -Project ../MyNotes/MyNotes.csproj
@@ -225,15 +241,17 @@ For separate component assemblies, ensure the manifest paths match the produced 
 The installer accepts at most 64 MiB compressed, 128 MiB extracted, 2,000 entries, 20 menus per package and 100 packages.
 It rejects parent/absolute paths, Windows reserved names, links, case-insensitive collisions, incompatible contracts and unknown capabilities.
 Manifest size is limited to 64 KiB; each stylesheet is limited to 1 MiB.
-Assemblies are inspected as metadata during import. Code runs only on the following startup.
+Assemblies are inspected as metadata during import. The activation service then loads enabled new modules,
+or requests a graceful restart when a different version is already executing. The byte installer itself never executes code.
 
-Each loaded module has an AssemblyLoadContext and private service provider. SDK/framework identities are shared with HIT.
+Each loaded module has an AssemblyLoadContext and private service provider. SDK/framework identities are shared with HIT,
+including `Microsoft.JSInterop` so injected `IJSRuntime` and JavaScript object references use the host renderer's types.
 Component render failures show a local error. Startup failures are listed in Extensions and leave built-in menus usable.
 Rollback is explicit; the previous version's files remain available. User-data migration remains the extension author's responsibility.
 Unload is cooperative and deferred until exit; the host does not force garbage collection or promise to reclaim arbitrary plugin RAM.
 
 A DLL runs with HIT's privileges. Capabilities gate the public APIs but cannot stop a DLL from calling the OS directly.
-Process isolation, a hard memory quota, live DLL replacement and language-pack installation are future work.
+Process isolation, a hard memory quota, live replacement of executing DLLs and language-pack installation are future work.
 The current English UI catalog is described in [LOCALIZATION.md](LOCALIZATION.md).
 
 ## Manifest field reference
@@ -264,7 +282,7 @@ IDs, compatibility and limits are validated before executing package code. Metad
 ## Validation
 
 ```powershell
-dotnet run --project Tests/HIT.Extensions.Tests/HIT.Extensions.Tests.csproj
+dotnet run --project Modules/HIT.Example.Tests/HIT.Example.Tests.csproj
 node Tests/browser/extensions.mjs
 ```
 

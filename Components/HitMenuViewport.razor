@@ -17,7 +17,7 @@
     private IJSObjectReference? _module;
     private bool _disposed;
     private string ScaleStyle => $"--hit-menu-scale-x:{Factor(ScaleX)};--hit-menu-scale-y:{Factor(ScaleY)}";
-    private static string Factor(int value) => (Math.Clamp(value, 75, 200) / 100d).ToString("0.##", CultureInfo.InvariantCulture);
+    private static string Factor(int value) => (Math.Clamp(value, 25, 200) / 100d).ToString("0.##", CultureInfo.InvariantCulture);
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {

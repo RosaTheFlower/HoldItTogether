@@ -1,8 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk.Razor">
   <PropertyGroup><TargetFramework>net8.0</TargetFramework><ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable><GenerateDependencyFile>true</GenerateDependencyFile></PropertyGroup>
   <ItemGroup>
-    <ProjectReference Include="../../Sdk/HIT.Sdk/HIT.Sdk.csproj" Condition="Exists('../../Sdk/HIT.Sdk/HIT.Sdk.csproj')" />
-    <PackageReference Include="HIT.Sdk" Version="1.0.1" Condition="!Exists('../../Sdk/HIT.Sdk/HIT.Sdk.csproj')" />
+    <ProjectReference Include="../HIT.Sdk/HIT.Sdk.csproj" Condition="Exists('../HIT.Sdk/HIT.Sdk.csproj')" />
+    <PackageReference Include="HIT.Sdk" Version="1.0.2" Condition="!Exists('../HIT.Sdk/HIT.Sdk.csproj')" />
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>
 </Project>

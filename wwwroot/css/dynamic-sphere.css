@@ -13,6 +13,30 @@
     vertical-align: top;
     line-height: normal;
 }
+.sphere-area[data-hit-geometry-pending="true"] { visibility:hidden; }
+.sphere-area .dynamic-sphere[data-hit-compact-motion="true"] {
+    transition-duration:820ms,820ms,860ms,650ms,700ms;
+}
+.sphere-area .dynamic-sphere[data-hit-drag-sizing="true"] {
+    width:var(--sphere-drag-width);height:var(--sphere-drag-height);
+    transition-property:background-color,box-shadow;
+}
+.sphere-area[data-hit-canvas="true"] {
+    box-sizing: border-box;
+    width: var(--sphere-canvas-width);
+    height: var(--sphere-canvas-height);
+    justify-items: var(--sphere-align-x, center);
+    align-items: var(--sphere-align-y, center);
+}
+/* Keep the active surface opaque even when a personal theme uses an alpha color. */
+.sphere-area[data-hit-canvas="true"] > .dynamic-sphere.is-open {
+    background-color: var(--hit-active-surface, var(--hit-open-background, #17191e));
+    background-color: rgb(from var(--hit-active-surface, var(--hit-open-background, #17191e)) r g b / 1);
+}
+.sphere-area .dynamic-sphere.is-open[data-hit-opening-pending="true"] {
+    width: var(--sphere-pending-width, 56px);
+    height: var(--sphere-pending-height, 56px);
+}
 .dynamic-sphere {
 
     position: relative;
@@ -155,26 +179,21 @@
     inset: 0;
     min-width: 0;
     opacity: 0;
-    filter: blur(5px);
-    transform: translate3d(var(--sphere-enter-x, 0px), var(--sphere-enter-y, 0px), 0) scale(0.975);
+    filter: none;
+    transform: none;
     transform-origin: var(--sphere-origin-x, 50%) var(--sphere-origin-y, 50%);
     pointer-events: none;
-    transition:
-        opacity 130ms ease,
-        filter 160ms ease,
-        transform 280ms var(--sphere-ease);
+    transition: opacity 130ms ease;
 }
 
 .is-open .sphere-content {
     opacity: 1;
-    filter: blur(0);
-    transform: translate3d(0, 0, 0) scale(1);
+    filter: none;
+    transform: none;
     pointer-events: auto;
-    transition:
-        opacity 380ms ease 100ms,
-        filter 620ms var(--sphere-ease) 70ms,
-        transform 760ms var(--sphere-ease) 60ms;
+    transition: opacity 320ms ease 80ms;
 }
+.sphere-area .dynamic-sphere[data-hit-opening-pending="true"] .sphere-content { opacity: 0; pointer-events: none; }
 
 /* Fast refractive separation resolves into a quiet, sharp neutral surface. */
 @keyframes sphere-prism-reveal {

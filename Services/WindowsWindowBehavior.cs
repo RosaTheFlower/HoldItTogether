@@ -23,11 +23,14 @@ internal sealed class WindowsWindowBehavior
     private const uint DoNotActivate = 0x0010;
     private const uint FrameChanged = 0x0020;
     private const nuint SubclassId = 1;
+    private const nuint ForceTopmostTimer = 0x484954;
 
     private readonly nint _handle;
     private readonly SubclassCallback _callback;
     private readonly WindowsTrayIcon? _tray;
     private bool _alwaysOnTop;
+    private bool _forceAlwaysOnTop;
+    private (int Left,int Top,int Right,int Bottom)? _contentRegion;
 
     public WindowsWindowBehavior(nint handle, bool alwaysOnTop = true)
     {
@@ -85,17 +88,23 @@ internal sealed class WindowsWindowBehavior
         return hit != 0 && GetAncestor(hit, 2) == _handle; // GA_ROOT
     }
 
-    public void ApplySettings(bool alwaysOnTop, bool systemTray)
+    public void ApplySettings(bool alwaysOnTop, bool systemTray, bool forceAlwaysOnTop = false)
     {
         _tray?.SetEnabled(systemTray);
-        if (_alwaysOnTop == alwaysOnTop) return;
-
-        if (!SetWindowPos(_handle, new nint(alwaysOnTop ? -1 : -2), 0, 0, 0, 0,
+        if (_alwaysOnTop != alwaysOnTop && !SetWindowPos(_handle, new nint(alwaysOnTop ? -1 : -2), 0, 0, 0, 0,
             NoMove | NoSize | DoNotActivate))
         {
             throw new Win32Exception(Marshal.GetLastWin32Error());
         }
         _alwaysOnTop = alwaysOnTop;
+        var force = alwaysOnTop && forceAlwaysOnTop;
+        if (force == _forceAlwaysOnTop) return;
+        if (force)
+        {
+            if (SetTimer(_handle, ForceTopmostTimer, 500, 0) == 0) throw new Win32Exception(Marshal.GetLastWin32Error());
+        }
+        else KillTimer(_handle, ForceTopmostTimer);
+        _forceAlwaysOnTop = force;
     }
 
     public void SetBounds(int left, int top, int width, int height)
@@ -108,9 +117,40 @@ internal sealed class WindowsWindowBehavior
         }
     }
 
+    public void SetContentRegion(double left, double top, double width, double height, double radius)
+    {
+        var bounds = ((int)Math.Floor(left),(int)Math.Floor(top),(int)Math.Ceiling(left+width),
+            (int)Math.Ceiling(top+height));
+        if (_contentRegion == bounds) return;
+        // Keep Chromium's antialiased corners intact. A binary GDI round mask clipped their edge pixels.
+        var region = CreateRectRgn(bounds.Item1,bounds.Item2,bounds.Item3,bounds.Item4);
+        if (region == 0) throw new Win32Exception(Marshal.GetLastWin32Error());
+        // Windows owns a successfully applied region. Transparent canvas/padding never captures input.
+        if (SetWindowRgn(_handle,region,false) == 0)
+        {
+            var error=Marshal.GetLastWin32Error();
+            DeleteObject(region);
+            throw new Win32Exception(error);
+        }
+        _contentRegion = bounds;
+    }
+
     public static Rectangle? GetWorkArea(Point reference)
     {
         var monitor = MonitorFromPoint(reference, 2); // MONITOR_DEFAULTTONEAREST
+        return ReadWorkArea(monitor);
+    }
+    public static Rectangle? GetPrimaryWorkArea()=>ReadWorkArea(MonitorFromWindow(0,1));
+    public static Rectangle[] GetWorkAreas()
+    {
+        var areas=new List<Rectangle>();
+        MonitorCallback callback=(nint monitor,nint context,ref Rect bounds,nint state)=>{
+            if(ReadWorkArea(monitor) is { } area)areas.Add(area);return true;
+        };
+        EnumDisplayMonitors(0,0,callback,0);GC.KeepAlive(callback);return areas.ToArray();
+    }
+    private static Rectangle? ReadWorkArea(nint monitor)
+    {
         var info = new MonitorInfo { Size = (uint)Marshal.SizeOf<MonitorInfo>() };
 
         if (monitor == 0 || !GetMonitorInfo(monitor, ref info))
@@ -135,6 +175,10 @@ internal sealed class WindowsWindowBehavior
 
         switch (message)
         {
+            case 0x0113 when wParam == ForceTopmostTimer: // WM_TIMER, on the native UI thread.
+                if (_forceAlwaysOnTop && _alwaysOnTop && IsVisible && GetAncestor(GetForegroundWindow(), 2) != _handle)
+                    SetWindowPos(_handle, new nint(-1), 0, 0, 0, 0, NoMove | NoSize | DoNotActivate);
+                return 0;
             case 0x0014: // WM_ERASEBKGND: zero-alpha black is transparent on the DWM frame.
                 if (GetClientRect(handle, out var bounds))
                 {
@@ -163,6 +207,8 @@ internal sealed class WindowsWindowBehavior
                 break;
 
             case 0x0082: // WM_NCDESTROY: detach while this managed delegate is still alive.
+                KillTimer(handle, ForceTopmostTimer);
+                _forceAlwaysOnTop = false;
                 _tray?.Dispose();
                 RemoveWindowSubclass(handle, _callback, SubclassId);
                 break;
@@ -206,6 +252,12 @@ internal sealed class WindowsWindowBehavior
     [UnmanagedFunctionPointer(CallingConvention.Winapi)]
     private delegate nint SubclassCallback(
         nint handle, uint message, nuint wParam, nint lParam, nuint subclassId, nuint referenceData);
+    private delegate bool MonitorCallback(nint monitor,nint context,ref Rect bounds,nint state);
+    [DllImport("user32.dll")]
+    [return:MarshalAs(UnmanagedType.Bool)]
+    private static extern bool EnumDisplayMonitors(nint context,nint clip,MonitorCallback callback,nint state);
+    [DllImport("user32.dll")]
+    private static extern nint MonitorFromWindow(nint window,uint flags);
 
     [DllImport("comctl32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
@@ -264,6 +316,13 @@ internal sealed class WindowsWindowBehavior
 
     [DllImport("user32.dll")]
     private static extern nint WindowFromPoint(Point point);
+    [DllImport("user32.dll", SetLastError = true)]
+    private static extern nuint SetTimer(nint window, nuint id, uint milliseconds, nint callback);
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool KillTimer(nint window, nuint id);
+    [DllImport("user32.dll")]
+    private static extern nint GetForegroundWindow();
 
     [DllImport("user32.dll")]
     private static extern nint GetAncestor(nint window, uint flags);
@@ -274,4 +333,11 @@ internal sealed class WindowsWindowBehavior
 
     [DllImport("gdi32.dll")]
     private static extern nint GetStockObject(int index);
+    [DllImport("gdi32.dll",SetLastError=true)]
+    private static extern nint CreateRectRgn(int left,int top,int right,int bottom);
+    [DllImport("user32.dll",SetLastError=true)]
+    private static extern int SetWindowRgn(nint window,nint region,[MarshalAs(UnmanagedType.Bool)] bool redraw);
+    [DllImport("gdi32.dll")]
+    [return:MarshalAs(UnmanagedType.Bool)]
+    private static extern bool DeleteObject(nint item);
 }

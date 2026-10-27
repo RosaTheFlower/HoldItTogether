@@ -1,0 +1,103 @@
+@using System.Globalization
+@using HoldItTogether.Services.Settings
+@using HoldItTogether.Services.HitMenus
+@implements IDisposable
+@implements IHitMenuSettings
+@inject HoldItTogether.Services.Extensions.ExtensionUi Extensions
+@inject HitSettingsService Settings
+
+<section class="settings-menu" data-hit-view="@_view.ToString().ToLowerInvariant()" data-no-drag @onclick:stopPropagation="true" @onkeydown="HandleKey" @onkeydown:stopPropagation="true">
+@if (_view == SettingsView.Extensions)
+{
+    <HoldItTogether.Components.Extensions.ExtensionsView BackRequested="CloseSettingsAsync" />
+}
+else if (_view == SettingsView.Themes)
+{
+    <HitThemePicker Detailed="true" BackRequested="CloseSettingsAsync" />
+}
+else if (_view == SettingsView.Info)
+{
+    <HoldItTogether.Components.Settings.HitInfoView BackRequested="CloseSettingsAsync" />
+}
+else if (_view == SettingsView.Placement)
+{
+    <HoldItTogether.Components.Settings.WindowPlacementView Settings="Settings.Current" Changed="SavePlacement" BackRequested="CloseSettingsAsync" />
+}
+else if (_view == SettingsView.Scroll)
+{
+    <button type="button" class="hit-back" @onclick="CloseSettingsAsync"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m11 5-5 5 5 5M6 10h10" /></svg>Settings</button>
+    <label class="setting-row"><strong>Cooldown</strong><input class="hit-switch" type="checkbox" role="switch" aria-label="Enable scroll cooldown" @bind:get="Settings.Current.ScrollCooldownEnabled" @bind:set="SetCooldown" /></label>
+    <label class="range-row" @onwheel:stopPropagation="true"><span>Sensitivity</span>
+        <input type="range" min="0.25" max="3" step="0.25" aria-label="Scroll sensitivity" value="@Sensitivity.ToString(CultureInfo.InvariantCulture)" @oninput="PreviewSensitivity" @onchange="ChangeSensitivity" /><output>@Sensitivity.ToString("0.##", CultureInfo.InvariantCulture)×</output></label>
+    <label class="range-row" @onwheel:stopPropagation="true"><span>Pause</span>
+        <input type="range" min="0" max="2000" step="50" aria-label="Cooldown duration" disabled="@(!Settings.Current.ScrollCooldownEnabled)" value="@Cooldown" @oninput="PreviewCooldown" @onchange="ChangeCooldown" /><output>@(Settings.Current.ScrollCooldownEnabled ? $"{Cooldown} ms" : "No cooldown")</output></label>
+}
+else
+{
+    <label class="setting-row"><strong>Always on Top</strong><input class="switch" type="checkbox" role="switch" aria-label="Always on Top" @bind:get="Settings.Current.AlwaysOnTop" @bind:set="SetAlwaysOnTop" /></label>
+    @if (Settings.Current.AlwaysOnTop)
+    {
+        <label class="setting-row setting-suboption">
+            <span class="setting-experimental" title="Experimental. Use at your own risk!"><span class="setting-danger-icon" title="Experimental. Use at your own risk!" aria-hidden="true"><svg viewBox="0 0 20 20"><path d="m10 2 8 15H2Z" /><path d="M10 7v4m0 3v.1" /></svg></span><strong>Force Always on Top</strong></span>
+            <input class="switch" type="checkbox" role="switch" aria-label="Force Always on Top" aria-description="Experimental. Use at your own risk!" disabled="@(!OperatingSystem.IsWindows())" @bind:get="Settings.Current.ForceAlwaysOnTop" @bind:set="SetForceAlwaysOnTop" />
+        </label>
+    }
+    <label class="setting-row"><strong>System Tray</strong><input class="switch" type="checkbox" role="switch" aria-label="System Tray" disabled="@(!OperatingSystem.IsWindows())" @bind:get="Settings.Current.SystemTray" @bind:set="SetSystemTray" /></label>
+    <label class="setting-row"><strong>Remove animations</strong><input class="switch" type="checkbox" role="switch" aria-label="Remove animations" @bind:get="Settings.Current.RemoveAnimations" @bind:set="SetRemoveAnimations" /></label>
+    <label class="setting-row"><strong>Show tooltips</strong><input class="switch" type="checkbox" role="switch" aria-label="Show tooltips" @bind:get="Settings.Current.ShowTooltips" @bind:set="SetShowTooltips" /></label>
+    <label class="setting-row range-row setting-compact-delay" @onwheel:stopPropagation="true"><span><strong>Compact after</strong><small>After the pointer leaves HIT</small></span>
+        <input type="range" min="0" max="10000" step="500" aria-label="Menu compact delay" value="@Settings.Current.MenuCompactDelayMs" @onchange="SetCompactDelay" /><output>@(Settings.Current.MenuCompactDelayMs == 0 ? "Immediately" : $"{Settings.Current.MenuCompactDelayMs / 1000d:0.#} s")</output></label>
+    <button type="button" class="hit-link-row" aria-label="Open Window placement" @onclick="() => Open(SettingsView.Placement)"><span>Window placement</span><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m8 5 5 5-5 5" /></svg></button>
+    <button type="button" class="hit-link-row" aria-label="Open Scroll speed" @onclick="() => Open(SettingsView.Scroll)"><span>Scroll speed</span><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m8 5 5 5-5 5" /></svg></button>
+    <button type="button" class="hit-link-row" aria-label="Open Info" @onclick="() => Open(SettingsView.Info)"><span>Info</span><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m8 5 5 5-5 5" /></svg></button>
+    <button type="button" class="hit-link-row settings-extensions-link" aria-label="Open Extensions" @onclick="OpenExtensions"><span>Extensions</span><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m8 5 5 5-5 5" /></svg></button>
+    <div class="settings-theme-row"><button type="button" class="hit-link-row" aria-label="Manage themes" @onclick="() => Open(SettingsView.Themes)"><span>Themes</span><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m8 5 5 5-5 5" /></svg></button><HitThemePicker /></div>
+}
+@if ((_error ?? Settings.RuntimeError) is { } error) { <p class="settings-error" role="alert">@error</p> }
+</section>
+
+@code {
+    [CascadingParameter(Name = "HitMenu")] public HitMenuContext? MenuContext { get; set; }
+    private enum SettingsView { Main, Scroll, Info, Extensions, Themes, Placement }
+    private SettingsView _view;
+    private double? _sensitivityPreview;
+    private int? _cooldownPreview;
+    private string? _error, _title;
+    private bool _disposed;
+    private double Sensitivity => _sensitivityPreview ?? Settings.Current.ScrollSensitivity;
+    private int Cooldown => _cooldownPreview ?? Settings.Current.ScrollCooldownMs;
+    public bool IsSettingsOpen => _view != SettingsView.Main;
+    public Task OpenSettingsAsync() => Task.CompletedTask;
+    public Task CloseSettingsAsync() => InvokeAsync(() => { _view = SettingsView.Main; Extensions.ShowThemes = Extensions.ShowExtensions = false; StateHasChanged(); });
+    private void Open(SettingsView view) { _view = view; Extensions.ShowExtensions = view == SettingsView.Extensions; Extensions.ShowThemes = view == SettingsView.Themes; }
+    private void OpenExtensions() => Open(SettingsView.Extensions);
+    private void Requested() { if (!_disposed) _ = InvokeAsync(() => { Open(Extensions.ShowThemes ? SettingsView.Themes : SettingsView.Extensions); StateHasChanged(); }); }
+    protected override void OnInitialized() { Settings.Changed += Refresh; Extensions.OpenRequested += Requested; _view = Extensions.ShowThemes ? SettingsView.Themes : Extensions.ShowExtensions ? SettingsView.Extensions : SettingsView.Main; }
+    private void Refresh() { if (!_disposed) _ = InvokeAsync(StateHasChanged); }
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (MenuContext?.IsActive != true) { _title = null; return; }
+        var title = _view switch { SettingsView.Placement=>"Window placement",SettingsView.Scroll => "Scroll speed", SettingsView.Info => "Info", SettingsView.Themes => "Themes", SettingsView.Extensions => "Extensions", _ => "Settings" };
+        if (_title != title) { _title = title; await MenuContext.TitleRequested.InvokeAsync(title); }
+    }
+    private void Save(Func<HitSettings, HitSettings> update)
+    {
+        _error = null;
+        try { Settings.Update(update); }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException or InvalidOperationException or System.ComponentModel.Win32Exception) { _error = "Could not apply this change. Please try again."; }
+    }
+    private void SetAlwaysOnTop(bool enabled) => Save(value => value with { AlwaysOnTop = enabled });
+    private void SetForceAlwaysOnTop(bool enabled) => Save(value => value with { ForceAlwaysOnTop = enabled });
+    private void SetCompactDelay(ChangeEventArgs args) { if (int.TryParse(args.Value?.ToString(),out var number)) Save(value => value with { MenuCompactDelayMs = number }); }
+    private void SavePlacement(HitSettings updated)=>Save(value=>value with {WindowMagnetize=updated.WindowMagnetize,WindowAllowOtherMonitors=updated.WindowAllowOtherMonitors,WindowEdgeReachPercent=updated.WindowEdgeReachPercent});
+    private void SetSystemTray(bool enabled) => Save(value => value with { SystemTray = enabled });
+    private void SetShowTooltips(bool enabled) => Save(value => value with { ShowTooltips = enabled });
+    private void SetRemoveAnimations(bool enabled) => Save(value => value with { RemoveAnimations = enabled });
+    private void SetCooldown(bool enabled) => Save(value => value with { ScrollCooldownEnabled = enabled });
+    private void PreviewSensitivity(ChangeEventArgs args) { if (double.TryParse(args.Value?.ToString(), CultureInfo.InvariantCulture, out var number)) _sensitivityPreview = Math.Clamp(number, .25, 3); }
+    private void ChangeSensitivity(ChangeEventArgs args) { PreviewSensitivity(args); var number = Sensitivity; _sensitivityPreview = null; Save(value => value with { ScrollSensitivity = number }); }
+    private void PreviewCooldown(ChangeEventArgs args) { if (int.TryParse(args.Value?.ToString(), out var number)) _cooldownPreview = Math.Clamp(number, 0, 2000); }
+    private void ChangeCooldown(ChangeEventArgs args) { PreviewCooldown(args); var number = Cooldown; _cooldownPreview = null; Save(value => value with { ScrollCooldownMs = number }); }
+    private Task HandleKey(KeyboardEventArgs args) => args.Key == "Escape" ? IsSettingsOpen ? CloseSettingsAsync() : MenuContext?.CloseRequested.InvokeAsync() ?? Task.CompletedTask : Task.CompletedTask;
+    public void Dispose() { _disposed = true; Settings.Changed -= Refresh; Extensions.OpenRequested -= Requested; }
+}

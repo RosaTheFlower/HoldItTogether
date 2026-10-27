@@ -1,0 +1,82 @@
+/* Shared controls: one geometry and one theme-derived palette across all menus. */
+.sphere-area .dynamic-sphere .hit-menu-panel {
+    --hit-control-text: var(--audio-foreground, var(--hit-menu-text, var(--hit-text)));
+    --hit-control-muted: var(--audio-muted, var(--hit-menu-muted, var(--hit-muted)));
+    --hit-control-accent: var(--audio-accent, var(--hit-accent));
+    --hit-control-surface: var(--audio-surface, var(--hit-open-background));
+}
+.sphere-area .dynamic-sphere .audio-menu { --hit-control-text: var(--audio-foreground); --hit-control-muted: var(--audio-muted); --hit-control-accent: var(--audio-accent); --hit-control-surface: var(--audio-surface); }
+.sphere-area *, .sphere-area dialog { scrollbar-width: none !important; }
+.sphere-area *::-webkit-scrollbar { display: none !important; width: 0; height: 0; }
+.sphere-area .dynamic-sphere .hit-menu-panel :is(.hit-setting-row,.setting-row,.audio-setting-row,.appearance-global,.clock-setting-row,.chess-setting-row) {
+    display: flex; align-items: center; justify-content: space-between; gap: 18px;
+    min-height: 44px; padding: 10px 0; border-bottom: 1px solid color-mix(in srgb,var(--hit-control-muted) 10%,transparent);
+    color: var(--hit-control-text); font-size: 12px; line-height: 1.4;
+}
+.sphere-area .dynamic-sphere .hit-menu-panel :is(.hit-setting-row,.setting-row) strong { font-size: 12px; font-weight: 500; }
+.sphere-area .dynamic-sphere .hit-menu-panel :is(.hit-setting-row,.audio-setting-row,.clock-setting-row) small {
+    display: block; margin-top: 4px; color: var(--hit-control-muted); font-size: 10px; font-weight: 400;
+}
+.sphere-area .dynamic-sphere .hit-menu-panel :is(.hit-switch,.switch,.appearance-switch,.clock-switch,.extension-switch,.chess-switch) {
+    appearance: none; position: relative; flex: 0 0 34px; width: 34px; height: 20px; margin: 0;
+    border: 1px solid color-mix(in srgb,var(--hit-control-muted) 22%,transparent); border-radius: 12px;
+    background: color-mix(in srgb,var(--hit-control-muted) 8%,transparent); cursor: pointer;
+}
+.sphere-area .dynamic-sphere .hit-menu-panel :is(.hit-switch,.switch,.appearance-switch,.clock-switch,.extension-switch,.chess-switch)::after {
+    content: ''; position: absolute; left: 3px; top: 3px; width: 12px; height: 12px; border-radius: 50%;
+    background: var(--hit-control-muted); transition: transform 180ms ease; transform: none;
+}
+.sphere-area .dynamic-sphere .hit-menu-panel :is(.hit-switch,.switch,.appearance-switch,.clock-switch,.extension-switch,.chess-switch):checked {
+    background: var(--hit-control-accent); border-color: transparent;
+}
+.sphere-area .dynamic-sphere .hit-menu-panel :is(.hit-switch,.switch,.appearance-switch,.clock-switch,.extension-switch,.chess-switch):checked::after {
+    background: var(--hit-control-surface); transform: translateX(14px);
+}
+.sphere-area .dynamic-sphere .hit-menu-panel :is(.hit-button,.clock-button,.chess-button,.theme-buttons button,.theme-button,.dialog-actions button,.extension-install) {
+    display: inline-flex; align-items: center; justify-content: center; min-height: 32px; padding: 7px 13px;
+    border: 1px solid color-mix(in srgb,var(--hit-control-muted) 13%,transparent); border-radius: 8px;
+    background-color: color-mix(in srgb,var(--hit-control-text) 3%,transparent); color: var(--hit-control-muted);
+    font-family: inherit; font-size: 11px; line-height: 1.4; cursor: pointer; text-decoration: none;
+    transition: color 180ms ease, background-color 180ms ease;
+}
+.sphere-area .dynamic-sphere .hit-menu-panel :is(.hit-button,.clock-button,.chess-button,.theme-buttons button,.theme-button,.dialog-actions button):hover:not(:disabled) {
+    color: var(--hit-control-text); background-color: color-mix(in srgb,var(--hit-control-text) 6%,transparent);
+}
+.sphere-area .dynamic-sphere .hit-menu-panel :is(.hit-button,.clock-button,.chess-button,.dialog-actions button).is-primary {
+    color: var(--hit-control-surface); background-color: var(--hit-control-accent); border-color: transparent;
+}
+.sphere-area .dynamic-sphere .hit-menu-panel :is(.hit-button,.dialog-actions button).is-danger { color: var(--hit-error,#c76b6b); }
+.sphere-area .dynamic-sphere .hit-menu-panel :is(button,input,select):disabled { cursor: default; }
+.sphere-area .dynamic-sphere .hit-menu-panel :is(.hit-button,.hit-switch,.switch,.appearance-switch,.clock-switch,.extension-switch,.chess-switch):disabled { opacity: .35; }
+.sphere-area .dynamic-sphere .hit-menu-panel :is(button,input,select,a):focus-visible { outline: 1px solid var(--hit-control-accent); outline-offset: 3px; }
+.sphere-area .dynamic-sphere .hit-menu-panel :is(.hit-back,.extension-back,.clock-back,.lyrics-back,.chess-back) {
+    display: inline-flex; align-items: center; gap: 6px; padding: 4px 0; border: 0; background: transparent;
+    color: var(--hit-control-muted); font-family: inherit; font-size: 10px; font-weight: 400; cursor: pointer;
+}
+.sphere-area .dynamic-sphere .hit-menu-panel :is(.hit-back,.hit-link-row) svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+.sphere-area .dynamic-sphere .hit-menu-panel .hit-link-row { display: flex; align-items: center; justify-content: space-between; width: 100%; min-height: 46px; gap: 12px; padding: 10px 0; border: 0; border-bottom: 1px solid color-mix(in srgb,var(--hit-control-muted) 10%,transparent); background: transparent; color: var(--hit-control-text); font: 500 12px var(--hit-menu-font,var(--hit-font)); cursor: pointer; text-align: left; }
+.sphere-area .dynamic-sphere .hit-menu-panel .hit-link-row > svg { color: var(--hit-control-muted); flex: 0 0 16px; }
+.sphere-area .dynamic-sphere .hit-menu-panel .hit-link-row > span { min-width:0; }
+.sphere-area .dynamic-sphere .hit-menu-panel .hit-link-row small { display:block; margin-top:5px; font-size:10px; font-weight:400; line-height:1.6; }
+.sphere-area .dynamic-sphere .hit-menu-panel select { color: var(--hit-control-text); background-color: var(--hit-control-surface); border-color: color-mix(in srgb,var(--hit-control-muted) 18%,transparent); border-radius: 8px; padding: 6px 9px; font-size: 11px; }
+.sphere-area .dynamic-sphere .hit-menu-panel input[type=range] { accent-color: var(--hit-control-accent); }
+.sphere-area .dynamic-sphere .hit-menu-panel .hit-muted { color: var(--hit-control-muted); font-size: 10px; line-height: 1.6; }
+.sphere-area .dynamic-sphere .hit-menu-panel dialog.hit-confirm {
+    box-sizing: border-box; width: min(350px,calc(100% - 32px)); max-width: 350px; max-height: calc(100% - 32px);
+    padding: 22px; border: 1px solid color-mix(in srgb,var(--hit-control-muted) 18%,transparent); border-radius: 16px;
+    background-color: var(--hit-control-surface); color: var(--hit-control-text); font-family: var(--hit-menu-font,var(--hit-font));
+    box-shadow: 0 10px 32px #0002; overflow: auto;
+    position:fixed; inset:auto; margin:0;
+    left:var(--hit-dialog-left,50%); top:var(--hit-dialog-top,50%); transform:translate(-50%,-50%);
+    width:min(350px,var(--hit-dialog-max-width,calc(100% - 32px)));
+    max-height:var(--hit-dialog-max-height,calc(100% - 32px));
+}
+.sphere-area .dynamic-sphere .hit-menu-panel dialog.hit-confirm[open] { display: block; }
+.sphere-area .dynamic-sphere .hit-menu-panel dialog.hit-confirm:not([open]) { display: none; }
+.sphere-area .dynamic-sphere .hit-menu-panel dialog.hit-confirm::backdrop { background: transparent; backdrop-filter: none; }
+.sphere-area .dynamic-sphere .hit-menu-panel dialog.hit-confirm h2 { margin: 0 0 8px; font-size: 14px; font-weight: 600; color: var(--hit-control-text); }
+.sphere-area .dynamic-sphere .hit-menu-panel dialog.hit-confirm p { margin: 0; color: var(--hit-control-muted); font-size: 11px; line-height: 1.6; overflow-wrap: anywhere; }
+.sphere-area .dynamic-sphere .hit-menu-panel .dialog-actions { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 8px; margin-top: 20px; }
+.hit-scroll-hint { mask-image: linear-gradient(to bottom,transparent,#000 var(--hit-overflow-top,0px),#000 calc(100% - var(--hit-overflow-bottom,0px)),transparent); }
+.hit-scroll-hint[hidden] { display: none; }
+@media(prefers-reduced-motion:reduce) { .sphere-area .dynamic-sphere .hit-menu-panel :is(.hit-button,.hit-switch::after,.switch::after,.appearance-switch::after,.clock-switch::after,.extension-switch::after,.chess-switch::after) { transition: none; } }

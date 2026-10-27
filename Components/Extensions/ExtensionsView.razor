@@ -7,9 +7,10 @@
 @inject ExtensionRuntime Runtime
 @inject HitMenuCatalog Catalog
 @inject ExtensionUi Ui
+@inject ExtensionActivationService Activation
 @inject IJSRuntime JS
 
-<section class="extensions-view" data-no-drag @onclick:stopPropagation="true" @onwheel:stopPropagation="true"
+<section @ref="_root" class="extensions-view" data-no-drag @onclick:stopPropagation="true" @onwheel:stopPropagation="true"
          @oncontextmenu="Back" @oncontextmenu:preventDefault="true" @oncontextmenu:stopPropagation="true"
          @onkeydown="HandleKey" @onkeydown:stopPropagation="true">
     <div class="extensions-toolbar">
@@ -35,11 +36,9 @@
             var locked = item.Id == HitMenuCatalog.SettingsId;
             var package = Store.State.Packages.FirstOrDefault(package => package.Manifest.Id == item.ExtensionId);
             var enabled = Store.IsEnabled(item.Id);
-            <div @key="item.Id" class="extension-row @(_dragging == item.Id ? "is-dragging" : "") @(!enabled ? "is-disabled" : "")"
-                 role="listitem" draggable="@(!locked ? "true" : "false")" data-extension-id="@item.Id"
-                 @ondragstart="() => _dragging = item.Id" @ondragend="() => _dragging = null"
-                 @ondragover:preventDefault="true" @ondrop="() => Drop(item.Id)" @ondrop:stopPropagation="true">
-                <span class="extension-grip" aria-hidden="true">@(locked ? "·" : "⠿")</span>
+            <div @key="item.Id" class="extension-row @(!enabled ? "is-disabled" : "")"
+                 role="listitem" data-extension-id="@item.Id" data-order-locked="@(locked ? "true" : "false")">
+                <button type="button" class="extension-grip" disabled="@locked" aria-label="@($"Drag {item.Name} to reorder")">@(locked ? "·" : "⠿")</button>
                 <div class="extension-identity">
                     <strong>@item.Name</strong>
                     <span>@(builtin ? Text.Get("Built-in") : package?.Manifest.Name + " · " + package?.Manifest.Version)</span>
@@ -47,8 +46,8 @@
                     { <span>@Text.Get("Disabled. Restart to stop extension services.")</span> }
                     @if (item.ExtensionId is { } extensionId && Runtime.Errors.TryGetValue(extensionId, out var failure))
                     { <span class="extension-failure">@failure</span> }
-                    else if (!builtin && (item.ComponentType is null || Runtime.LoadedVersions.GetValueOrDefault(item.ExtensionId!) != package?.Manifest.Version))
-                    { <span>@Text.Get("Restart HIT to activate")</span> }
+                    else if (!builtin && item.ComponentType is null)
+                    { <span>@Text.Get("Enable to activate")</span> }
                     @if (package?.PreviousVersion is not null)
                     {
                         <button type="button" class="extension-rollback" @onclick="() => Restore(package.Manifest.Id)">@Text.Get("Restore previous version")</button>
@@ -59,25 +58,23 @@
                     <button type="button" class="extension-icon" disabled="@(locked || IsLast(item.Id))" title="@Text.Get("Move down")" aria-label="@($"Move {item.Name} down")" @onclick="() => Move(item.Id, 1)">↓</button>
                     <input class="extension-switch" type="checkbox" role="switch" checked="@(locked || enabled)" disabled="@locked"
                            aria-label="@($"Enable {item.Name}")" @onchange="args => Enable(item.Id, args.Value is true)" />
-                    @if (!builtin)
-                    {
-                        <button type="button" class="extension-icon" title="@Text.Get("Remove extension")" aria-label="@($"Remove {package?.Manifest.Name}")" @onclick="() => AskRemove(package!)">
+                        <button type="button" class="extension-icon" disabled="@builtin" title="@(builtin ? "Built-in menus cannot be removed" : "Remove extension")" aria-label="@($"Remove {item.Name}")" @onclick="() => AskRemove(package!)">
                             <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 6h12M8 3h4M6 6l1 11h6l1-11M9 9v5m2-5v5" /></svg>
                         </button>
-                    }
                 </div>
             </div>
         }
     </div>
     @if (Store.State.Packages.Any(package => package.PendingDelete))
     { <p class="extensions-hint">@Text.Get("Removed extensions will be cleaned up when HIT restarts. Their saved data is kept.")</p> }
-    <dialog @ref="_dialog" class="theme-delete-dialog extension-dialog" aria-labelledby="extension-delete-title"
-            @oncontextmenu:stopPropagation="true" @onwheel:stopPropagation="true" @onclick:stopPropagation="true">
+    <button type="button" class="hit-button extensions-clear" aria-label="Clear old versions" disabled="@_busy" @onclick="ClearOldVersions">Clear old versions</button>
+    <dialog @ref="_dialog" class="theme-delete-dialog extension-dialog hit-confirm" aria-labelledby="extension-delete-title" @oncancel="CancelRemove"
+            @oncontextmenu="CancelRemove" @oncontextmenu:preventDefault="true" @oncontextmenu:stopPropagation="true" @onwheel:stopPropagation="true" @onclick:stopPropagation="true">
         <h2 id="extension-delete-title">@Text.Get("Remove extension?")</h2>
         <p>@_pending?.Manifest.Name and all its menus will be removed. Saved data will be kept.</p>
         <div class="dialog-actions">
             <button type="button" data-dialog-cancel @onclick="CancelRemove">@Text.Get("Cancel")</button>
-            <button type="button" class="confirm-delete" @onclick="ConfirmRemove">@Text.Get("Remove")</button>
+            <button type="button" class="is-primary" @onclick="ConfirmRemove">@Text.Get("Remove")</button>
         </div>
     </dialog>
 </section>
@@ -86,10 +83,12 @@
     [Parameter] public EventCallback BackRequested { get; set; }
     private readonly CancellationTokenSource _lifetime = new();
     private bool _busy, _disposed, _dialogOpen;
-    private string? _dragging;
     private InstalledExtension? _pending;
     private ElementReference _dialog;
+    private ElementReference _root;
     private IJSObjectReference? _module;
+    private IJSObjectReference? _orderModule;
+    private DotNetObjectReference<ExtensionsView>? _reference;
     protected override void OnInitialized() { Store.Changed += Refresh; Ui.Changed += Refresh; }
     private void Refresh() { if (!_disposed) _ = InvokeAsync(StateHasChanged); }
     private Task Back() => BackRequested.InvokeAsync();
@@ -101,20 +100,37 @@
         try { action(); }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException or InvalidOperationException) { Ui.Report(error.Message, true); }
     }
-    private void Enable(string id, bool enabled) => Run(() => Store.SetEnabled(id, enabled));
-    private void Restore(string id) => Run(() => { Store.RestorePrevious(id); Ui.Report("Previous version restored. Restart HIT to activate it."); });
+    private async Task Enable(string id, bool enabled)
+    {
+        Run(() => Store.SetEnabled(id, enabled));
+        if (enabled && Catalog.All.FirstOrDefault(menu => menu.Id == id)?.ExtensionId is { } package) await Activate(package);
+    }
+    private async Task Restore(string id) { Run(() => Store.RestorePrevious(id)); await Activate(id); }
+    private async Task Activate(string id)
+    {
+        try { await Activation.ActivateAsync(id, Store.State.Packages.First(item => item.Manifest.Id == id).Manifest.Name); }
+        catch (Exception error) when (error is IOException or InvalidOperationException or System.ComponentModel.Win32Exception) { Ui.Report(error.Message, true); }
+    }
     private void Move(string id, int direction)
     {
         var menus = Catalog.All.Where(menu => menu.Id != HitMenuCatalog.SettingsId).ToArray();
         var index = Array.FindIndex(menus, menu => menu.Id == id);
         if (index + direction >= 0 && index + direction < menus.Length) Run(() => Catalog.Move(id, menus[index + direction].Id));
     }
-    private void Drop(string target)
-    {
-        if (_dragging is { } source) Run(() => Catalog.Move(source, target));
-        _dragging = null;
-    }
+    [JSInvokable] public Task Reorder(string source, string target, bool after) => _disposed ? Task.CompletedTask : InvokeAsync(() => { if (!_disposed) { Run(() => Catalog.Place(source, target, after)); StateHasChanged(); } });
     private void AskRemove(InstalledExtension package) => _pending = package;
+    private async Task ClearOldVersions()
+    {
+        if (_busy || _disposed) return; _busy = true;
+        try
+        {
+            var result = await Runtime.ClearOldVersionsAsync(_lifetime.Token);
+            Ui.Report($"Removed {result.Removed} old version(s)." + (result.Skipped > 0 ? $" {result.Skipped} could not be removed." : ""));
+        }
+        catch (OperationCanceledException) { }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException) { Ui.Report("Could not clean old extension versions. Close other HIT instances and try again.",true); }
+        finally { _busy = false; }
+    }
     private void CancelRemove() => _pending = null;
     private void ConfirmRemove()
     {
@@ -128,7 +144,7 @@
         {
             await using var stream = args.File.OpenReadStream(ExtensionStore.MaxPackageBytes, _lifetime.Token);
             var package = await Store.InstallAsync(stream, args.File.Name, _lifetime.Token);
-            Ui.Report($"{package.Manifest.Name} installed. Restart HIT to activate it.");
+            await Activation.ActivateAsync(package.Manifest.Id, package.Manifest.Name);
         }
         catch (OperationCanceledException) { }
         catch (Exception error) { Ui.Report("Installation failed: " + error.GetBaseException().Message, true); }
@@ -136,6 +152,13 @@
     }
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
+        if (firstRender)
+        {
+            _orderModule = await JS.InvokeAsync<IJSObjectReference>("import", "./js/hit-extensions.js");
+            if (_disposed) { await _orderModule.DisposeAsync(); return; }
+            _reference = DotNetObjectReference.Create(this);
+            await _orderModule.InvokeVoidAsync("connectOrder", _root, _reference);
+        }
         if (_dialogOpen == (_pending is not null)) return;
         _module ??= await JS.InvokeAsync<IJSObjectReference>("import", "./js/hit-themes.js");
         await _module.InvokeVoidAsync("setDeleteDialog", _dialog, _pending is not null);
@@ -145,6 +168,8 @@
     {
         _disposed = true; Store.Changed -= Refresh; Ui.Changed -= Refresh;
         _lifetime.Cancel(); _lifetime.Dispose();
+        if (_orderModule is not null) try { await _orderModule.InvokeVoidAsync("disconnectOrder", _root); await _orderModule.DisposeAsync(); } catch (JSDisconnectedException) { }
+        _reference?.Dispose();
         if (_module is not null) try { await _module.DisposeAsync(); } catch (JSDisconnectedException) { }
     }
 }

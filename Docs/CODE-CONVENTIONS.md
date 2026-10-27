@@ -1,7 +1,7 @@
 # Code and contribution conventions
 
-These rules apply to new application code, SDK changes and examples. Existing persisted identifiers
-may retain historical Portuguese names for compatibility; new public code, UI strings and documentation use English.
+These rules apply to application code, SDK changes and examples. All source identifiers, comments, UI strings and documentation use English.
+Historical serialized identifiers are accepted only by explicit migration code; metadata and user-entered content retain their original language.
 
 ## Naming and structure
 
@@ -14,8 +14,10 @@ Use descriptive names tied to the feature; avoid unnecessary abbreviations and g
 - `Services/{Feature}/`: integration, domain state, snapshots and commands.
 - `wwwroot/css/menus/`: public built-in feature CSS.
 - `wwwroot/js/`: DOM-specific behavior with explicit connect/disconnect ownership.
-- `Sdk/HIT.Sdk`: public contracts without a reference back to the executable.
-- `Examples`, `Tests`, `Tools`, `Resources`, `Docs`: keep their distinct responsibilities.
+- `Modules/HIT.Sdk`: public contracts without a reference back to the executable.
+- `Modules/HIT.Chess`, `Modules/HIT.Example`, `Modules/HIT.Sdk`: independent module/SDK projects.
+- `Modules/HIT.Chess.Tests`, `Modules/HIT.Example.Tests`: module and host-integration tests.
+- `Tests/browser`, `Tools`, `Resources`, `Docs`: keep their distinct responsibilities.
 
 Match namespaces to ownership. Do not rename a persisted built-in type ID casually; provide a migration when necessary.
 Use explicit, stable package/menu IDs and storage keys. Titles and translations are never identities.
@@ -71,7 +73,7 @@ Do not expose secrets, full provider payloads or unlimited exception streams in 
 
 ## Public UI and styling
 
-Follow [Menus](MENUS.md) and [Themes](THEMES.md). Prefer the existing disclosure, local scroll, button, focus and dialog patterns.
+Follow [Design](DESIGN.md), [Menus](MENUS.md) and [Themes](THEMES.md). Use the shared control styles and existing disclosure, local scroll, focus and dialog patterns.
 Use semantic labels, button types, accessible names, keyboard focus and destructive confirmations.
 No repeated common title/pin/close controls inside a view. Keep controls usable without hover tooltips.
 

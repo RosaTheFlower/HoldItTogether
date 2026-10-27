@@ -6,6 +6,7 @@ using HoldItTogether.Services.Clock;
 using HoldItTogether.Services.Settings;
 using HoldItTogether.Services.Themes;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.JSInterop;
 
 namespace HoldItTogether.Services.Extensions;
 
@@ -17,6 +18,8 @@ public sealed class ExtensionRuntime(ExtensionStore store, IHitMediaService medi
     private readonly List<(ExtensionLoadContext Load, IHitModule Module, ServiceProvider Services, CancellationTokenSource Lifetime)> _modules = [];
     private readonly CancellationTokenSource _lifetime = new();
     private bool _started, _disposed;
+    private readonly SemaphoreSlim _activation = new(1);
+    public event Action? Changed;
     public List<LoadedMenu> Menus { get; } = [];
     public Dictionary<string, string> Errors { get; } = [];
     public Dictionary<string, string> LoadedVersions { get; } = [];
@@ -24,9 +27,38 @@ public sealed class ExtensionRuntime(ExtensionStore store, IHitMediaService medi
     {
         if (_started) return; _started = true;
         store.FinishPendingDeletes();
+        await LoadAvailableAsync();
+    }
+    public async Task<bool> ActivateAsync(string id)
+    {
+        if (_disposed) return true;
+        await _activation.WaitAsync();
+        try
+        {
+            if (_disposed) return true;
+            var installed = store.State.Packages.FirstOrDefault(item => item.Manifest.Id == id && !item.PendingDelete);
+            if (installed is null) return true;
+            if (LoadedVersions.TryGetValue(id, out var version)) return version == installed.Manifest.Version;
+            await LoadAvailableAsync(id);
+            Changed?.Invoke();
+            if (Errors.TryGetValue(id, out var error)) throw new InvalidOperationException(error);
+            return true;
+        }
+        finally { _activation.Release(); }
+    }
+    public async Task<ExtensionCleanupResult> ClearOldVersionsAsync(CancellationToken token = default)
+    {
+        await _activation.WaitAsync(token);
+        try { return await store.ClearOldVersionsAsync(LoadedVersions, token); }
+        finally { _activation.Release(); }
+    }
+    private async Task LoadAvailableAsync(string? selected = null)
+    {
         foreach (var installed in store.State.Packages.Where(item => !item.PendingDelete))
         {
             var manifest = installed.Manifest;
+            if (LoadedVersions.ContainsKey(manifest.Id) || selected is not null && manifest.Id != selected) continue;
+            Errors.Remove(manifest.Id);
             if (!manifest.Menus.Any(menu => store.IsEnabled(manifest.Id + ":" + menu.Id))) continue;
             ExtensionLoadContext? load = null; ServiceProvider? provider = null; IHitModule? module = null;
             var moduleLifetime = CancellationTokenSource.CreateLinkedTokenSource(_lifetime.Token);
@@ -71,15 +103,20 @@ public sealed class ExtensionRuntime(ExtensionStore store, IHitMediaService medi
     {
         if (_disposed) return; _disposed = true;
         try { _lifetime.Cancel(); } catch (AggregateException) { }
-        Menus.Clear();
-        foreach (var item in Enumerable.Reverse(_modules))
+        await _activation.WaitAsync();
+        try
         {
-            try { await item.Module.StopAsync(CancellationToken.None); } catch { }
-            try { await item.Services.DisposeAsync(); } catch { }
-            item.Load.Unload();
-            item.Lifetime.Dispose();
+            Menus.Clear();
+            foreach (var item in Enumerable.Reverse(_modules))
+            {
+                try { await item.Module.StopAsync(CancellationToken.None); } catch { }
+                try { await item.Services.DisposeAsync(); } catch { }
+                item.Load.Unload();
+                item.Lifetime.Dispose();
+            }
+            _modules.Clear(); LoadedVersions.Clear(); _lifetime.Dispose();
         }
-        _modules.Clear(); LoadedVersions.Clear(); _lifetime.Dispose();
+        finally { _activation.Release(); }
     }
 }
 
@@ -91,7 +128,9 @@ internal sealed class ExtensionLoadContext : AssemblyLoadContext
     private static readonly HashSet<string> Shared = ((string?)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES") ?? "")
         .Split(Path.PathSeparator).Select(Path.GetFileNameWithoutExtension).OfType<string>()
         .Where(name => name.StartsWith("System.") || name.StartsWith("Microsoft.AspNetCore.") || name.StartsWith("Microsoft.Extensions.") || name is "System" or "netstandard" or "mscorlib")
-        .Append(typeof(IHitModule).Assembly.GetName().Name!).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        .Append(typeof(IHitModule).Assembly.GetName().Name!)
+        // IJSRuntime must retain the host renderer's identity, just like the SDK.
+        .Append(typeof(IJSRuntime).Assembly.GetName().Name!).ToHashSet(StringComparer.OrdinalIgnoreCase);
     public ExtensionLoadContext(string root, string entry) : base(isCollectible: true)
     {
         _root = Path.GetFullPath(root);

@@ -35,7 +35,6 @@
                        @onchange="args => Change(value => value with { AutoContinue = args.Value is true })" /></label>
         </ChildContent>
     </HitDisclosure>
-    <p class="clock-settings-hint">@Text.Get("When pinned, the clock becomes compact after 3 seconds of inactivity or a click. Left-click restores the controls. Right-click the system clock to edit time zones, or its title for settings.")</p>
     @if (Error is { } error) { <p class="clock-error" role="status">@error</p> }
 </section>
 @code {

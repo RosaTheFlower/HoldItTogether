@@ -1,7 +1,7 @@
 # HIT public API reference
 
-Reference: application 1.0, NuGet `HIT.Sdk` 1.0.1, namespace `HIT.Sdk`, contract `"1"`.
-The authoritative declarations are [Contracts.cs](../Sdk/HIT.Sdk/Contracts.cs).
+Reference: application v2710, NuGet `HIT.Sdk` 1.0.2, namespace `HIT.Sdk`, contract `"1"`.
+The authoritative declarations are [Contracts.cs](../Modules/HIT.Sdk/Contracts.cs).
 These are in-process C# contracts, not HTTP endpoints. An extension references the SDK, never the executable's internal service types.
 Installation/manifest/build instructions: [Extensions](EXTENSIONS.md).
 
@@ -18,7 +18,7 @@ public interface IHitModule
 
 The interface supplies no-op defaults. The entry type must have a public parameterless constructor.
 ConfigureServices runs once before constructing this module's private provider.
-StartAsync runs at host startup after menu component validation; it receives the module lifetime token.
+StartAsync runs after menu component validation, either at startup or when a new/previously disabled module is activated; it receives the module lifetime token.
 Return after initialization/starting cancellable workers; do not await an endless worker here.
 StopAsync is the cleanup hook on exit or failed startup. Stop/await owned work and release resources.
 
@@ -98,6 +98,22 @@ SetLayoutAsync accepts `HitLayout.Default` or `HitLayout.Compact`; it changes co
 CSS natural dimensions drive the window size. Inactive title/layout requests are ignored.
 SetPinnedAsync/CloseAsync require window.control and act only for the current visible menu.
 Read context values anew after navigation; do not assume an old IsActive value still grants control.
+
+SDK 1.0.2 adds an optional compact contract:
+
+```csharp
+public interface IHitMenuCompact
+{
+    Task CompactNowAsync();
+}
+```
+
+Implement it on a root menu with a dedicated compact layout. The host invokes it after the shared
+pointer-departure delay (default five seconds). Respect disposal, visibility, settings and pending-choice
+guards; restore the regular layout before opening forms. The current policy invokes it for the built-in main Clock view
+and the separately installed Chess extension's board. Chess is an optional SDK consumer, not a host dependency.
+Menus without this interface and all configuration screens remain expanded.
+Modules implementing this interface require a host shipping SDK 1.0.2 or later.
 
 ```csharp
 await Context.SetTitleAsync("Notes settings");

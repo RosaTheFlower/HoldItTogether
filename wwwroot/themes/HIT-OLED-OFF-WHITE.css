@@ -1,10 +1,5 @@
-/*
-   HIT / OLED — formato de tema v1.
-   Preto absoluto #000000 e off-white #f2efe7. Tipografia discreta. Sem arquivos externos.
-   Requer a versao do HIT com suporte a --hit-track-pointer.
-   Os olhos usam ::before e ::after e ficam apenas na esfera recolhida.
-   "Remover animacoes" desativa piscadas/transicoes; a direcao continua atualizada.
-*/
+/* HIT theme contract v1. Self-contained typography and pointer-responsive eyes.
+   Eyes use ::before and ::after only while collapsed. Remove animations disables motion. */
 @layer sphere {
     :root {
         --hit-track-pointer: 1;
@@ -192,12 +187,9 @@
     .theme-buttons button:hover:not(:disabled), .theme-button:hover { color: var(--audio-foreground, var(--hit-menu-text, var(--hit-text))); background: #ffffff08; }
 .settings-error { color: #c5bcb0; }
 }
-/* OLED: sem brilho, gradiente, vidro ou sombras nas superfícies.
-   Baseado em Obsidian Eyes: conserva olhos, dimensões, gestos e animações.
-   Capa, blur, intensidade e cores da música preservam as opções do HIT.
-   A miniatura da capa e o visualizador continuam disponíveis.
-   Para personalizar: off-white #f2efe7; muted #918e86; borda #f2efe71f.
-*/
+/* OLED uses true black without surface glow, gradients or glass.
+   Keep the original geometry, gestures, eyes and user artwork/visualizer preferences.
+   Customization: off-white #f2efe7, muted #918e86, border #f2efe71f. */
 @layer sphere {
     :root {
         --hit-background: #000000;
@@ -243,7 +235,7 @@
     .theme-delete-dialog { background-color: #000000; background-image: none; box-shadow: none; border-color: #f2efe733; color: var(--audio-foreground, var(--hit-menu-text, var(--hit-text))); }
     .theme-delete-dialog h2 { color: var(--audio-foreground, var(--hit-menu-text, var(--hit-text))); }
     .theme-delete-dialog p { color: var(--audio-muted, var(--hit-menu-muted, var(--hit-muted))); }
-    .theme-delete-dialog::backdrop { background-color: #000000b3; backdrop-filter: none; }
+    .theme-delete-dialog::backdrop { background-color: transparent; backdrop-filter: none; }
 
 }
 @layer menus {
@@ -296,7 +288,7 @@
     .settings-error, .clock-error { color: #c5bcb0; }
 }
 
-/* Hover dos controles: luz discreta na base, borda inferior e degradê ascendente. */
+/* Hover controls: a subtle base glow, bottom border and rising gradient. */
 @layer sphere {
     .sphere-action {
         position: relative;
@@ -342,7 +334,7 @@
     }
 }
 
-/* Controles transparentes: o efeito só aparece durante hover/foco de teclado. */
+/* Transparent controls reveal their treatment on hover or keyboard focus. */
 @layer sphere {
     .sphere-action,
     .sphere-action:hover,

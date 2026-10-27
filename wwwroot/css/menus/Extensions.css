@@ -33,3 +33,8 @@
 .extension-message { font-size:11px; line-height:1.6; padding:8px 10px; border-radius:7px; background:color-mix(in srgb,currentColor 6%,transparent); overflow-wrap:anywhere; }
 .extension-message.is-error,.extension-identity .extension-failure { color:var(--hit-error,#c98f8f); }
 .hit-drop-overlay { position:absolute; inset:0; z-index:100; display:grid; place-items:center; border:1px dashed var(--hit-accent); border-radius:var(--hit-open-radius,22px); background:var(--hit-open-background,#17191e); color:var(--hit-menu-text,var(--hit-text)); font:12px var(--hit-font); pointer-events:none; }
+.extension-grip { appearance:none; display:grid; place-items:center; flex:0 0 20px; width:20px; padding:6px 0; border:0; background:transparent; touch-action:none; user-select:none; }
+.extension-grip:disabled { opacity:.3; cursor:default; }
+.extension-row.is-drop-before { box-shadow:inset 0 2px var(--hit-accent); }
+.extension-row.is-drop-after { box-shadow:inset 0 -2px var(--hit-accent); }
+.extensions-clear { width:100%; margin-top:12px; }

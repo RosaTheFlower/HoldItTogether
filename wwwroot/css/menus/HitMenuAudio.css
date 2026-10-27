@@ -100,6 +100,7 @@
     transform-origin: center bottom; transform: scaleY(calc(0.025 + var(--level, 0) * 0.975));
     transition: transform 90ms linear;
 }
+:where(.hit-menu-panel[data-hit-menu="HoldItTogether.Components.HitMenus.HitMenuAudio"]) .audio-spectrum canvas { position:absolute; inset:0; display:block; width:100%; height:100%; color:var(--audio-accent); }
 :where(.hit-menu-panel[data-hit-menu="HoldItTogether.Components.HitMenus.HitMenuAudio"]) .audio-error { margin: 9px 0 0; color: var(--audio-muted); font-size: 10px; line-height: 1.6; }
 :where(.hit-menu-panel[data-hit-menu="HoldItTogether.Components.HitMenus.HitMenuAudio"]) .lyrics-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 4px; }
 :where(.hit-menu-panel[data-hit-menu="HoldItTogether.Components.HitMenus.HitMenuAudio"]) .lyrics-heading .hit-idle-collapse-content { display: flex; }

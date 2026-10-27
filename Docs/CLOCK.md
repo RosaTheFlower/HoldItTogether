@@ -1,6 +1,6 @@
 # Clock: world clocks, timer and Pomodoro
 
-Entry: `Components/HitMenus/HitMenuRelogio.razor`; views in `Components/Clock`, service in `Services/Clock`.
+Entry: `Components/HitMenus/HitMenuClock.razor`; views in `Components/Clock`, service in `Services/Clock`.
 Clock is initially second, but user menu order can change. Settings remains last.
 There is no Reminders feature in 1.0.
 
@@ -13,7 +13,9 @@ There is no Reminders feature in 1.0.
 M2 on the title opens general settings. M2 on the system readout (full or compact) opens World clocks.
 Both settings views block wheel-based menu switching and support M2 return without unpinning.
 
-While pinned, a click on the full readout or three seconds without interaction requests Compact.
+While pinned, a click on the full readout or the shared pointer-departure delay requests Compact.
+The default is five seconds; Settings -> Compact after configures immediately through ten seconds.
+Hover anywhere over HIT prevents timer-based compaction.
 The selected function remains the visible readout; the timer/Pomodoro keeps working.
 M1 restores controls, hover does not. Drag the compact readout to move the window without reopening it;
 capture starts after six pixels and suppresses the release click associated with that drag.

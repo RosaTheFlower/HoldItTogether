@@ -20,6 +20,12 @@ public interface IHitMenuSettings
 
 public enum HitLayout { Default, Compact }
 
+/// <summary>Optional menu-specific compaction, requested by the host's departure timer.</summary>
+public interface IHitMenuCompact
+{
+    Task CompactNowAsync();
+}
+
 public sealed record HitContext(bool IsActive, bool IsVisible, bool IsPinned,
     Func<string, Task> SetTitleAsync, Func<HitLayout, Task> SetLayoutAsync,
     Func<bool, Task> SetPinnedAsync, Func<Task> CloseAsync);

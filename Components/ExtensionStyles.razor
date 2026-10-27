@@ -3,9 +3,21 @@
 @implements IAsyncDisposable
 @inject IJSRuntime JS
 @inject HoldItTogether.Services.Extensions.ExtensionStore Store
+
+@if (_ready)
+{
+    @ChildContent
+}
+else
+{
+    <div class="hit-menu-loading" data-hit-layout-pending="true" role="status" aria-label="Loading menu"></div>
+}
+
 @code {
     [Parameter, EditorRequired] public HitMenuDefinition Menu { get; set; } = default!;
     [CascadingParameter(Name = "HitExtension")] public HIT.Sdk.HitContext? Context { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    private bool _ready;
     private IJSObjectReference? _module;
     private readonly CancellationTokenSource _lifetime = new();
     private Task? _monitor;
@@ -32,7 +44,10 @@
         _module = await JS.InvokeAsync<IJSObjectReference>("import", "./js/hit-extensions.js");
         if (_disposed) { await _module.DisposeAsync(); return; }
         await ApplyAsync();
-        _monitor = MonitorAsync(_lifetime.Token);
+        if (_disposed) return;
+        _ready = true;
+        StateHasChanged();
+        if (!_disposed) _monitor = MonitorAsync(_lifetime.Token);
     }
     private async Task MonitorAsync(CancellationToken token)
     {

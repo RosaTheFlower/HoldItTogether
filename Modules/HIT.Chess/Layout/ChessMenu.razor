@@ -1,0 +1,159 @@
+﻿@namespace HIT.Chess.Layout
+@using HIT.Sdk
+@using HIT.Chess.Services
+@using Microsoft.AspNetCore.Components.Web
+@inherits HitMenuComponent
+@implements IHitMenuSettings
+@implements IHitMenuCompact
+
+<section @ref="_root" class="chess-menu @(_compact ? "is-compact" : "") @(IsSettingsOpen ? "shows-settings" : "")" data-no-drag
+         data-hit-idle-action="@(!IsSettingsOpen && !_compact ? "compact" : null)"
+         data-hit-view="@(IsSettingsOpen ? "settings" : _compact ? "compact" : "board")"
+         data-position="@($"{_generation}:{_state.Moves.Count}:{_state.PlayerWhite}")" data-game="@_generation" data-ply="@_state.Moves.Count"
+         data-last-from="@_lastMove?.From" data-last-to="@_lastMove?.To" data-last-capture="@(_lastCaptured != 0 ? "true" : "false")"
+         data-sound-enabled="@(_state.SoundEnabled ? "true" : "false")" data-hit-layout-pending="@(!_loaded ? "true" : null)" @onkeydown="OnKeyDown">
+    @if (IsSettingsOpen)
+    {
+        <div class="chess-settings">
+            <button type="button" class="chess-back" @onclick="CloseSettingsAsync" aria-label="Back to Chess">
+                <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m11 5-5 5 5 5M6 10h10" /></svg>Chess
+            </button>
+            <button type="button" class="chess-reset-score hit-link-row" aria-label="Reset score" @onclick="AskClearScore">
+                <span>Reset score<small>Clear Win / Loss · @_state.Wins / @_state.Losses</small></span>
+                <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m8 5 5 5-5 5" /></svg>
+            </button>
+            @if (_scoreMessage is not null) { <p class="chess-setting-hint" role="status">@_scoreMessage</p> }
+            <label class="chess-setting-row" for="chess-difficulty">
+                <span>Difficulty</span>
+                <select id="chess-difficulty" aria-label="Difficulty" @bind="_draftDifficulty">
+                    <option value="Easy">Easy</option><option value="Medium">Medium</option><option value="Hard">Hard</option>
+                </select>
+            </label>
+            <label class="chess-setting-row" for="chess-side">
+                <span>Play as</span>
+                <select id="chess-side" aria-label="Play as" @bind="DraftSide">
+                    <option value="white">White</option><option value="black">Black</option>
+                </select>
+            </label>
+            <label class="chess-setting-row" for="chess-time">
+                <span>Time per side<small>No increment</small></span>
+                <select id="chess-time" aria-label="Time per side" @bind="_draftMinutes">
+                    <option value="0">Unlimited</option><option value="1">1 minute</option><option value="3">3 minutes</option>
+                    <option value="5">5 minutes</option><option value="10">10 minutes</option><option value="15">15 minutes</option><option value="30">30 minutes</option>
+                </select>
+            </label>
+            <label class="chess-setting-row">
+                <span>Move sounds<small>Moves and captures</small></span>
+                <input type="checkbox" class="chess-switch" role="switch" aria-label="Move sounds" checked="@_state.SoundEnabled" @onchange="SoundChangedAsync" />
+            </label>
+            <button type="button" class="chess-new-game" @onclick="AskNewGame">
+                <span>New game<small>Apply these options. Keep your record.</small></span>
+                <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m8 5 5 5-5 5" /></svg>
+            </button>
+            @if (!string.IsNullOrEmpty(_storageMessage)) { <p class="chess-error" role="status">@_storageMessage</p> }
+        </div>
+    }
+    else
+    {
+        <div class="chess-overview">
+        <div class="chess-scroll-frame chess-history-frame" data-axis="x">
+        <div class="chess-history" data-chess-scroll="x" aria-label="Move history" tabindex="0"><div class="chess-history-content">
+            @if (_notation.Count == 0) { <span class="chess-history-empty">@(_position.White ? "White to move" : "Black to move")</span> }
+            @for (int i = 0; i < _notation.Count; i++)
+            {
+                <span class="chess-history-move @(i == _notation.Count - 1 ? "latest" : "")" aria-current="@(i == _notation.Count - 1 ? "step" : null)">
+                    @if (i % 2 == 0) { <span class="chess-move-number">@(i / 2 + 1).</span> }
+                    @if (i == _notation.Count - 1) { <strong>@_notation[i]</strong> }
+                    else { <span>@_notation[i]</span> }
+                </span>
+            }
+        </div></div></div>
+        <div class="chess-score" aria-label="Your record"><span>Win <strong>@_state.Wins</strong></span><span>Loss <strong>@_state.Losses</strong></span>
+        </div>
+        </div>
+            @if (_state.Minutes > 0)
+            {
+                <div class="chess-clocks"><span aria-label="White time">White <time>@ClockText(_whiteSeconds)</time></span><span aria-label="Black time">Black <time>@ClockText(_blackSeconds)</time></span></div>
+            }
+        <div class="chess-table">
+            <div class="chess-board-frame">
+                <div class="chess-board" role="group" aria-label="@BoardLabel" aria-busy="@(_thinking || MoveInFlight ? "true" : "false")" @oncontextmenu:preventDefault="true" @oncontextmenu:stopPropagation="true">
+                    @for (int row = 0; row < 8; row++)
+                    {
+                        @for (int col = 0; col < 8; col++)
+                        {
+                            int square = _state.PlayerWhite ? (7 - row) * 8 + col : row * 8 + 7 - col;
+                            int piece = _position.Board[square];
+                            bool target = _targets.Any(m => m.To == square);
+                            bool mated = IsMatedKing(square);
+                            <button @key="square" type="button" class="@SquareClass(square, target) @(mated ? "checkmated" : "")" aria-label="@SquareLabel(square, target)"
+                                    data-square="@square" data-piece="@piece" data-row="@row" data-col="@col" aria-pressed="@(square == _selected ? "true" : "false")" @onclick="() => ClickSquareAsync(square)">
+                                @if (piece != 0) { <ChessPiece Piece="piece" Pending="IsPendingMoveSquare(square)" /> }
+                                @if (mated)
+                                {
+                                    <svg class="chess-mate-flag" viewBox="0 0 24 24" role="img" aria-label="Checkmated king"><path class="flag-pole" d="M6 22V3" /><path d="M7 3c5-4 9 4 14 0v10c-5 4-9-4-14 0z" /></svg>
+                                }
+                                @if (target) { <span class="chess-target" aria-hidden="true"></span> }
+                                @if (col == 0) { <span class="chess-rank" aria-hidden="true">@(square / 8 + 1)</span> }
+                                @if (row == 7) { <span class="chess-file" aria-hidden="true">@((char)('a' + square % 8))</span> }
+                            </button>
+                        }
+                    }
+                </div>
+                <svg class="chess-annotations" viewBox="0 0 800 800" aria-hidden="true"></svg>
+                @if (_compact)
+                {
+                    <button class="chess-expand" type="button" aria-label="Expand chess board" @onclick="ExpandAsync" data-hit-drag-handle>Expand chess board</button>
+                }
+                @if (_promotion.Count > 0 && !_compact)
+                {
+                    <div class="chess-promotion" role="group" aria-label="Choose promotion">
+                        @foreach (var move in _promotion)
+                        {
+                            <button type="button" aria-label="@($"Promote to {PieceName(move.Promotion)}")" @onclick="() => PromoteAsync(move)"><ChessPiece Piece="@((_state.PlayerWhite ? 1 : -1) * move.Promotion)" /></button>
+                        }
+                        <button type="button" @onclick="ClearSelection">Cancel</button>
+                    </div>
+                }
+            </div>
+        </div>
+        @if (_captured.Count > 0)
+        {
+            <div class="chess-captured-area" aria-label="Captured pieces">
+                @foreach (bool white in new[] { true, false })
+                {
+                    @if (_captured.Any(p => (p < 0) == white))
+                    {
+                        <div class="chess-capture-group" role="group" aria-label="@(white ? "Pieces captured by White" : "Pieces captured by Black")">
+                            <span class="chess-captured-label" aria-hidden="true">@(white ? "White" : "Black")</span>
+                            <div class="chess-scroll-frame chess-capture-frame" data-axis="x">
+                                <aside class="chess-captures @(white ? "white-captures" : "black-captures")" data-chess-scroll="x" aria-label="@(white ? "Pieces captured by White" : "Pieces captured by Black")" tabindex="0"><div class="chess-capture-stack">
+                                    @foreach (int piece in _captured.Where(p => (p < 0) == white)) { <ChessPiece Piece="piece" /> }
+                                </div></aside>
+                            </div>
+                        </div>
+                    }
+                }
+            </div>
+        }
+        @if (!string.IsNullOrEmpty(_result) && !_compact)
+        {
+            <div class="chess-result" role="status"><strong>@_result</strong><button type="button" class="chess-button is-primary" disabled="@MoveInFlight" @onclick="RestartAsync">New game</button></div>
+        }
+        <p class="chess-sr" role="status" aria-live="polite">@BoardLabel @_storageMessage</p>
+    }
+    @if (IsSettingsOpen && (_confirmNew || _confirmScore))
+    {
+        <dialog class="theme-delete-dialog hit-confirm chess-confirm" data-chess-confirm aria-label="@(_confirmScore ? "Confirm score reset" : "Confirm new game")" aria-labelledby="chess-new-game-title"
+                @oncancel="CancelConfirm" @oncontextmenu="CancelConfirm" @oncontextmenu:preventDefault="true" @oncontextmenu:stopPropagation="true"
+                @onwheel:stopPropagation="true" @onclick:stopPropagation="true" @onkeydown:stopPropagation="true">
+            <h2 id="chess-new-game-title">@(_confirmScore ? "Clear your score?" : "Start a new game?")</h2>
+            <p>@(_confirmScore ? "Your Win / Loss record will return to zero. The current game will stay." : "The current game will be replaced. Your Win / Loss record will stay.")</p>
+            <div class="dialog-actions">
+                <button type="button" data-dialog-cancel @onclick="CancelConfirm">Cancel</button>
+                @if (_confirmScore) { <button type="button" class="is-primary" aria-label="Confirm clear score" @onclick="ClearScoreAsync">Clear score</button> }
+                else { <button type="button" class="is-primary" @onclick="NewGameAsync">Start new game</button> }
+            </div>
+        </dialog>
+    }
+</section>

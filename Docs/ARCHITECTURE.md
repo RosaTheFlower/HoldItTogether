@@ -12,19 +12,23 @@ There is no HTTP API server required for extension calls. The public SDK exposes
 | `Components/DynamicSphere.razor` | Open/pin/close state, native geometry coordination and common header |
 | `Components/HitMenuHost.razor` | Stable-ID component instances, navigation, settings routing and layout requests |
 | `Components/HitMenus/` | Built-in entry components only |
-| `Components/Audio`, `Clock`, `Extensions` | Feature views and subtelas; they do not create extra dots |
+| `Components/Audio`, `Clock`, `Extensions` | Feature views and subviews; they do not create extra dots |
 | `Services/HitMenus` | Catalog, navigator and built-in context contracts |
 | `Services/Extensions` | Validation, installation, runtime, API adapters, asset provider and Inbox |
 | `Services/Settings`, `Themes`, `Diagnostics` | Preferences, public CSS and memory sampling |
 | `Services/Audio`, `Clock` | Native/media integrations and persistent deadline domain logic |
 | `Services/DesktopWindowService.cs`, `Windows*` | Native window behavior, hit testing, drag, placement and tray |
-| `Sdk/HIT.Sdk` | Independent public extension contracts |
-| `Examples/HIT.Example` | SDK-only module, Notes layout, CSS, manifest and template |
+| `Modules/HIT.Sdk` | Independent public extension contracts |
+| `Modules/HIT.Example` | SDK-only module, Notes layout, CSS, manifest and template |
+| `Modules/HIT.Chess`, `Modules/HIT.Chess.Tests`, `Modules/HIT.Example.Tests` | Independent Chess package and module/integration test projects |
 | `wwwroot` | Public CSS/JS, HTML bootstrap, loading sphere and bundled themes |
 | `Resources/en.json` | Embedded English source-message catalog |
 | `Tools`, `Tests`, `Docs` | Authoring/validation tools, tests and all documentation |
 
 ## Data flow
+
+Audio, Clock and Settings are the built-in menus. Chess is a separate optional extension: sharing this repository and solution does not make it part of HIT.
+The host project references the SDK, not the Chess project. Chess code/assets are packaged separately as `.hitmenu` and loaded through the same extension runtime as other installed modules.
 
 ```mermaid
 flowchart LR
@@ -45,9 +49,11 @@ JS owns DOM behavior, measurement and animation; CSS owns presentation. CSS does
 
 1. Create the Photino Blazor builder and register shared services, catalog, extension services and a composite file provider.
 2. Build the host, load preferences and start the independent clock deadline service.
-3. Finish pending package deletions and initialize enabled modules. Failed modules receive errors; built-ins remain available.
+3. Apply any confirmed reset request before constructing services, finish pending package deletions and initialize enabled modules. Failed modules receive errors; built-ins remain available.
 4. Refresh the catalog with built-in and loaded extension descriptors; start the optional Inbox import worker.
 5. Configure the native transparent/chromeless window, attach native behavior and run Photino.
+   Resolve the anchor and restore 100% browser zoom before revealing the first surface. Native outer-rectangle regions
+   exclude transparent canvas/padding from input; the retained canvas can still prevent resize flicker.
 6. On exit, stop Inbox, cancel/stop module services, dispose module containers and request cooperative unloading.
    Unbind runtime settings and dispose clock/audio/lyrics services.
 
@@ -65,6 +71,8 @@ Disabling/removing a menu unmounts its component. This is different from merely 
 External components receive their own `IHitApi` and the shared UI context. Their private service container
 does not expose the application's root DI container. Built-ins use root DI directly.
 Read [Menus](MENUS.md), [Extensions](EXTENSIONS.md) and [API](API.md) before crossing these boundaries.
+Newly installed or newly enabled modules can initialize while HIT is running. Replacing a loaded assembly version
+queues a graceful application restart after owned workers stop; it does not replace an executing assembly in place.
 
 ## Persistence and assets
 

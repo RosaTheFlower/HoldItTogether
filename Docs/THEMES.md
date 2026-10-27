@@ -32,7 +32,9 @@ Choosing/importing/deleting a personal theme never rewrites or deletes canonical
 
 ## Importing, editing and removing
 
-Open Settings -> Themes and expand the row. Import CSS, Open folder and Delete are three equal-width actions on one line.
+Open the final Settings -> Themes row for management, or use its combobox for immediate activation.
+The list separates selection from activation: click selects, Ctrl+click selects several, double-click or Enter activates.
+Open folder and Delete selected sit above the final Import CSS action. CSS may also be dropped anywhere on HIT.
 An imported `.css` file is copied into `%LOCALAPPDATA%\HoldItTogether\Themes`; edit that installed copy.
 The maximum file size is 1 MiB. The filename is sanitized and collisions receive suffixes.
 Theme IDs use `custom:{installed filename}`.
@@ -41,7 +43,8 @@ The active theme/base monitor checks metadata every second and rereads/hashes on
 Edits do not require recompilation or restart. Choosing a theme releases the select's focus so wheel navigation resumes.
 If an active personal file disappears, HIT falls back to Dark and reports it.
 A rejected CSS edit preserves the previous valid applied personal CSS.
-Delete uses a native confirmation dialog; deleting the active personal theme persists the fallback before removing the file.
+Delete selected uses a native confirmation dialog for the selected personal themes; deleting the active personal theme persists the fallback before removing the file.
+Bundled confirmation dialogs use a transparent backdrop without background dimming or blur, while retaining modal focus and Cancel/Escape behavior.
 
 ## Minimal complete theme
 
@@ -135,6 +138,10 @@ The player, lyrics cover toggle and other-menu cover toggle are independent; [Au
 
 ## Design system
 
+The complete shared reference is [Design](DESIGN.md); Settings screens and reset behavior are in [Settings](SETTINGS.md).
+`wwwroot/css/hit-controls.css` normalizes buttons, switches, native selects, Back/forward rows and confirmations
+across Audio, Clock, Settings, Extensions and the optional Chess extension when installed, using theme variables rather than independent fixed palettes.
+
 HIT is a small desktop surface: concise information, quiet spacing and controls that do not compete with content.
 Default direction: graphite #17191e, primary #e8ebf0-#f1f2f4, secondary #9299a5,
 3-5% separators, cool off-white accent, Segoe UI Variable and tabular numeric fonts.
@@ -143,7 +150,8 @@ Use quick response with long deceleration, never delayed interactivity. Transpar
 
 Disclosures use title -> main control -> chevron on one line. They start collapsed.
 Large fields mount only when expanded. A plain RAM label needs no subtitle.
-Extensions is the final settings row below Themes and opens a dedicated view; its list has local scroll.
+Scroll speed, Info, Extensions and Themes open dedicated views; Themes is last and retains a combobox for quick activation.
+All lists retain scrolling with hidden scrollbars and subtle hints only at clipped edges.
 Destructive actions use native dialogs with safe initial focus, cancel/Escape, an explicit second action and modal wheel/focus handling.
 
 ## Validation for a new theme

@@ -1,13 +1,17 @@
+import {configureEffects, renderAudioEffects, disposeEffects} from './audio-effects.js';
+import {renderSpectrum,refreshSpectrum,disconnectSpectrum} from './audio-spectrum.js';
+export {renderSpectrum,disconnectSpectrum};
+const spectra=new WeakMap();
+export function syncSpectrum(root){
+    const current=root?.querySelector('.audio-spectrum'),previous=spectra.get(root);
+    if(previous&&previous!==current)disconnectSpectrum(previous);
+    if(current)spectra.set(root,current);else if(root)spectra.delete(root);
+}
 // Data comes from the native output-device FFT, never from random/decorative animation.
-const bands = new WeakMap();
-export function renderSpectrum(element, values) {
-    if (!element?.isConnected || !Array.isArray(values)) return;
-    let nodes = bands.get(element);
-    if (!nodes) { nodes = [...element.querySelectorAll(".spectrum-bar")]; bands.set(element, nodes); }
-    for (let index = 0; index < nodes.length; index++) {
-        const level = Number.isFinite(values[index]) ? Math.max(0, Math.min(1, values[index])) : 0;
-        nodes[index].style.setProperty("--level", level.toFixed(3));
-    }
+export function renderAudioFrame(root, element, values) {
+    if(root&&element?.isConnected)spectra.set(root,element);
+    renderSpectrum(element, values);
+    renderAudioEffects(root?.closest('.dynamic-sphere'), values);
 }
 const scrolling = new WeakSet();
 export function enableLocalScroll(element) {
@@ -29,17 +33,22 @@ export function followLyrics(element, index, instant = false) {
             view.timer = setTimeout(() => center(false), 1800);
         };
         const center = (force) => {
-            element.style.setProperty("--lyrics-viewport-size",element.clientHeight+"px");
+            const size = element.clientHeight + 'px';
+            if (element.style.getPropertyValue('--lyrics-viewport-size') !== size) element.style.setProperty('--lyrics-viewport-size',size);
             if (!element.isConnected || (!force && performance.now() - view.lastManual < 1600)) return;
             const target = element.querySelector('[data-line-index="' + Math.max(0, view.index) + '"]');
             if (!target) return;
-            const top = target.getBoundingClientRect().top - element.getBoundingClientRect().top +
+            const scaleY = element.getBoundingClientRect().height / element.offsetHeight || 1;
+            const top = (target.getBoundingClientRect().top - element.getBoundingClientRect().top) / scaleY +
                 element.scrollTop - element.clientHeight * 0.42 + target.offsetHeight / 2;
             const reduced = document.documentElement.dataset.hitMotion === "off" || matchMedia("(prefers-reduced-motion: reduce)").matches;
             element.scrollTo({top:Math.max(0,top), behavior:force || reduced ? "auto" : "smooth"});
         };
         view.center = center;
-        view.observer = new ResizeObserver(() => center(true));
+        view.observer = new ResizeObserver(() => {
+            cancelAnimationFrame(view.resizeFrame);
+            view.resizeFrame = requestAnimationFrame(() => center(true));
+        });
         view.observer.observe(element);
         element.addEventListener("wheel", view.wheel, {passive:true});
         enableLocalScroll(element);
@@ -52,6 +61,7 @@ export function disconnectLyrics(element) {
     const view = lyricViews.get(element);
     if (!view) return;
     clearTimeout(view.timer);
+    cancelAnimationFrame(view.resizeFrame);
     view.observer.disconnect();
     element.removeEventListener("wheel",view.wheel);
     lyricViews.delete(element);
@@ -65,6 +75,8 @@ function releaseShell(root, scene) {
     if (sphere && owners.get(sphere) === root) {
         delete sphere.dataset.audioTheme;
         delete sphere.dataset.audioCover;
+        delete sphere.dataset.audioLyricsNeutral;
+        delete sphere.dataset.audioDrift;
         for (const [name,previous] of scene.previous || []) {
             if (previous.value) sphere.style.setProperty(name,previous.value,previous.priority);
             else sphere.style.removeProperty(name);
@@ -148,12 +160,23 @@ export async function syncScene(root, artwork, enabled, visible, lyrics, options
         scene.backSphere=navigationSphere;
         navigationSphere.addEventListener("pointerup",scene.backHandler,true);
     }
-    releaseShell(root,scene);
+    const neutral = visible && lyrics && options.neutralLyrics === true;
+    const retainNeutral = () => {
+        if (!navigationSphere || !neutral) return;
+        scene.sphere = navigationSphere;
+        scene.previous = [];
+        navigationSphere.dataset.audioLyricsNeutral = 'true';
+        owners.set(navigationSphere, root);
+    };
     const supported=typeof artwork==="string" && artwork.length<1500000 && /^data:image\/(?:png|jpe?g|webp|gif);base64,/i.test(artwork);
     if (!enabled || (!visible && !globalAccent) || !supported || !root.isConnected) {
+        disposeEffects(scene.sphere);
+        releaseShell(root,scene);
+        retainNeutral();
         delete root.dataset.audioPalette;
         for(const name of artVariables)root.style.removeProperty(name);
         scene.source = scene.colors = null;
+        refreshSpectrum(root.querySelector('.audio-spectrum'));
         return;
     }
     if(scene.source!==artwork || !scene.colors) {
@@ -165,32 +188,91 @@ export async function syncScene(root, artwork, enabled, visible, lyrics, options
     }
     if(revision!==scene.revision || !root.isConnected)return;
     if(!scene.colors) {
+        disposeEffects(scene.sphere);
+        releaseShell(root,scene);
+        retainNeutral();
         delete root.dataset.audioPalette;
         for(const name of artVariables)root.style.removeProperty(name);
         return;
     }
+    // Keep the previous opaque surface/cover while decoding the next image.
+    // Commit its replacement synchronously, after all asynchronous work finishes.
+    releaseShell(root,scene);
     const sphere=root.closest(".dynamic-sphere");
     for(const [name,value] of Object.entries(scene.colors))root.style.setProperty(name,value);
     root.style.setProperty("--audio-artwork","url("+JSON.stringify(artwork)+")");
     root.dataset.audioPalette = "true";
     if(sphere) {
         scene.sphere=sphere;
-        const shellValues={...scene.colors,"--audio-artwork":"url("+JSON.stringify(artwork)+")","--audio-cover-blur":blur+"px"};
+        const zoom = Math.max(100,Math.min(180,Number(options.zoom)||100))/100;
+        const saturation = (Number.isFinite(options.saturation) ? Math.max(0,Math.min(200,options.saturation)) : 80)/100;
+        const distortion = Math.max(0,Math.min(30,Number(options.distortion)||0));
+        const shellValues={...scene.colors,"--audio-artwork":"url("+JSON.stringify(artwork)+")","--audio-cover-blur":blur+"px",'--audio-cover-zoom':String(zoom),'--audio-cover-saturation':String(saturation)};
         scene.previous=Object.keys(shellValues).map(name=>[name,{value:sphere.style.getPropertyValue(name),priority:sphere.style.getPropertyPriority(name)}]);
         for(const [name,value]of Object.entries(shellValues))sphere.style.setProperty(name,value);
         sphere.dataset.audioTheme = globalAccent ? "global" : "local";
-        if(globalAccent && options.cover !== false && (!visible || !lyrics)) sphere.dataset.audioCover="true";
+        if (!neutral && (visible ? !lyrics || options.lyricsCover === true : globalAccent && options.cover !== false)) sphere.dataset.audioCover="true";
+        if (neutral) sphere.dataset.audioLyricsNeutral='true';
+        if (options.drift === true) sphere.dataset.audioDrift='true';
         owners.set(sphere,root);
+        configureEffects(sphere,{blur,zoom:zoom*100,saturation:saturation*100,distortion,drift:options.drift === true,...options.effects});
+        refreshSpectrum(root.querySelector('.audio-spectrum'));
     }
 }
 export function clearScene(root) {
+    disconnectSpectrum(spectra.get(root));spectra.delete(root);
+    disconnectSpectrum(root?.querySelector('.audio-spectrum'));
     const scene=scenes.get(root);
     if(!scene)return;
     scene.revision++;
     scene.backSphere?.removeEventListener("pointerup",scene.backHandler,true);
+    disposeEffects(scene.sphere);
     releaseShell(root,scene);
+    clearLyricsTimeline(root);
     delete root.dataset.audioPalette;
     for(const name of artVariables)root.style.removeProperty(name);
     root.style.removeProperty("--audio-cover-blur");
     scenes.delete(root);
+}
+
+const timelines = new WeakMap();
+export function syncLyricsTimeline(root, reference, options) {
+    const sphere = root?.closest('.dynamic-sphere');
+    if (!sphere || !options.enabled || !root.isConnected) { clearLyricsTimeline(root); return; }
+    let timeline = timelines.get(root);
+    if (!timeline) {
+        const wrapper = document.createElement('div'); wrapper.className='sphere-lyrics-timeline'; wrapper.dataset.noDrag='';
+        const input = document.createElement('input'); input.type='range'; input.min='0'; input.step='0.1'; input.setAttribute('aria-label','Lyrics playback position');
+        wrapper.append(input); sphere.append(wrapper);
+        const controller = new AbortController();
+        timeline = {wrapper,input,controller,reference,options,dragging:false}; timelines.set(root,timeline);
+        const begin = () => { if (!timeline.dragging) { timeline.dragging=true; timeline.generation=timeline.options.generation; } };
+        input.addEventListener('pointerdown',begin,{signal:controller.signal});
+        input.addEventListener('keydown',begin,{signal:controller.signal});
+        input.addEventListener('input',()=> { begin(); drawTimeline(timeline,Number(input.value)); },{signal:controller.signal});
+        input.addEventListener('change',async()=> {
+            const generation=timeline.generation ?? timeline.options.generation, position=Number(input.value);
+            try { await timeline.reference.invokeMethodAsync('SeekFromTimeline',generation,position); }
+            catch(error) { console.error('HIT lyrics seek failed',error); }
+            finally { timeline.dragging=false; }
+        },{signal:controller.signal});
+        input.addEventListener('pointercancel',()=>{timeline.dragging=false;},{signal:controller.signal});
+        input.addEventListener('blur',()=>{timeline.dragging=false;},{signal:controller.signal});
+        wrapper.addEventListener('wheel',event=>event.stopPropagation(),{passive:true,signal:controller.signal});
+        wrapper.addEventListener('contextmenu',event=>{event.preventDefault();event.stopPropagation();},{signal:controller.signal});
+    }
+    timeline.reference=reference; timeline.options=options;
+    timeline.wrapper.style.setProperty('--lyrics-timeline-thickness',Math.max(1,Math.min(6,options.thickness))+'px');
+    timeline.input.max=String(Math.max(1,options.duration));
+    timeline.input.disabled=!options.canSeek || options.busy || options.duration<=0;
+    if (!timeline.dragging) { timeline.input.value=String(options.position); drawTimeline(timeline,options.position); }
+}
+function drawTimeline(timeline,position) {
+    const progress=timeline.options.duration>0 ? Math.max(0,Math.min(100,position/timeline.options.duration*100)):0;
+    timeline.wrapper.style.setProperty('--lyrics-timeline-progress',progress+'%');
+    timeline.input.setAttribute('aria-valuetext',Math.floor(position)+' of '+Math.floor(timeline.options.duration)+' seconds');
+}
+export function clearLyricsTimeline(root) {
+    const timeline=timelines.get(root); if(!timeline)return;
+    timeline.controller.abort(); timeline.wrapper.remove(); timelines.delete(root);
 }

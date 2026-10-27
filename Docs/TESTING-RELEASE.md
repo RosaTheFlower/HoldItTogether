@@ -12,25 +12,26 @@ dotnet build HoldItTogether.csproj -c Release
 dotnet run --project HoldItTogether.csproj
 ```
 
-The root project excludes SDK/example/test source from its own Razor/C# glob and references HIT.Sdk explicitly.
+The root project excludes `Modules/**`, `Tests/**` and `artifacts/**` from its own source/content globs and references HIT.Sdk explicitly.
+All five independent module/SDK/test projects live below `Modules`; built-in menus remain under Components.
 It embeds en.json, generates `wwwroot/css/menus.css`, copies wwwroot and includes `Docs/**/*.md` in build/publish.
 Do not duplicate those projects' source inside the executable to solve a reference problem.
 
 ## SDK, sample and independent template
 
 ```powershell
-dotnet pack Sdk/HIT.Sdk/HIT.Sdk.csproj -c Release -o artifacts/sdk
-powershell -NoProfile -ExecutionPolicy Bypass -File Tools/Pack-HitMenu.ps1 -Project Examples/HIT.Example/HIT.Example.csproj
+dotnet pack Modules/HIT.Sdk/HIT.Sdk.csproj -c Release -o artifacts/sdk
+powershell -NoProfile -ExecutionPolicy Bypass -File Tools/Pack-HitMenu.ps1 -Project Modules/HIT.Example/HIT.Example.csproj
 ```
 
-Expected: `artifacts/sdk/HIT.Sdk.1.0.1.nupkg` and `artifacts/packages/dev.hit.example-1.0.0.hitmenu`.
+Expected: `artifacts/sdk/HIT.Sdk.1.0.2.nupkg` and `artifacts/packages/dev.hit.example-1.0.0.hitmenu`.
 The pack helper publishes the module, normalizes ZIP paths, excludes the host-shared SDK DLL,
 copies public asset/dependency directories and checks its own temporary cleanup target.
 
 To verify authoring without the main project's source reference:
 
 ```powershell
-dotnet new install ./Examples/HIT.Example
+dotnet new install ./Modules/HIT.Example
 dotnet new hitmenu -n MyNotes --extensionId dev.example.notes -o ../MyNotes
 dotnet restore ../MyNotes/MyNotes.csproj --source ./artifacts/sdk
 powershell -NoProfile -ExecutionPolicy Bypass -File Tools/Pack-HitMenu.ps1 -Project ../MyNotes/MyNotes.csproj
@@ -45,7 +46,7 @@ Do not reuse an already cached package version after changing its public bits: i
 Build the example first, then:
 
 ```powershell
-dotnet run --project Tests/HIT.Extensions.Tests/HIT.Extensions.Tests.csproj
+dotnet run --project Modules/HIT.Example.Tests/HIT.Example.Tests.csproj
 node Tests/browser/extensions.mjs
 ```
 
@@ -55,7 +56,43 @@ independent component loading, storage, asset boundaries, persisted order, built
 stable active selection, settings wheel blocking/M2 return, updates, rollback and retained user data.
 
 The browser test checks Dark/OLED/Light layout, stylesheet scope/keyframe namespacing,
-synthetic file-drop streaming handoff, invalid names and listener teardown.
+CSS/package file-drop streaming handoff, real pointer dragging from the grip, built-in removal protection, invalid names and listener teardown.
+The native harness also checks live activation, settings subviews, selection/activation/multi-delete,
+25-200% preference persistence, historical ID migration and deferred reset/delete using disposable profiles.
+
+```powershell
+node Tests/browser/menus.mjs
+node Tests/browser/navigation.mjs
+node Tests/browser/audio-effects.mjs
+node Tests/browser/idle-input.mjs
+node Tests/browser/spectrum.mjs
+node Tests/browser/placement.mjs
+dotnet run --project Modules/HIT.Chess.Tests/HIT.Chess.Tests.csproj
+node Tests/browser/chess.mjs
+```
+
+The menu browser test consumes `obj/menu-tests` emitted by the example tests. It checks shared controls in all themes,
+hidden overflow hints, safe transparent confirmations, lyrics centering at 25/100/200%, shell artwork/effects,
+seekable bottom-edge timeline and resource cleanup. The Chess guide describes its full regression suite.
+Audio regressions include exact black/white screenshot pixels, Light cover contrast, zero-distortion blur/saturation,
+attribution alignment/visibility and the unsaved screen-local header cover toggle.
+The effects test checks independent optical/color filters, radial blur, silence/steady-tone rejection,
+attack/decay from synthetic FFT input, radial beat shaking, reduced motion and no static-filter churn during drift.
+The idle/input test checks stationary-hover protection, departure timing/0-10-second settings, configuration-screen exclusion,
+independent Player/Lyrics hide choices, confirmation protection, the allowed board/clock views, icon hover tooltips and blocked page zoom.
+The spectrum test checks actual-band canvas drawing, a single DOM layer, zero per-frame DOM mutations, native DPI/content scaling and disposal.
+The placement test uses actual Clock/Chess/Audio markup, samples all corners/center throughout compact/expand,
+samples the first frame of sphere opening/closing, and checks compact-clock drag/release with a changed growth direction.
+Native placement tests cover oversized transparent canvases, repeated transitions at 100-200% DPI, secondary/negative monitor
+coordinates, visible grab offsets, edge padding/magnetism, saved-position restart/corruption and calendar release comparison.
+Native regressions cover topmost preference visibility/normalization, optical preference persistence/bounds,
+old-version cleanup preserving loaded/current code, two-action score reset preserving moves and host-requested Clock/Chess compaction.
+Hidden native-window tests check outer input bounds at 100/125/150/200% DPI, preservation of CSS-antialiased corner pixels,
+exclusion one pixel beyond the outer edges and region-handle ownership.
+These do not substitute for a live fullscreen, real-device beat/sound or Explorer-drop check on the user's machine.
+The navigation test samples every frame during rapid wheel input in all three themes, checking opaque content,
+one retained native canvas and release on closing. Native tests also cover resize-induced pointer-exit recovery.
+The navigation fixture checks corner alignment before the first resize/reveal and native zoom-reset requests at startup/opening.
 Its Chrome path is Windows-specific. Synthetic browser drop does not replace checking a real Explorer-to-Photino drag.
 Other audio/clock/theme behaviors have the acceptance matrix below; temporary historical obj harnesses are not part of a clean checkout.
 
@@ -82,10 +119,11 @@ After adding a public API/manifest field/selector, also inspect its reference an
 | Artwork | Blur limits, local/global colors, other-menu and Lyrics cover toggles, theme restoration |
 | Spectrum | Real output, silence, output change, alone/together with cover, hidden capture suspension |
 | Clock | Seconds/dual/world zones, reorder/add/remove, DST/date boundary, timer/Pomodoro pause/restart/skip |
-| Compact/focus | 3-second Clock compact/M1 restore/no hover/drag; 5-second Audio focus with active primary actions |
+| Compact/focus | 5-second departure default, 0-10-second override, hover/gesture/modal guards, no configuration compaction, Clock/Chess M1 restore and independent Player/Lyrics hiding |
 | Persistence | Restart/sleep deadlines, no duplicate notices, failed-save recovery, corrupt state fallback |
 | Themes | All bundled themes, custom import/live edit/delete, invalid edit fallback, protected defaults, reduced motion |
-| Extensions | Real drop/picker/Inbox, restart activation, dependency error, disable/remove, rollback, preserved State |
+| Extensions | Real drop/picker/Inbox, immediate new-module activation, automatic restart on loaded-code updates, dependency error, disable/remove, rollback, preserved State |
+| Data management | Reset preferences while retaining installed files, full personal-data deletion, cancellation and graceful restart |
 | Accessibility | Keyboard/context keys, Ctrl/Alt, focus visibility, tooltip-off usability, confirmation cancel/Escape |
 | Resources | Repeated visible/hidden cycles, cancellation/disposal, no repeated CSS/image transfer, comparable RAM workload |
 
@@ -110,11 +148,13 @@ wwwroot with three bundled themes and extension JS/CSS, and the complete Docs di
 Publish into a clean/versioned destination for distribution so obsolete output files are not shipped accidentally.
 Old output folders can retain historical documentation from previous builds; building does not recursively clean unrelated files.
 The default user profile is not part of the release payload.
+Chess is not part of this host payload. Its source/tests share the repository and solution, but its `.hitmenu` is built and distributed separately; see [Chess](CHESS.md).
+If offering Chess alongside a host release, label the package as an optional extension requiring installation, not as a built-in menu.
 
 ## Commit and version checklist
 
-Commit `.slnx`, all four `.csproj` files, source, manifest/template, public assets, Resources, Tools, Tests and Docs.
+Commit `.slnx`, all project files, Modules, source, manifest/template, public assets, Resources, Tools, Tests and Docs.
 The ignore rules exclude bin/obj/artifacts, .vs, logs, temporary profiles and generated menus.css.
 Do not force-add .hitmenu/.nupkg/executable output from artifacts to the source commit.
-Application release version is 1.0.0; SDK 1.0.1/assembly 1.0.0.0 and package contract 1 are separate.
+Application release label is v2710; update HitReleaseDate for the next vDDMM release. SDK 1.0.2/assembly 1.0.0.0 and package contract 1 are separate.
 Before release, read [Version 1.0](VERSION-1.0.md), run relevant checks and record the validation/limitations in the commit or release notes.

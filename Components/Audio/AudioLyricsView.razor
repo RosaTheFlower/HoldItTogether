@@ -13,10 +13,22 @@
             <span>@Text.Get("Audio")</span>
         </button>
         </div></div>
+    </div>
+    @if (ShowTitle || ShowSource)
+    {
+    <div class="lyrics-attribution">
+        @if (ShowTitle)
+        {
+        <span class="lyrics-track-name" title="@Title">@Title</span>
+        }
+        @if (ShowSource)
+        {
         <button type="button" class="lyrics-provider" data-ctrl-link="@(HasSourceLink ? "true" : null)"
                 disabled="@(!HasSourceLink)" title="@(HasSourceLink ? "Ctrl + click to open the lyrics source" : null)"
                 aria-label="@($"Lyrics source: {Lyrics?.Source}. Ctrl + click to open")" @onclick="OpenSource">@(Lyrics?.Source ?? "")</button>
+        }
     </div>
+    }
     @if (_sourceError is { } sourceError) { <p class="audio-error" role="status">@sourceError</p> }
     @if (Lyrics is { } lyrics)
     {
@@ -49,6 +61,9 @@
 
 @code {
     [Parameter] public SyncedLyrics? Lyrics { get; set; }
+    [Parameter] public string Title { get; set; } = "";
+    [Parameter] public bool ShowTitle { get; set; } = true;
+    [Parameter] public bool ShowSource { get; set; } = true;
     [Parameter] public long Generation { get; set; }
     [Parameter] public double Position { get; set; }
     [Parameter] public bool CanSeek { get; set; }
@@ -60,8 +75,8 @@
     private IJSObjectReference? _module;
     private Task<IJSObjectReference>? _moduleLoad;
     private RenderState? _rendered;
-    private readonly record struct RenderState(SyncedLyrics? Lyrics, long Generation, int Index, bool CanSeek, bool Busy, bool Loading, string? Error);
-    private RenderState CurrentRender => new(Lyrics, Generation, Lyrics?.CurrentIndex(Position) ?? -1, CanSeek, Busy, Loading, _sourceError);
+    private readonly record struct RenderState(SyncedLyrics? Lyrics, long Generation, int Index, bool CanSeek, bool Busy, bool Loading, string? Error, string Title, bool ShowTitle, bool ShowSource);
+    private RenderState CurrentRender => new(Lyrics, Generation, Lyrics?.CurrentIndex(Position) ?? -1, CanSeek, Busy, Loading, _sourceError, Title, ShowTitle, ShowSource);
     protected override bool ShouldRender() => _rendered != CurrentRender;
     private SyncedLyrics? _lastLyrics;
     private int _lastIndex = int.MinValue;

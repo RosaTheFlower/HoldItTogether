@@ -4,9 +4,11 @@
 @inject IJSRuntime JS
 @inject DesktopWindowService DesktopWindow
 @inject HoldItTogether.Services.Extensions.ExtensionUi Extensions
+@inject HoldItTogether.Services.Settings.HitSettingsService Settings
 
-<div @ref="_area" class="sphere-area">
-    <div class="dynamic-sphere @StateClass"
+<div @ref="_area" class="sphere-area" data-hit-geometry-pending="true">
+    <div class="dynamic-sphere @StateClass" data-hit-compact-delay="@Settings.Current.MenuCompactDelayMs"
+         data-hit-placement="@($"{Settings.Current.WindowAllowOtherMonitors}:{Settings.Current.WindowEdgeReachPercent}")"
          tabindex="0"
          role="group"
          aria-label="@Text.Get("HIT")"
@@ -31,6 +33,13 @@
                  @onclick:stopPropagation="true"
                  @onkeydown="HandleActionKeyDown"
                  @onkeydown:stopPropagation="true">
+                <button type="button" class="sphere-action sphere-action-reading-cover" data-hit-reading-cover data-no-drag hidden
+                        aria-label="Hide artwork for this screen" aria-pressed="true" title="Hide artwork for this screen">
+                    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                        <rect x="3" y="4" width="18" height="16" rx="3" /><circle cx="8" cy="9" r="1.5" />
+                        <path d="m4 17 5-5 4 4 3-3 5 5" /><path class="reading-cover-slash" d="m3 3 18 18" />
+                    </svg>
+                </button>
                 <button type="button"
                         class="sphere-action sphere-action-pin @(_pinnedOpen ? "is-active" : "")"
                         aria-label="@(_pinnedOpen ? "Unpin menu" : "Keep menu open")"
@@ -73,6 +82,8 @@
     private HitMenuHost? _menuHost;
     private string _menuTitle = "HIT";
     private bool _hasMenuSettings;
+    [JSInvokable]
+    public Task<bool> CompactCurrentMenu() => !_disposed && _menuHost is not null ? _menuHost.CompactCurrentAsync() : Task.FromResult(false);
     private bool _compactMenu;
     private void UpdateLayout(HoldItTogether.Services.HitMenus.HitMenuLayout layout) =>
         _compactMenu = layout == HoldItTogether.Services.HitMenus.HitMenuLayout.Compact;
@@ -97,6 +108,7 @@
     private bool _suppressHoverUntilExit;
     private bool _isDragging;
     private bool _disposed;
+    private long _navigationActiveUntil;
     private bool _themePointerTracking;
     private DesktopWindowService.ThemePointer? _lastThemePointer;
 
@@ -113,8 +125,11 @@
     protected override void OnInitialized()
     {
         Extensions.OpenRequested += ShowExtensions;
+        Settings.Changed += SettingsChanged;
         Schedule(SphereState.Idle, TimeSpan.FromSeconds(10));
+        if (Extensions.ShowExtensions || Extensions.ShowThemes) PinOpen();
     }
+    private void SettingsChanged() { if (!_disposed) _ = InvokeAsync(StateHasChanged); }
     private void SetPinned(bool pinned) { if (pinned) PinOpen(); else _pinnedOpen = false; }
     private void ShowExtensions()
     {
@@ -142,6 +157,7 @@
 
         _module = module;
         _reference = DotNetObjectReference.Create(this);
+        if ((Extensions.ShowExtensions || Extensions.ShowThemes) && _menuHost is not null) await _menuHost.ShowExtensionsAsync();
         await _module.InvokeVoidAsync("observe", _area, _reference);
 
         if (!_disposed && DesktopWindow.UsesNativePointerTracking)
@@ -150,6 +166,8 @@
         }
     }
 
+    [JSInvokable]
+    public DesktopWindowService.WindowOrigin PrepareSurface() => DesktopWindow.PrepareSurface();
     [JSInvokable]
     public Task<DesktopWindowService.WindowOrigin> ResizeWindow(
         double width, double height, double scale,
@@ -164,9 +182,9 @@
         return Task.FromResult(origin);
     }
     [JSInvokable]
-    public async Task<bool> BeginDrag(double offsetX, double offsetFromBottom, double scale)
+    public async Task<bool> BeginDrag(double offsetX, double offsetY, double scale)
     {
-        if (_disposed || !DesktopWindow.TryBeginDrag(offsetX, offsetFromBottom, scale))
+        if (_disposed || !DesktopWindow.TryBeginDrag(offsetX, offsetY, scale))
         {
             return false;
         }
@@ -189,13 +207,13 @@
     }
 
     [JSInvokable]
-    public async Task EndDrag()
+    public async Task<DesktopWindowService.WindowOrigin> EndDrag()
     {
-        DesktopWindow.EndDrag();
+        var origin = DesktopWindow.EndDrag();
 
         if (_disposed)
         {
-            return;
+            return origin;
         }
 
         _isDragging = false;
@@ -216,12 +234,17 @@
         }
 
         await InvokeAsync(StateHasChanged);
+        return origin;
     }
 
-    private Task HandleMenuWheelAsync(WheelEventArgs args) =>
-        !_disposed && !_isDragging && _state == SphereState.Open && _menuHost is not null
-            ? _menuHost.HandleWheelAsync(args)
-            : Task.CompletedTask;
+    private async Task HandleMenuWheelAsync(WheelEventArgs args)
+    {
+        if (_disposed || _isDragging || _state != SphereState.Open || _menuHost is null) return;
+        _navigationActiveUntil = Environment.TickCount64 + 1000;
+        CancelTransition();
+        await _menuHost.HandleWheelAsync(args);
+        CollapseIfInactive();
+    }
 
     private void PinOpen()
     {
@@ -398,7 +421,7 @@
         if (!_pointerInside && !_focused && !_pinnedOpen && !_isDragging)
         {
             // A brief grace period prevents flicker while crossing the morphing edge.
-            Schedule(SphereState.Away, TimeSpan.FromMilliseconds(160));
+            Schedule(SphereState.Away, TimeSpan.FromMilliseconds(Math.Max(160, _navigationActiveUntil - Environment.TickCount64)));
         }
     }
 
@@ -445,6 +468,7 @@
     public async ValueTask DisposeAsync()
     {
         Extensions.OpenRequested -= ShowExtensions;
+        Settings.Changed -= SettingsChanged;
         _disposed = true;
         DesktopWindow.CancelDrag();
         CancelTransition();

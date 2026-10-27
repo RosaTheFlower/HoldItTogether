@@ -1,7 +1,7 @@
 namespace HoldItTogether.Services.Extensions;
 
 /// <summary>Waits for a stable file; installation itself remains serialized by the store.</summary>
-public sealed class ExtensionInbox(ExtensionStore store, ExtensionUi ui) : IAsyncDisposable
+public sealed class ExtensionInbox(ExtensionStore store, ExtensionUi ui, ExtensionActivationService activation) : IAsyncDisposable
 {
     private readonly CancellationTokenSource _lifetime = new();
     private Task? _worker;
@@ -30,7 +30,8 @@ public sealed class ExtensionInbox(ExtensionStore store, ExtensionUi ui) : IAsyn
                             var processed = Path.Combine(store.Inbox, "Processed"); Directory.CreateDirectory(processed);
                             File.Move(file, Path.Combine(processed, Guid.NewGuid().ToString("N") + "-" + info.Name));
                             observed.Remove(file);
-                            ui.Report($"{installed.Manifest.Name} installed. Restart HIT to activate it.");
+                            ui.Open();
+                            await activation.ActivateAsync(installed.Manifest.Id, installed.Manifest.Name);
                         }
                         catch (IOException) { /* Copy may still be in progress. */ }
                         catch (Exception error) when (error is not OperationCanceledException)

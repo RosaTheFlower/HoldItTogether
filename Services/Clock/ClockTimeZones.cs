@@ -11,7 +11,7 @@ public static class ClockTimeZones
     private static readonly Dictionary<string, TimeZoneInfo> Zones = new(StringComparer.OrdinalIgnoreCase);
     private static readonly Lazy<IReadOnlyList<ClockTimeZoneOption>> Catalog = new(() => Array.AsReadOnly(
         new[] { new ClockTimeZoneOption(LocalId, "Local system time") }
-            .Concat(TimeZoneInfo.GetSystemTimeZones().Select(zone => new ClockTimeZoneOption(zone.Id, zone.DisplayName))).ToArray()));
+            .Concat(TimeZoneInfo.GetSystemTimeZones().Select(zone => new ClockTimeZoneOption(zone.Id, $"UTC{(zone.BaseUtcOffset < TimeSpan.Zero ? "−" : "+")}{zone.BaseUtcOffset.Duration():hh\\:mm} · {zone.Id}"))).ToArray()));
     public static IReadOnlyList<ClockTimeZoneOption> Options => Catalog.Value;
 
     public static TimeZoneInfo? Resolve(string? id)
