@@ -180,6 +180,14 @@ store.Remove("dev.hit.example");
 Check(catalog.Menus.All(item => item.ExtensionId != "dev.hit.example"), "Deleted package still visible");
 Check(File.Exists(Path.Combine(store.Root, "State/dev.hit.example/test.json")), "Deletion removed user data");
 Console.WriteLine("PASS: versioned update, rollback, deferred removal and preserved user data.");
+var bootstrapRoot=Path.Combine(root,"InstallerModules");
+Check(await ExtensionPackageBootstrap.RunAsync(["--hit-install-package",fixture,"--hit-module-root",bootstrapRoot])==0,"Installer CLI imports into an isolated module profile without starting the UI");
+var bootstrapStore=new ExtensionStore(bootstrapRoot);
+Check(bootstrapStore.State.Packages.Length==1,"Installer imports exactly one selected module");
+await ExtensionPackageBootstrap.InstallAsync(bootstrapStore,fixture);
+Check(bootstrapStore.State.Packages.Length==1,"Reinstalling the same package preserves the existing module");
+Check(await ExtensionPackageBootstrap.RunAsync(["--hit-install-package"])==2,"Malformed installer arguments fail before creating any user profile");
+Console.WriteLine("PASS: headless installer imports, idempotent optional modules and isolated profile handling.");
 Console.WriteLine("All extension tests passed. Test data: " + root);
 
 record JsonObjectBuilder(System.Text.Json.Nodes.JsonObject Value) { public void Set<T>(string key, T value) => Value[key] = JsonSerializer.SerializeToNode(value); }

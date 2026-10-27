@@ -9,6 +9,7 @@ use English, matching the interface. Commands run from the repository root unles
 | Goal | Guide |
 | --- | --- |
 | Install, run, navigate and configure HIT | [Getting started](GETTING-STARTED.md) |
+| Build and distribute the Release/Dev installation wizard | [Windows installer](INSTALLER.md) |
 | Understand release versions, implemented features and limits | [Version 1.0](VERSION-1.0.md) |
 | Understand components, services, persistence and startup | [Architecture](ARCHITECTURE.md) |
 | Follow the shared interaction/layout contract | [Menus](MENUS.md) |

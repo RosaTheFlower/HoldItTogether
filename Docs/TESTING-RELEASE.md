@@ -130,8 +130,36 @@ After adding a public API/manifest field/selector, also inspect its reference an
 
 ## Publishing
 
+For a standard installation wizard with Release/Dev profiles and optional Chess, use [Windows installer](INSTALLER.md).
+`powershell -NoProfile -ExecutionPolicy Bypass -File Tools/Build-Installer.ps1` builds/tests the release and compiles that installer.
+
+Build the complete Windows x64 release from the repository root:
+
 ```powershell
-dotnet publish HoldItTogether.csproj -c Release -o artifacts/publish
+powershell -NoProfile -ExecutionPolicy Bypass -File Tools/Build-Release.ps1 -RunTests
+```
+
+The script builds every solution project, runs the module/host integration suites when `-RunTests` is supplied,
+packs the SDK and optional Chess/Notes modules, then publishes and ZIPs both host distributions under `artifacts/releases/vDDMM/`:
+
+| Output | Runtime requirements |
+| --- | --- |
+| `HIT-vDDMM-win-x64-framework-dependent/` and `.zip` | Installed Windows x64 .NET 8 and ASP.NET Core 8 runtimes |
+| `HIT-vDDMM-win-x64-self-contained/` and `.zip` | .NET included; no installed .NET runtime required |
+| `modules/` | Separate optional `.hitmenu` packages; install through Extensions |
+| `sdk/` | NuGet SDK for module authors |
+
+Both host executables embed `Resources/hit.ico` and include the logo assets for live themed window/tray icons.
+The script validates embedded icon resources and runtime presence/absence before creating each ZIP.
+An existing release directory is preserved; repeated builds use a timestamp suffix. Temporary profiles and user data are excluded.
+The checked-in ICO is ready to build; Node/Chrome are only needed to regenerate it after SVG changes or run browser tests.
+Both host distributions still need WebView2. They are complete portable folders, not single executable files.
+The deployment distinction follows Microsoft's [.NET publishing reference](https://learn.microsoft.com/en-us/dotnet/core/deploying/).
+
+To publish only the host manually:
+
+```powershell
+dotnet publish HoldItTogether.csproj -c Release -r win-x64 --self-contained false -o artifacts/publish
 ```
 
 This is the normal framework-dependent output. If distributing a self-contained Windows x64 build:

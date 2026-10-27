@@ -18,6 +18,8 @@ internal static class Program
     [STAThread]
     private static void Main(string[] args)
     {
+        if(args.FirstOrDefault()=="--hit-install-package")
+        {Environment.ExitCode=ExtensionPackageBootstrap.RunAsync(args).GetAwaiter().GetResult();return;}
         System.Globalization.CultureInfo.DefaultThreadCurrentCulture = System.Globalization.CultureInfo.GetCultureInfo("en-US");
         System.Globalization.CultureInfo.DefaultThreadCurrentUICulture = System.Globalization.CultureInfo.GetCultureInfo("en-US");
         HitDataService.ApplyPending();

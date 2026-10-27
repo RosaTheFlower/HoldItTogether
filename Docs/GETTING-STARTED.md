@@ -7,9 +7,13 @@ The [Chess module](CHESS.md) is one such optional extension. Its source is kept 
 
 ## Requirements and running
 
+For the simplest setup, run the Windows installer and select an installation folder and Release profile.
+Chess is an optional checkbox. Dev adds the SDK, Notes example, source and tools for module authors.
+The installer includes .NET and handles a missing WebView2 prerequisite. See [Windows installer](INSTALLER.md).
+
 - Windows 10 version 1809 or later; the project targets `net8.0-windows10.0.19041.0`.
 - Microsoft Edge WebView2 Runtime for the desktop interface.
-- The .NET 8 runtime for a framework-dependent distribution.
+- Windows x64 .NET 8 and ASP.NET Core 8 runtimes for a framework-dependent distribution; the self-contained distribution includes them.
 - To build from source, a .NET SDK capable of targeting .NET 8 and restoring the Windows targeting references.
 
 Run from source:
