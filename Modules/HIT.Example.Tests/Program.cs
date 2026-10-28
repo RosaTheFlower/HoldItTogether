@@ -17,6 +17,14 @@ using Microsoft.JSInterop;
 using Microsoft.AspNetCore.Components.RenderTree;
 using HoldItTogether.Components;
 
+if (args.Contains("--window-checks"))
+{
+    WindowTopmostChecks.Run();
+    WindowGeometryChecks.Run();
+    FullscreenPlacementChecks.Run();
+    return;
+}
+
 var repo = Path.GetFullPath(args.FirstOrDefault() ?? Environment.CurrentDirectory);
 var fixture = Path.Combine(repo, "artifacts/packages/dev.hit.example-1.0.0.hitmenu");
 if (!File.Exists(fixture)) throw new Exception("Build the sample using Tools/Pack-HitMenu.ps1 first.");
@@ -159,6 +167,8 @@ await using (var interactive = new InteractiveRenderer(provider, provider.GetReq
 Console.WriteLine("PASS: real host navigation, reorder with stable selection, builtin disable, blocked scroll and right-click return.");
 await MenuChecks.RunAsync(provider, root, repo);
 WindowGeometryChecks.Run();
+WindowTopmostChecks.Run();
+FullscreenPlacementChecks.Run();
 PlacementChecks.Run();
 
 var update = Alter(manifest: m => m.Set("version", "1.1.0"));

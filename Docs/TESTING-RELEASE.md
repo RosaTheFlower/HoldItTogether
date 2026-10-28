@@ -88,6 +88,25 @@ Native placement tests cover oversized transparent canvases, repeated transition
 coordinates, visible grab offsets, edge padding/magnetism, saved-position restart/corruption and calendar release comparison.
 Native regressions cover topmost preference visibility/normalization, optical preference persistence/bounds,
 old-version cleanup preserving loaded/current code, two-action score reset preserving moves and host-requested Clock/Chess compaction.
+For focused native-window checks without building a sample package:
+
+```powershell
+dotnet run --project Modules/HIT.Example.Tests/HIT.Example.Tests.csproj -c Release -- --window-checks
+dotnet run --project Modules/HIT.Example.Tests/HIT.Example.Tests.csproj -c Debug -- --window-checks
+```
+
+These checks deliberately demote a hidden native window and verify ordinary topmost recovery without
+FORCE, bounded diagnostics, unchanged-preference reconciliation, OFF with queued recovery, healthy
+resizing without recovery churn, FORCE shutdown, focus preservation and destruction with pending work.
+The deliberate demotion tests recovery; it does not identify the original intermittent desktop trigger.
+Fullscreen checks also exercise non-activating mouse policy, suspension of recovery for an injected
+exclusive context, resumption on exit, taskbar placement on every edge, negative coordinates,
+fullscreen position persistence, resolution normalization and bounded/corrupt state fallback.
+Live game acceptance: test LoL windowed, borderless and fullscreen; confirm no automatic focus loss,
+mouse playback/drag controls, full-monitor reach, leave/re-enter position restoration, rapid mode
+switches, compact/expand during movement, Remove animations and mixed-DPI monitors. An exclusive
+swap chain may hide HIT; do not count forced minimization of the game as overlay success.
+
 Hidden native-window tests check outer input bounds at 100/125/150/200% DPI, preservation of CSS-antialiased corner pixels,
 exclusion one pixel beyond the outer edges and region-handle ownership.
 These do not substitute for a live fullscreen, real-device beat/sound or Explorer-drop check on the user's machine.

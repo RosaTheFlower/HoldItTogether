@@ -19,3 +19,6 @@ coverage/
 .DS_Store
 Thumbs.db
 Desktop.ini
+
+# Local V2 planning
+/Docs/ROADMAP-V2.md

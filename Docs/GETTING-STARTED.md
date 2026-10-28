@@ -95,6 +95,7 @@ All user state lives below `%LOCALAPPDATA%\HoldItTogether`:
 | --- | --- |
 | `settings.json` | Global, audio and clock preferences |
 | `window.json` | Last visible position, growth direction and monitor reference |
+| `window-fullscreen.json` | Separate fullscreen position memory for up to 16 monitor origins |
 | `Clock/state.json` | Timer/Pomodoro deadlines and pending notices |
 | `Themes/` | Personal theme CSS |
 | `Modules/registry.json` | Extension versions, menu order and disabled IDs |

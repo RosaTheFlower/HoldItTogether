@@ -1,4 +1,5 @@
 using System.Drawing;
+using HoldItTogether.Services.Settings;
 
 namespace HoldItTogether.Services;
 
@@ -6,6 +7,21 @@ internal readonly record struct WindowAnchor(double X, double Y, double PivotX, 
 
 internal static class WindowPlacement
 {
+    public static RectangleF FullscreenTarget(RectangleF current,Rectangle monitor,SavedWindowPosition? saved)
+    {
+        if(saved is {IsValid:true})
+        {
+            var x=monitor.Left+(saved.X-saved.WorkLeft)/saved.WorkWidth*monitor.Width;
+            var y=monitor.Top+(saved.Y-saved.WorkTop)/saved.WorkHeight*monitor.Height;
+            current.Location=new((float)(x-current.Width*saved.PivotX),(float)(y-current.Height*saved.PivotY));
+        }
+        return ConstrainSurface(current,monitor);
+    }
+    public static PointF InterpolatePosition(PointF from,PointF to,double progress)
+    {
+        var eased=1-Math.Pow(1-Math.Clamp(progress,0,1),3);
+        return new((float)(from.X+(to.X-from.X)*eased),(float)(from.Y+(to.Y-from.Y)*eased));
+    }
     public static WindowAnchor SelectAnchor(RectangleF bounds, Rectangle? workArea)
     {
         var pivotX = 0.5;

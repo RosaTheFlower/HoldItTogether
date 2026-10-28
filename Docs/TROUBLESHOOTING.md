@@ -15,6 +15,8 @@ User state paths are in [Getting started](GETTING-STARTED.md); build commands ar
 | Page/window scroll appears | Use natural width, bounded local scroll and avoid 100vw/100vh; inspect oversized theme fonts/content |
 | Wheel stops after selecting a theme | The select should release focus; settings views intentionally block menu navigation |
 | No taskbar entry | Intended behavior; enable System Tray for Show/Hide/Exit |
+| HIT falls behind ordinary windows | Enable Always on Top and test with FORCE off. Native events now repair a missing topmost flag without activating HIT. If it persists, record the build, transition, source app and monitor/DPI; the original intermittent trigger still needs live verification. Other topmost windows and exclusive fullscreen are separate cases. |
+| Game minimizes or HIT disappears in fullscreen | Fullscreen detection now uses non-activating mouse policy and pauses repeated FORCE ordering. Exclusive D3D detection is best-effort and ordinary desktop windows cannot guarantee drawing over an exclusive swap chain. Use borderless for a composited overlay and report the exact presentation mode if disruption persists. |
 | Compact Clock does not open on hover | Intended; use M1. Drag moves it; M2 opens settings |
 | RAM differs from Task Manager | Settings excludes WebView children and uses private resident HIT memory; compare the same definition/workload |
 

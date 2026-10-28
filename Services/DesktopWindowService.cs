@@ -2,6 +2,8 @@ using HoldItTogether.Services.Settings;
 using System.Drawing;
 using System.Runtime.InteropServices;
 using Photino.NET;
+using HoldItTogether.Services.Windows;
+using System.Diagnostics;
 
 namespace HoldItTogether.Services;
 
@@ -13,6 +15,9 @@ public sealed class DesktopWindowService
     private HitSettings _options;
     private bool _positionLoaded,_restoring;
     private Rectangle? _dragBounds;
+    private Rectangle? _fullscreenArea;
+    private PlacementMotion? _placementMotion;
+    private bool _fullscreenPlacementPending;
     public DesktopWindowService(HitSettingsService? settings = null,WindowPositionStore? positions=null,HitApplicationService? application=null)
     { _settings=settings;_positions=positions??new();_options=settings?.Current??new();_application=application; }
 
@@ -52,6 +57,7 @@ public sealed class DesktopWindowService
             {
                 _windowsBehavior = new WindowsWindowBehavior(
                     window.WindowHandle, _settings?.Current.AlwaysOnTop ?? true,()=>_application?.RestartAsync().GetAwaiter().GetResult());
+                _windowsBehavior.TrackFullscreen(context=>FullscreenChanged(window,context?.Monitor));
             }
 
             _settings?.BindRuntime(value => window.Invoke(() =>
@@ -101,7 +107,7 @@ public sealed class DesktopWindowService
 
             var placement = WindowPlacement.PlaceSurface(anchor,nextWidth,nextHeight,
                 new RectangleF((float)(contentLeft*scale),(float)(contentTop*scale),
-                    (float)(contentWidth*scale),(float)(contentHeight*scale)),PaddedArea(_workArea));
+                    (float)(contentWidth*scale),(float)(contentHeight*scale)),_placementMotion is null?PaddedArea(_workArea):null);
             if (WindowBounds(window) != placement)
             {
                 SetBounds(window, placement);
@@ -122,6 +128,12 @@ public sealed class DesktopWindowService
                 _restoring=false;
                 _anchor=WindowPlacement.AnchorAt(new RectangleF((float)(placement.Left+contentLeft*scale),(float)(placement.Top+contentTop*scale),
                     (float)(contentWidth*scale),(float)(contentHeight*scale)),anchor.PivotX,anchor.PivotY);
+            }
+
+            if(_fullscreenPlacementPending)
+            {
+                _fullscreenPlacementPending=false;
+                FullscreenChanged(window,_fullscreenArea,true);
             }
 
             origin = new WindowOrigin(anchor.PivotX, anchor.PivotY);
@@ -160,9 +172,10 @@ public sealed class DesktopWindowService
             }
 
             _dragOrigin = new DragOrigin(offsetX * scale, offsetY * scale);
+            StopPlacementMotion();
             var areas=_options.WindowAllowOtherMonitors?WindowsWindowBehavior.GetWorkAreas():
                 WindowsWindowBehavior.GetPrimaryWorkArea() is { } primary?[primary]:Array.Empty<Rectangle>();
-            _dragBounds=areas.Length>0?areas.Select(area=>WindowPlacement.InsetWorkArea(area,_options.WindowEdgeReachPercent)).Aggregate(Rectangle.Union):null;
+            _dragBounds=areas.Length>0?areas.Select(area=>PaddedArea(ResolveWorkArea(new Point(area.Left+area.Width/2,area.Top+area.Height/2)))??area).Aggregate(Rectangle.Union):null;
         });
         return true;
     }
@@ -226,9 +239,72 @@ public sealed class DesktopWindowService
 
         _anchor = WindowPlacement.SelectAnchor(bounds, _workArea);
     }
-    private Rectangle? PaddedArea(Rectangle? area)=>area is { } value?WindowPlacement.InsetWorkArea(value,_options.WindowEdgeReachPercent):null;
-    private Rectangle? ResolveWorkArea(Point reference)=>
-        (_options.WindowAllowOtherMonitors?WindowsWindowBehavior.GetWorkArea(reference):WindowsWindowBehavior.GetPrimaryWorkArea())??_workArea;
+    private Rectangle? PaddedArea(Rectangle? area)=>area is { } value?
+        value==_fullscreenArea?value:WindowPlacement.InsetWorkArea(value,_options.WindowEdgeReachPercent):null;
+    private Rectangle? ResolveWorkArea(Point reference)
+    {
+        var full=_options.WindowAllowOtherMonitors?WindowsWindowBehavior.GetMonitorBounds(reference):WindowsWindowBehavior.GetPrimaryMonitorBounds();
+        if(full is not null&&full==_fullscreenArea)return full;
+        return (_options.WindowAllowOtherMonitors?WindowsWindowBehavior.GetWorkArea(reference):WindowsWindowBehavior.GetPrimaryWorkArea())??_workArea;
+    }
+
+    private void FullscreenChanged(PhotinoWindow window,Rectangle? area,bool force=false)
+    {
+        if(!force&&area==_fullscreenArea)return;
+        if(!force)RememberFullscreenPosition();
+        StopPlacementMotion();
+        _fullscreenArea=area;
+        _dragOrigin=null;_dragBounds=null;
+        if(Volatile.Read(ref _pointerBounds) is not { } visible){_fullscreenPlacementPending=true;return;}
+        var reference=new Point((int)(visible.Left+visible.Width/2),(int)(visible.Top+visible.Height/2));
+        _workArea=ResolveWorkArea(reference);
+        var frame=new RectangleF((float)visible.Left,(float)visible.Top,(float)visible.Width,(float)visible.Height);
+        if(_workArea==area&&area is { } full)
+        {
+            var saved=_positions.LoadFullscreen().LastOrDefault(entry=>entry.WorkLeft==full.Left&&entry.WorkTop==full.Top);
+            frame=WindowPlacement.FullscreenTarget(frame,full,saved);
+        }
+        var target=WindowPlacement.ConstrainSurface(frame,PaddedArea(_workArea));
+        var start=new PointF((float)visible.Left,(float)visible.Top);
+        var end=target.Location;
+        if(start==end){SelectAnchor(window);SavePosition();return;}
+        if(_options.RemoveAnimations)
+        {
+            MoveSurface(window,start,end);SelectAnchor(window);SavePosition();return;
+        }
+        _placementMotion=new(start,end,Stopwatch.GetTimestamp());
+        _windowsBehavior?.SetPlacementAnimation(()=>AdvancePlacementMotion(window));
+    }
+
+    private void MoveSurface(PhotinoWindow window,PointF from,PointF to)
+    {
+        var bounds=WindowBounds(window);
+        MoveBounds(window,bounds,new(bounds.Left+(int)Math.Round(to.X-from.X),bounds.Top+(int)Math.Round(to.Y-from.Y),bounds.Width,bounds.Height));
+        if(Volatile.Read(ref _pointerBounds) is { } visible)
+            _anchor=WindowPlacement.AnchorAt(new((float)visible.Left,(float)visible.Top,(float)visible.Width,(float)visible.Height),
+                _anchor?.PivotX??.5,_anchor?.PivotY??.5);
+    }
+
+    private void AdvancePlacementMotion(PhotinoWindow window)
+    {
+        if(_placementMotion is not { } motion||Volatile.Read(ref _pointerBounds) is not { } visible)return;
+        var progress=Math.Clamp(Stopwatch.GetElapsedTime(motion.Started).TotalMilliseconds/420,0,1);
+        if(_options.RemoveAnimations)progress=1;
+        var target=WindowPlacement.ConstrainSurface(new(motion.To.X,motion.To.Y,(float)visible.Width,(float)visible.Height),PaddedArea(_workArea));
+        var next=WindowPlacement.InterpolatePosition(motion.From,target.Location,progress);
+        MoveSurface(window,new((float)visible.Left,(float)visible.Top),next);
+        if(progress<1)return;
+        StopPlacementMotion();SelectAnchor(window);SavePosition();
+    }
+
+    private void StopPlacementMotion(){_placementMotion=null;_windowsBehavior?.SetPlacementAnimation(null);}
+
+    private void RememberFullscreenPosition()
+    {
+        if(_fullscreenArea is not { } area||_workArea!=area||Volatile.Read(ref _pointerBounds) is not { } visible||_anchor is not { } anchor)return;
+        _positions.SaveFullscreen(new(visible.Left+visible.Width*anchor.PivotX,visible.Top+visible.Height*anchor.PivotY,
+            anchor.PivotX,anchor.PivotY,area.Left,area.Top,area.Width,area.Height));
+    }
     private void InitializeAnchor(PhotinoWindow window)
     {
         if(TryRestoreAnchor())return;
@@ -256,6 +332,7 @@ public sealed class DesktopWindowService
     }
     private void ReapplyPlacement(PhotinoWindow window)
     {
+        StopPlacementMotion();
         if(Volatile.Read(ref _pointerBounds) is not { } visible||_anchor is not { } anchor)return;
         _workArea=ResolveWorkArea(new Point((int)(visible.Left+visible.Width/2),(int)(visible.Top+visible.Height/2)));
         var frame=WindowPlacement.ConstrainSurface(new((float)visible.Left,(float)visible.Top,(float)visible.Width,(float)visible.Height),PaddedArea(_workArea));
@@ -266,7 +343,9 @@ public sealed class DesktopWindowService
     }
     public void SavePosition()
     {
+        RememberFullscreenPosition();
         if(_window is null||Volatile.Read(ref _pointerBounds) is not { } visible||_anchor is not { } anchor||_workArea is not { } area)return;
+        if(area==_fullscreenArea)return; // Keep the independent desktop anchor while playing.
         _positions.Save(new(visible.Left+visible.Width*anchor.PivotX,visible.Top+visible.Height*anchor.PivotY,
             anchor.PivotX,anchor.PivotY,area.Left,area.Top,area.Width,area.Height));
     }
@@ -370,6 +449,7 @@ public sealed class DesktopWindowService
     private static extern bool GetCursorPos(out Point point);
 
     private sealed record DragOrigin(double OffsetX, double OffsetY);
+    private sealed record PlacementMotion(PointF From,PointF To,long Started);
 
     private sealed record PointerBounds(
         double Left, double Top, double Width, double Height, double Radius, double Scale);

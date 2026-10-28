@@ -144,13 +144,14 @@ internal static class MenuChecks
         void Seed()
         {
             foreach(var folder in new[]{"Clock","Themes","Modules/Installed/test","Modules/State/test","Modules/Logs"})Directory.CreateDirectory(Path.Combine(resetRoot,folder));
-            foreach(var file in new[]{"settings.json","Clock/state.json","Themes/custom.css","Modules/Installed/test/module.dll","Modules/State/test/data.json","Modules/Logs/test.log"})File.WriteAllText(Path.Combine(resetRoot,file),"test");
+            foreach(var file in new[]{"settings.json","window.json","window-fullscreen.json","Clock/state.json","Themes/custom.css","Modules/Installed/test/module.dll","Modules/State/test/data.json","Modules/Logs/test.log"})File.WriteAllText(Path.Combine(resetRoot,file),"test");
             File.WriteAllText(Path.Combine(resetRoot,"Modules/registry.json"),JsonSerializer.Serialize(new ExtensionRegistry{Order=["old"],DisabledMenus=["old"]},ExtensionStore.Json));
         }
         Seed(); var data=new HitDataService(resetRoot); data.Request(false);
         Check(File.Exists(Path.Combine(resetRoot,"settings.json")),"Requesting reset must defer changes until all services stop");
         HitDataService.ApplyPending(resetRoot);
         Check(!File.Exists(Path.Combine(resetRoot,"settings.json"))&&!Directory.Exists(Path.Combine(resetRoot,"Modules/State")),"Settings reset must clear global and module data");
+        Check(!File.Exists(Path.Combine(resetRoot,"window.json"))&&!File.Exists(Path.Combine(resetRoot,"window-fullscreen.json")),"Settings reset must clear desktop and fullscreen position memory.");
         Check(File.Exists(Path.Combine(resetRoot,"Themes/custom.css"))&&File.Exists(Path.Combine(resetRoot,"Modules/Installed/test/module.dll")),"Settings reset must preserve installed themes/modules");
         var registry=JsonSerializer.Deserialize<ExtensionRegistry>(File.ReadAllText(Path.Combine(resetRoot,"Modules/registry.json")),ExtensionStore.Json)!;
         Check(registry.Order.Length==0&&registry.DisabledMenus.Length==0,"Reset must restore navigation preferences");

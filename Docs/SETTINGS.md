@@ -68,6 +68,24 @@ Clear old versions is the final action. It removes obsolete installed code direc
 the selected and currently loaded versions, package state and logs. Unavailable rollback pointers are cleared.
 Locked or linked directories are skipped and reported; running code is never removed by this action.
 
+## Fullscreen placement
+
+Detected fullscreen uses the complete monitor area on that monitor, including the taskbar strip
+and without edge padding. Other monitors keep their usual work-area restrictions. This behavior
+is automatic and does not change the saved edge-padding or allowed-monitor preferences.
+
+Fullscreen anchors are stored separately in `window-fullscreen.json` beside `window.json`, with
+at most 16 monitor-origin entries. Re-entering fullscreen restores that monitor's saved anchor;
+resolution changes scale it proportionally. On leaving fullscreen, a legal current position stays
+in place; an invalid position moves to the nearest allowed point. Transitions take 420 ms and
+become immediate with Remove animations enabled. Dragging interrupts the transition.
+
+HIT avoids mouse activation while fullscreen is detected, so normal mouse controls can operate
+without automatically taking foreground focus. Keyboard entry may require explicitly leaving the
+game. FORCE pauses repeated ordering during fullscreen. Windows-reported exclusive fullscreen
+also suspends ordinary recovery; an exclusive-game overlay is not guaranteed. See
+[troubleshooting](TROUBLESHOOTING.md) for presentation-mode limits.
+
 ## Info
 
 Read-only rows show RAM usage, HIT version, installed extension count (excluding pending removals)

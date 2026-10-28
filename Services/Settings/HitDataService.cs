@@ -35,6 +35,7 @@ public sealed class HitDataService
         // Only application-owned locations are removed; canonical bundled files live elsewhere.
         File.Delete(Path.Combine(root, "settings.json"));
         File.Delete(Path.Combine(root, "window.json"));
+        File.Delete(Path.Combine(root, "window-fullscreen.json"));
         RemoveDirectory("Clock");
         if (request.DeleteEverything)
         {

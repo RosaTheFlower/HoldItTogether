@@ -29,6 +29,8 @@ Measurements below record the controlled optimization review from 2026-10-26, no
 | Audio rendering | Position-only polling does not redraw settings or inactive global covers; disabled timelines skip JS synchronization |
 | Compact policy | Shared 0-10-second departure timer only for Player/Lyrics, board and main clock; page-specific Audio hide switches; settings/forms never compact |
 | Experimental topmost | 500 ms native UI-thread timer only while Force Always on Top is enabled; no focus activation |
+| Ordinary topmost recovery | Coalesced native-event state checks; reapply only if the native topmost flag is missing; no polling timer; latest 32 recovery diagnostics retained in memory |
+| Fullscreen placement | Foreground/minimize/location WinEvent hooks with early filtering; hooks released on native teardown. A 16 ms native timer exists only during the 420 ms placement transition. FORCE's timer can refresh detection but skips repeated Z-order writes during fullscreen. |
 | Extension persistence | 1 MiB/value and 16 MiB/package JSON disk quota; these are storage limits, not memory limits |
 | Extension Inbox/logs | 2-second stable-file checks; bounded scan/history/log messages and log rotation |
 
