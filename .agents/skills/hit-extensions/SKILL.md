@@ -54,4 +54,6 @@ capability names, lifetime, limits and an independently compilable example befor
 
 ## Current contract checkpoints
 
+For GitHub updates, preserve optional manifest updates metadata, legacy Chess discovery, stable numeric asset selection, bounded downloads and exact package identity/permission checks before installation. Use the documented extension updater fixture; do not claim publication from a local package build.
+
 Use SDK 1.2.0 IHitMenuPages only as an optional presentation contract, with stable IDs and no game/timer/reset side effects during restore. Keep older packages compatible. Confirm downgrades through the host dialog, and allow removed-package cleanup only for unloaded code while retaining saved data and locked/linked trees.

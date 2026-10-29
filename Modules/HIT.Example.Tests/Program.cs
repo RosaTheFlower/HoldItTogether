@@ -17,6 +17,7 @@ using Microsoft.JSInterop;
 using Microsoft.AspNetCore.Components.RenderTree;
 using HoldItTogether.Components;
 
+if(args.Contains("--update-checks")){await ExtensionUpdateChecks.RunAsync();return;}
 if(args.Contains("--package-checks")){await PackageLifecycleChecks.RunAsync();return;}
 if(args.Contains("--placement-checks")){PlacementChecks.Run();return;}
 if(args.Contains("--navigation-checks")){NavigationChecks.Run();PlacementChecks.Run();return;}
@@ -139,6 +140,7 @@ var services = new ServiceCollection().AddLogging().AddSingleton(store).AddSingl
     .AddSingleton<HoldItTogether.Services.Diagnostics.HitMemorySampler>().AddSingleton<AudioSpectrumService>()
     .AddSingleton(new LyricsService(new HttpClient())).AddSingleton<IExternalLinkService, NoLinks>()
     .AddSingleton<HoldItTogether.Services.HitApplicationService>().AddSingleton<ExtensionActivationService>()
+            .AddSingleton<ExtensionUpdateService>()
             .AddSingleton(new HoldItTogether.Services.Diagnostics.HitUpdateService(new HttpClient(new ReleaseNotesFixture()))).AddSingleton<HoldItTogether.Services.Settings.HitDataService>()
             .AddSingleton<IJSRuntime, NoJs>();
 await using var provider = services.BuildServiceProvider();

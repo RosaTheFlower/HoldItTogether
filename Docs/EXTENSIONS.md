@@ -261,6 +261,26 @@ For separate component assemblies, ensure the manifest paths match the produced 
 
 ## Installation and lifecycle boundaries
 
+### GitHub release updates
+
+An optional manifest field declares a public GitHub repository and release-asset prefix:
+
+```json
+{
+  "updates": {
+    "repository": "RosaTheFlower/HoldItTogether",
+    "assetPrefix": "chess-v"
+  }
+}
+```
+
+The repository is an owner/name pair; the prefix contains letters, digits, dots, underscores or hyphens. Assets are named `{assetPrefix}{numericVersion}.hitmenu`; the version must match the enclosed manifest. This additive field preserves contract 1 and needs no SDK update. Legacy Chess uses this source by stable ID when its manifest omits updates. Other extensions without a source remain manually installable.
+
+Settings -> Extensions exposes Check for extension updates and per-package Update to {version} actions. There is no background polling. The host queries the first 20 GitHub releases, skips drafts/prereleases and chooses the highest newer package version among up to 100 assets per release. Host release tags do not determine extension versions. Discovery is bounded to 2 MiB and 15 seconds per check; downloads have a two-minute cancellation deadline and the existing 64 MiB limit. HTTPS asset URLs must belong to the declared GitHub repository. Network/rate-limit errors produce retryable feedback without modifying installation state.
+
+Before the atomic installer runs, the updater validates the archive manifest, exact package ID/version, unchanged update source and no additional capabilities. Changed permissions/source require manual review/import. Existing archive safety, contract and loaded-code restart checks still apply. Temporary downloads are removed, cancellation follows the view lifetime, and saved state is retained. The publisher attaches the package to a public stable release; the host never uploads it.
+
+
 The installer accepts at most 64 MiB compressed, 128 MiB extracted, 2,000 entries, 20 menus per package and 100 packages.
 It rejects parent/absolute paths, Windows reserved names, links, case-insensitive collisions, incompatible contracts and unknown capabilities.
 Manifest size is limited to 64 KiB; each stylesheet is limited to 1 MiB.

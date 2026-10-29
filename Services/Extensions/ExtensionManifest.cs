@@ -23,12 +23,14 @@ public sealed record ExtensionManifest
     public string EntryType { get; init; } = "";
     public string[] Capabilities { get; init; } = [];
     public ExtensionMenu[] Menus { get; init; } = [];
+    public ExtensionUpdateSource? Updates { get; init; }
 
     public static readonly HashSet<string> KnownCapabilities = new(StringComparer.Ordinal)
     { "media.read", "media.control", "clock.read", "clock.control", "window.control", "theme.control", "links.open", "notifications", "events.subscribe", "host.read", "appearance.read", "media.spectrum", "actions.register", "actions.execute" };
 
     public void Validate()
     {
+        Updates?.Validate();
         if (FormatVersion != 1 || HitContractVersion != "1") throw new InvalidDataException("This extension requires an unsupported HIT SDK version.");
         if (!ValidId(Id) || string.IsNullOrWhiteSpace(Name) || Name.Length > 80 || Author is null || Author.Length > 120)
             throw new InvalidDataException("Invalid extension identity.");
@@ -70,6 +72,16 @@ public sealed record ExtensionManifest
         var result = Path.GetFullPath(Path.Combine(root, relative));
         if (!result.StartsWith(parent, StringComparison.OrdinalIgnoreCase)) throw new InvalidDataException("A package path escapes its directory.");
         return result;
+    }
+}
+
+public sealed record ExtensionUpdateSource(string Repository, string AssetPrefix)
+{
+    public void Validate()
+    {
+        if (Repository is null || Repository.Length > 201 || !Regex.IsMatch(Repository, @"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$") ||
+            AssetPrefix is null || AssetPrefix.Length > 80 || !Regex.IsMatch(AssetPrefix, @"^[a-zA-Z0-9][a-zA-Z0-9._-]*$"))
+            throw new InvalidDataException("Invalid extension update source.");
     }
 }
 

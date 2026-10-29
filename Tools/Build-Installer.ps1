@@ -39,7 +39,7 @@ try {
     $example=Get-Content -LiteralPath 'Modules/HIT.Example/manifest.json' -Raw | ConvertFrom-Json
     $chess=Get-Content -LiteralPath 'Modules/HIT.Chess/manifest.json' -Raw | ConvertFrom-Json
     Copy-Item -LiteralPath (Join-Path $release ('modules/'+$example.id+'-'+$example.version+'.hitmenu')) -Destination (Join-Path $developer 'packages')
-    Copy-Item -LiteralPath (Join-Path $release ('modules/'+$chess.id+'-'+$chess.version+'.hitmenu')) -Destination (Join-Path $payload 'Chess.hitmenu')
+    Copy-Item -LiteralPath (Join-Path $release ('modules/chess-v'+$chess.version+'.hitmenu')) -Destination (Join-Path $payload 'Chess.hitmenu')
     Copy-Item -LiteralPath $bootstrapper -Destination (Join-Path $payload 'WebView2Setup.exe')
     function CopySourceDirectory([string]$source,[string]$destination) {
         [IO.Directory]::CreateDirectory($destination) | Out-Null

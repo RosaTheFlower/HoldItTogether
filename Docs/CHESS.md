@@ -11,7 +11,7 @@ It does not modify the built-in menus or require a network connection.
 powershell -NoProfile -ExecutionPolicy Bypass -File Tools/Pack-HitMenu.ps1 -Project Modules/HIT.Chess/HIT.Chess.csproj
 ```
 
-Install `artifacts/packages/dev.hit.chess-1.1.0.hitmenu` through Settings -> Extensions -> Install .hitmenu,
+Install `artifacts/packages/chess-v1.1.1.hitmenu` through Settings -> Extensions -> Install .hitmenu,
 or drop the package on HIT. A new installation loads immediately; updating a loaded Chess version restarts HIT automatically.
 The stable menu ID is `dev.hit.chess:chess`. At the user's request, the 1.0.1 settings redesign was reverted and its generated package removed. Version 1.0.0 retains the compact previous interface, native selectors and the existing saved-game format. The host header identifies Chess with a knight icon.
 If 1.0.1 was already installed, import 1.0.0 and confirm the downgrade. Saved state is kept; replacing loaded code requires the normal graceful restart.
@@ -128,6 +128,8 @@ The clock does not attempt exhaustive FIDE dead-position adjudication for unusua
 
 ## Validation
 
+Distribution: publish `chess-v1.1.1.hitmenu` as an asset of a stable public GitHub release in `RosaTheFlower/HoldItTogether`. Future names follow `chess-vX.hitmenu`, with X matching the numeric manifest version. HIT release tags remain independent. Existing users need a HIT build with the extension updater, then use Settings -> Extensions -> Check for extension updates -> Update to the offered version. Older Chess manifests are recognized by their stable ID. The normal graceful restart replaces loaded code and preserves saved games/scores. Building a local package does not publish it.
+
 ```powershell
 dotnet run --project Modules/HIT.Chess.Tests/HIT.Chess.Tests.csproj -c Release
 node Tests/browser/chess.mjs
@@ -157,6 +159,8 @@ Native desktop focus, physical dragging and installation/restart still require a
 Version 1.0.2 keeps the restored compact UI and adds the optional SDK 1.2.0 page-history contract. It requires a host shipping SDK 1.2.0; existing 1.0.0 packages remain supported by the host. The board/game rules and saved-game identity are unchanged.
 
 ## Chess 1.1.0
+
+The current 1.1.1 package preserves these features and adds release update metadata.
 
 The new optional package adopts the host settings workspace with General, Sound and Score topics, shared wheel selects, descriptions and host Back navigation. The board, saved-game ID, score and rules stay compatible. Existing installed extensions are not silently replaced; import the new package to use its layout. The host also normalizes the legacy New game action so the existing form remains usable without upgrading.
 

@@ -51,7 +51,7 @@ Built-in menu source remains the reference for integration details, while the SD
 | --- | --- |
 | Application release | 2v2910 (29 October) |
 | Built-in Audio / Clock | 1.2.0 / 1.2.0 (bundled with HIT) |
-| Optional Chess package | 1.1.0 |
+| Optional Chess package | 1.1.1 |
 | Public SDK package | 1.2.0 |
 | SDK assembly identity | 1.0.0.0 |
 | `.hitmenu` format / `hitContractVersion` | `1` / `"1"` |

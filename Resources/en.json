@@ -427,5 +427,11 @@
   "Version {0} - bundled with HIT": "Version {0} - bundled with HIT",
   "Chess settings": "Chess settings",
   "Sound": "Sound",
-  "Score": "Score"
+  "Score": "Score",
+  "Check for extension updates": "Check for extension updates",
+  "Update to {0}": "Update to {0}",
+  "Some extension updates could not be checked. Try again.": "Some extension updates could not be checked. Try again.",
+  "Extension updates are available below.": "Extension updates are available below.",
+  "All supported extensions are up to date.": "All supported extensions are up to date.",
+  "Extension update failed.": "Extension update failed."
 }

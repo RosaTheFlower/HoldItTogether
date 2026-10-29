@@ -32,7 +32,8 @@ try {
             Copy-Item -LiteralPath $source -Destination $destination -Recurse
         }
     }
-    $package = Join-Path $outputPath ($manifest.id + '-' + $manifest.version + '.hitmenu')
+    $packageName = if ($manifest.id -eq 'dev.hit.chess') { 'chess-v' + $manifest.version + '.hitmenu' } else { $manifest.id + '-' + $manifest.version + '.hitmenu' }
+    $package = Join-Path $outputPath $packageName
     Add-Type -AssemblyName System.IO.Compression.FileSystem
     Add-Type -AssemblyName System.IO.Compression
     $temporary = Join-Path $staging 'result.zip'

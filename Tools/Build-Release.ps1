@@ -22,7 +22,8 @@ try {
     foreach ($module in @('HIT.Chess','HIT.Example')) {
         & (Join-Path $PSScriptRoot 'Pack-HitMenu.ps1') -Project "Modules/$module/$module.csproj" -OutputDirectory 'artifacts/packages'
         $manifest = Get-Content -LiteralPath "Modules/$module/manifest.json" -Raw | ConvertFrom-Json
-        Copy-Item -LiteralPath (Join-Path $workspace ('artifacts/packages/' + $manifest.id + '-' + $manifest.version + '.hitmenu')) -Destination $modules
+        $packageName = if ($manifest.id -eq 'dev.hit.chess') { 'chess-v' + $manifest.version + '.hitmenu' } else { $manifest.id + '-' + $manifest.version + '.hitmenu' }
+        Copy-Item -LiteralPath (Join-Path $workspace ('artifacts/packages/' + $packageName)) -Destination $modules
     }
     if ($RunTests) {
         InvokeDotNet @('Modules/HIT.Example.Tests/bin/DistributionBuild/HIT.Example.Tests.dll')

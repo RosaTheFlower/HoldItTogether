@@ -48,6 +48,7 @@ internal static class Program
         builder.Services.AddSingleton<DesktopWindowService>();
         builder.Services.AddSingleton<HitMenuCatalog>();
         builder.Services.AddSingleton<ExtensionStore>();
+        builder.Services.AddSingleton<ExtensionUpdateService>();
         builder.Services.AddSingleton<ExtensionUi>();
         builder.Services.AddSingleton<ExtensionRuntime>();
         builder.Services.AddSingleton<HitExtensionHub>();
