@@ -1,0 +1,79 @@
+﻿@using HoldItTogether.Services.Settings
+@using HoldItTogether.Services.Audio
+
+<section class="audio-settings-view" aria-label="@Text.Get("Visualizer")" data-no-drag
+         @onclick:stopPropagation="true" @oncontextmenu:preventDefault="true">
+    <label class="audio-setting-row">
+        <span>@Text.Get("Enable visualizer")</span>
+        <input type="checkbox" class="hit-switch" role="switch" aria-label="@Text.Get("Enable visualizer")"
+               @bind:get="Settings.AudioVisualizerEnabled" @bind:set="SetVisualizerEnabled" />
+    </label>
+    <label class="audio-setting-row">
+        <span>@Text.Get("Visualizer style")</span>
+        <select aria-label="@Text.Get("Visualizer style")" value="@Settings.AudioVisualizerStyle" @onchange="SetVisualizerStyle">
+            <option value="Bars">@Text.Get("Bars")</option>
+            <option value="Line">@Text.Get("Line")</option>
+            <option value="Smooth">@Text.Get("Smooth line")</option>
+            <option value="Mirrored">@Text.Get("Mirrored spectrum")</option>
+            <option value="Radial">@Text.Get("Radial bars")</option>
+            <option value="Ring">@Text.Get("Spectrum ring")</option>
+            <option value="Wave">@Text.Get("Wave")</option>
+            <option value="WaveSoft">@Text.Get("Wave · Soft")</option>
+            <option value="WaveRibbons">@Text.Get("Wave · Ribbons")</option>
+            <option value="WavePulse">@Text.Get("Wave · Pulse")</option>
+        </select>
+    </label>
+    <AudioEffectSlider Label="@Text.Get("Visualizer height")" Min="10" Max="200" Step="1"
+                       Value="Settings.AudioVisualizerHeightPercent" Unit="%" ValueChanged="VisualizerHeightChanged" />
+    <AudioEffectSlider Label="@Text.Get("Visualizer size")" Min="100" Max="500" Step="1"
+                       Value="Settings.AudioVisualizerSizePercent" Unit="%" ValueChanged="VisualizerSizeChanged" />
+    <AudioEffectSlider Label="@Text.Get("Visualizer position · Y")" Min="-100" Max="100" Step="1"
+                       Value="Settings.AudioVisualizerPositionYPercent" Unit="%" ValueChanged="VisualizerPositionYChanged" />
+    <AudioEffectSlider Label="@Text.Get("Visualizer opacity")" Min="0" Max="100" Step="1"
+                       Value="Settings.AudioVisualizerOpacityPercent" Unit="%" ValueChanged="VisualizerOpacityChanged" />
+    <div class="audio-setting-row">
+        <span>@Text.Get("Orientation")</span>
+        <div class="audio-visualizer-flips">
+            <button type="button" class="hit-button" aria-label="@Text.Get("Flip visualizer horizontally")"
+                    aria-pressed="@(Settings.AudioVisualizerFlipX ? "true" : "false")"
+                    @onclick="() => VisualizerFlipXChanged.InvokeAsync(!Settings.AudioVisualizerFlipX)">@Text.Get("Flip X")</button>
+            <button type="button" class="hit-button" aria-label="@Text.Get("Flip visualizer vertically")"
+                    aria-pressed="@(Settings.AudioVisualizerFlipY ? "true" : "false")"
+                    @onclick="() => VisualizerFlipYChanged.InvokeAsync(!Settings.AudioVisualizerFlipY)">@Text.Get("Flip Y")</button>
+        </div>
+    </div>
+    <label class="audio-setting-row">
+        <span>@Text.Get("Compositing mode")</span>
+        <select aria-label="@Text.Get("Compositing mode")" value="@Settings.AudioVisualizerBlend" @onchange="SetBlend">
+            <option value="Normal">@Text.Get("Normal")</option>
+            <option value="Invert">@Text.Get("Invert colors")</option>
+            <option value="Difference">@Text.Get("Difference")</option>
+            <option value="Overlay">@Text.Get("Overlay")</option>
+            <option value="Screen">@Text.Get("Screen")</option>
+            <option value="Multiply">@Text.Get("Multiply")</option>
+            <option value="Exclusion">@Text.Get("Exclusion")</option>
+        </select>
+    </label>
+    @if (Error is { } error) { <p class="audio-error" role="status">@error</p> }
+</section>
+
+@code {
+    [Parameter, EditorRequired] public HitSettings Settings { get; set; } = new();
+    [Parameter] public string? Error { get; set; }
+
+    [Parameter] public EventCallback<bool> VisualizerEnabledChanged { get; set; }
+    [Parameter] public EventCallback<AudioVisualizerStyle> VisualizerStyleChanged { get; set; }
+    [Parameter] public EventCallback<int> VisualizerHeightChanged { get; set; }
+    [Parameter] public EventCallback<int> VisualizerSizeChanged { get; set; }
+    [Parameter] public EventCallback<int> VisualizerPositionYChanged { get; set; }
+    [Parameter] public EventCallback<int> VisualizerOpacityChanged { get; set; }
+    [Parameter] public EventCallback<bool> VisualizerFlipXChanged { get; set; }
+    [Parameter] public EventCallback<bool> VisualizerFlipYChanged { get; set; }
+    [Parameter] public EventCallback<AudioVisualizerBlend> VisualizerBlendChanged { get; set; }
+    private Task SetBlend(ChangeEventArgs args) => Enum.TryParse<AudioVisualizerBlend>(args.Value?.ToString(), out var blend)
+        && Enum.IsDefined(blend) ? VisualizerBlendChanged.InvokeAsync(blend) : Task.CompletedTask;
+
+    private Task SetVisualizerEnabled(bool enabled) => VisualizerEnabledChanged.InvokeAsync(enabled);
+    private Task SetVisualizerStyle(ChangeEventArgs args) => Enum.TryParse<AudioVisualizerStyle>(args.Value?.ToString(), out var style)
+        && Enum.IsDefined(style) ? VisualizerStyleChanged.InvokeAsync(style) : Task.CompletedTask;
+}

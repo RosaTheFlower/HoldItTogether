@@ -20,6 +20,7 @@ public sealed class ExtensionStore
     public ExtensionRegistry State => Volatile.Read(ref _state);
     public string? Error { get; private set; }
     public event Action? Changed;
+    public Func<ExtensionManifest, ExtensionManifest, CancellationToken, Task<bool>>? ConfirmDowngradeAsync { get; set; }
     public ExtensionStore() : this(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "HoldItTogether", "Modules")) { }
     public ExtensionStore(string root)
     {
@@ -79,6 +80,7 @@ public sealed class ExtensionStore
             {
                 int removed = 0, skipped = 0;
                 var clearedPrevious = new HashSet<string>();
+                var removedPackages = new HashSet<string>();
                 lock (_sync)
                 {
                     if (HasLink(ExtensionManifest.SafePath(Root,"Installed"))) return new ExtensionCleanupResult(0,1);
@@ -88,12 +90,14 @@ public sealed class ExtensionStore
                         {
                             token.ThrowIfCancellationRequested();
                             var directory = ExtensionManifest.SafePath(Root, "Installed/" + package.Manifest.Id);
-                            if (!Directory.Exists(directory) || HasLink(directory)) continue;
+                            if (!Directory.Exists(directory)) { if (package.PendingDelete && !loadedVersions.ContainsKey(package.Manifest.Id)) removedPackages.Add(package.Manifest.Id); continue; }
+                            if (HasLink(directory)) { skipped++; continue; }
                             foreach (var path in Directory.EnumerateDirectories(directory))
                             {
                                 token.ThrowIfCancellationRequested();
                                 var version = Path.GetFileName(path);
-                                if (!Version.TryParse(version, out _) || version == package.Manifest.Version || version == loadedVersions.GetValueOrDefault(package.Manifest.Id)) continue;
+                                if (!Version.TryParse(version, out _) || (!package.PendingDelete && version == package.Manifest.Version)) continue;
+                                if (version == loadedVersions.GetValueOrDefault(package.Manifest.Id)) { if (package.PendingDelete) skipped++; continue; }
                                 try
                                 {
                                     if (HasLinkedDescendant(path)) { skipped++; continue; }
@@ -103,12 +107,18 @@ public sealed class ExtensionStore
                                 catch (Exception error) when (error is IOException or UnauthorizedAccessException) { skipped++; }
                             }
                         }
+                            foreach (var package in _state.Packages.Where(package => package.PendingDelete && !loadedVersions.ContainsKey(package.Manifest.Id)))
+                            {
+                                var directory = ExtensionManifest.SafePath(Root, "Installed/" + package.Manifest.Id);
+                                if (Directory.Exists(directory) && !HasLink(directory) && !Directory.EnumerateFileSystemEntries(directory).Any())
+                                { DeleteTree(directory); removedPackages.Add(package.Manifest.Id); }
+                            }
                     }
                     finally
                     {
                         // A canceled view must not leave a rollback pointer to files already removed.
-                        if (clearedPrevious.Count > 0)
-                            Update(state => state with { Packages = state.Packages.Select(package => clearedPrevious.Contains(package.Manifest.Id) ? package with { PreviousVersion = null } : package).ToArray() });
+                        if (clearedPrevious.Count > 0 || removedPackages.Count > 0)
+                            Update(state => state with { Packages = state.Packages.Where(package => !removedPackages.Contains(package.Manifest.Id)).Select(package => clearedPrevious.Contains(package.Manifest.Id) ? package with { PreviousVersion = null } : package).ToArray() });
                     }
                 }
                 return new ExtensionCleanupResult(removed, skipped);
@@ -212,19 +222,39 @@ public sealed class ExtensionStore
             }
             var existing = State.Packages.FirstOrDefault(item => item.Manifest.Id == manifest.Id);
             if (existing?.Hash == hash && !existing.PendingDelete) return existing;
-            if (existing is not null && System.Version.Parse(manifest.Version) <= System.Version.Parse(existing.Manifest.Version))
-                throw new InvalidDataException("An update must have a newer version number.");
+            if (existing is not null && !existing.PendingDelete)
+            {
+                var comparison = System.Version.Parse(manifest.Version).CompareTo(System.Version.Parse(existing.Manifest.Version));
+                if (comparison == 0) throw new InvalidDataException("Changed package contents require a different version number.");
+                if (comparison < 0 && (ConfirmDowngradeAsync is null || !await ConfirmDowngradeAsync(existing.Manifest, manifest, token)))
+                    throw new OperationCanceledException("Extension downgrade canceled.", token);
+            }
             if (existing is null && State.Packages.Length >= 100) throw new InvalidDataException("The extension limit has been reached.");
             var destinationRoot = PackagePath(manifest);
-            if (Directory.Exists(destinationRoot)) throw new InvalidDataException("This package version already exists on disk.");
+            var retained = Directory.Exists(destinationRoot);
+            if (retained)
+            {
+                if (HasLinkedDescendant(destinationRoot)) throw new InvalidDataException("Invalid retained package directory.");
+                var incoming = Directory.GetFiles(content, "*", SearchOption.AllDirectories);
+                if (incoming.Length != Directory.GetFiles(destinationRoot, "*", SearchOption.AllDirectories).Length || incoming.Any(file =>
+                    !File.Exists(Path.Combine(destinationRoot, Path.GetRelativePath(content, file))) ||
+                    !SameFile(file, Path.Combine(destinationRoot, Path.GetRelativePath(content, file)))))
+                    throw new InvalidDataException("This version is retained with different contents. Clear old versions before importing it.");
+            }
             Directory.CreateDirectory(Path.GetDirectoryName(destinationRoot)!);
-            Directory.Move(content, destinationRoot);
+            if (!retained) Directory.Move(content, destinationRoot);
             var installed = new InstalledExtension(manifest, hash, PreviousVersion: existing?.Manifest.Version);
             try { Update(state => state with { Packages = state.Packages.Where(item => item.Manifest.Id != manifest.Id).Append(installed).ToArray() }); }
-            catch { DeleteTree(destinationRoot); throw; }
+            catch { if (!retained) DeleteTree(destinationRoot); throw; }
             return installed;
         }
         finally { try { DeleteTree(staging); } finally { _gate.Release(); } }
+    }
+    private static bool SameFile(string left, string right)
+    {
+        if (new FileInfo(left).Length != new FileInfo(right).Length) return false;
+        using var first = File.OpenRead(left); using var second = File.OpenRead(right);
+        return SHA256.HashData(first).AsSpan().SequenceEqual(SHA256.HashData(second));
     }
     private static async Task CopyLimited(Stream input, Stream output, long limit, CancellationToken token)
     {

@@ -1,0 +1,4 @@
+interface:
+  display_name: "HIT Performance"
+  short_description: "Resource sleep, diagnostics and measured optimization"
+  default_prompt: "Use $hit-performance to investigate this HIT resource issue with comparable measurements and lifecycle checks."

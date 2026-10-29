@@ -1,6 +1,5 @@
-<label class="audio-effect-row">
-    <span>@Label</span><input type="range" min="@Min" max="@Max" step="@Step" value="@Value" aria-label="@Label" @oninput="Read" @onwheel:stopPropagation="true" /><output>@Value@Unit</output>
-</label>
+@using HoldItTogether.Components.Settings
+<SettingRange CssClass="audio-effect-row" Label="@Label" Description="@Text.Format("Adjust {0}.", Text.Get(Label))" Min="Min" Max="Max" Step="Step" Value="Value" Unit="@Unit.Trim()" Disabled="Disabled" Changed="v=>ValueChanged.InvokeAsync((int)v)" />
 @code {
     [Parameter] public string Label { get; set; } = "";
     [Parameter] public string Unit { get; set; } = "";
@@ -8,6 +7,6 @@
     [Parameter] public int Max { get; set; } = 100;
     [Parameter] public int Step { get; set; } = 1;
     [Parameter] public int Value { get; set; }
+    [Parameter] public bool Disabled { get; set; }
     [Parameter] public EventCallback<int> ValueChanged { get; set; }
-    private Task Read(ChangeEventArgs args) => int.TryParse(args.Value?.ToString(),out var number) ? ValueChanged.InvokeAsync(Math.Clamp(number,Min,Max)) : Task.CompletedTask;
 }

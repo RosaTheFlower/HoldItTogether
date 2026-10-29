@@ -25,7 +25,7 @@ Built-in menu ID: `HoldItTogether.Components.HitMenus.HitMenuClock`.
 | `.clock-duration` | Timer hour/minute/second fields |
 | `.clock-progress`, `.clock-progress span` | Real phase progress |
 | `.clock-button`, `.clock-button.is-primary` | Action buttons |
-| `.clock-settings`, `.clock-setting-row`, `.clock-disclosure` | General settings |
+| `.settings-workspace`, `.settings-sidebar`, `.settings-content`, `.clock-settings` | Shared General/Pomodoro/World clocks configuration |
 | `.clock-switch`, `.clock-setting-number`, `.clock-setting-summary` | Preference controls |
 | `.clock-system-settings`, `.clock-world-list` | World clocks page/bounded list |
 | `.clock-world-entry`, `.clock-world-preview`, `.clock-world-position` | Collapsed rows |
@@ -92,3 +92,5 @@ Reduced motion removes progress transitions without stopping actual countdowns.
 Test one/two clocks, seconds on/off, world clock edits/add/reorder/remove, all three functions,
 pending notices, full/compact/drag/M2 states, global artwork/colors and all motion/contrast modes.
 CSS changes appearance, never time-zone rules, selected function or actual time text.
+
+Transparent Timer/Pomodoro primary actions use the Clock foreground token, never the surface token. Typed clock fields keep a quiet outline; configuration slider values stay borderless. Shared SettingsWorkspace controls and optional entrances apply without changing countdown state.

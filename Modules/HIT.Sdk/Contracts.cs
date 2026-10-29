@@ -18,6 +18,14 @@ public interface IHitMenuSettings
     Task CloseSettingsAsync();
 }
 
+/// <summary>Optional stable view identities for host-owned Back/Forward history. No domain state is serialized by the host.</summary>
+public interface IHitMenuPages
+{
+    string CurrentPage { get; }
+    bool CanReturnToParent { get; }
+    Task NavigateToPageAsync(string page);
+}
+
 public enum HitLayout { Default, Compact }
 
 /// <summary>Optional menu-specific compaction, requested by the host's departure timer.</summary>

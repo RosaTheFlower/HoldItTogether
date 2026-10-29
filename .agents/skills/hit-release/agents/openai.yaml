@@ -1,0 +1,4 @@
+interface:
+  display_name: "HIT Build and Release"
+  short_description: "Focused checks, packages, developer kits and installer"
+  default_prompt: "Use $hit-release to select and run the documented verification or distribution path for this HIT task."

@@ -55,6 +55,9 @@ Use a disposable lifetime for independent view resources.
 
 Read IsActive/IsVisible/IsPinned and request title, close or layout through that context.
 For configuration, implement `HoldItTogether.Services.HitMenus.IHitMenuSettings` (the SDK-compatible interface).
+Its optional `CanGoBack` override controls the shared header chevron; the default follows
+`IsSettingsOpen`. Return exactly one view level from `CloseSettingsAsync` and publish the current
+view's title so the header and Back availability stay synchronized.
 Do not create a second `HitMenu...` entry for settings: put supporting views in `Components/Agenda`.
 Use `HitDisclosure` for title/main-control/chevron rows and render expensive expanded fields conditionally.
 Use `HitScrollRegion` for local scrolling, and `HitMenuViewport` only where X/Y scaling is part of the feature.
@@ -80,3 +83,5 @@ AlwaysOnTop/tray/global preferences use HitSettingsService, not direct writes fr
 - Settings persist with normalized bounds; stale asynchronous results cannot update a new selection.
 - Resource disposal and meaningful behavior checks are complete.
 - Update the feature, theme and API guides when their contracts change.
+
+Configuration entry points use SettingsWorkspace with shared SettingRange/SettingToggle rows. Page identities must be stable for optional IHitMenuPages history and data-hit-view entrance detection. Keep General options (including InfiniteMenu) in the host settings; do not duplicate navigator state in individual views.

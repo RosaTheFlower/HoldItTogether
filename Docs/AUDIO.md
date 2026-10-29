@@ -22,12 +22,12 @@ Windows can refuse it. HIT does not launch another app to simulate this action.
 
 ## Lyrics search and reading
 
-LyricsService tries LRCLIB exact/search, then SyncLRC, then NetEase search/LRC.
+LyricsService tries LRCLIB exact/search, then SyncLRC, then NetEase search/LRC. Matching LRCLIB plain text is retained as a fallback; Lyrics.ovh is queried when no result remains. Attribution uses the actual provider/result URL.
 Search alternatives validate title, artist and duration to avoid another track/version. Cleaning may remove redundant artist prefixes
 and common Official Video-style suffixes. Provider requests have six-second deadlines and 1 MiB response bounds.
 SyncLRC has a local rate budget below the cited provider's 30/minute allowance.
 
-Only timestamped lyrics enable the button. Plain text is not assigned fabricated timing.
+Timestamped lyrics are preferred. If none are available, matching LRCLIB plain lyrics or Lyrics.ovh provide a scrollable reading view labeled as unsynchronized, without seek buttons, automatic verse following or the synced timeline. Plain text is never assigned fabricated timing.
 The parser supports multiple timestamps per row and a global offset, bounded to 3,000 rows/5,000 timestamps.
 Timing depends on the provider and source app's timeline. A failed lookup can remain unavailable without breaking playback.
 
@@ -56,7 +56,84 @@ The spectrum is a background layer and does not change player geometry. It can c
 The 32 bands are drawn on one full-DPI canvas with bounded interpolation, replacing 32 animated DOM layers.
 Updates do not change DOM styles or rebuild bars. The canvas/gradient buffers and listeners are released when disabled/disposed.
 Its enabled state persists in `audioVisualizerEnabled`; capture resumes only while Audio is visible.
+Audio settings -> Visualizer opens a dedicated subpage with an enable switch, style selection and immediate height
+adjustment from 10% to 200% of the existing drawing area. Height changes amplitude, not player/window
+dimensions or capture gain. Defaults remain Bars and 100%, preserving existing installations.
+`audioVisualizerStyle` stores the stable numeric values below; undefined numeric values normalize to Bars.
+Retired value 3 (Filled spectrum) migrates to Smooth line. The removed value is not reused.
+`audioVisualizerHeightPercent` defaults to 100 and clamps to 10-200. All styles use the same
+32-band snapshot, canvas and interpolation; changing style/height does not start another capture.
+Renderer preferences survive buffer release during scene/resource transitions. Line connects FFT
+frequency bands; it is not a time-domain waveform. A true waveform requires a separate temporal-data
+contract and is not included in this delivery; the common height parameter can also serve that renderer.
 Reduced motion removes CSS smoothing but does not replace real spectrum values with fabricated animation.
+
+| Style | Persisted value | Presentation |
+| --- | --- | --- |
+| Bars | 0 | Original bottom-aligned gradient bars |
+| Line | 1 | Straight segments connecting frequency bands |
+| Smooth line | 2 | Quadratic interpolation of the frequency-band contour |
+| Mirrored spectrum | 4 | Two smooth contours reflected about the vertical midpoint |
+| Radial bars | 5 | 32 outward spokes around a fixed center |
+| Spectrum ring | 6 | Closed contour with band amplitude mapped to radius |
+| Wave | 7 | Three overlapping continuous curves with a smooth audio-energy envelope |
+| Wave · Soft | 8 | One broad, slower continuous curve |
+| Wave · Ribbons | 9 | Three closed ribbons around the wave contour, not bottom-filled spectrum areas |
+| Wave · Pulse | 10 | Two denser curves with faster phase response |
+
+The radial styles use the smaller canvas dimension so they remain circular at non-square player
+dimensions. Their height control scales the radial excursion. All modes are frequency-spectrum
+presentations, including the wave-like smooth/mirrored shapes; none claims to show PCM over time.
+Amplification above 100% keeps the existing native/window bounds. Vertical peaks may clip at the
+canvas edges, while radial modes reserve room for their maximum excursion. Silence returns to
+the small static baseline/inner ring, with no decorative oscillation or rotation. Rendering performs
+no per-frame DOM mutation, retains no raw audio and uses the existing bounded interpolation loop.
+
+All four Wave variants are aesthetic audio-energy envelopes rather than reconstructions of PCM.
+They follow RMS energy of smoothed FFT bands, with interpolated individual bands modulating the
+curves. Their paths extend 6% beyond each horizontal edge of the drawing area at every Size setting;
+the native/menu bounds clip the ends. There are no side gaps or visible waveform endpoints.
+Wave Size increases excursion and wavelength while a smooth vertical fit keeps the curves in view
+at high zoom/height. Phase advances only during requested drawing frames, not through an independent
+perpetual animation. Silence flattens lines/collapses ribbons and stops interpolation; reduced motion
+fixes phase while retaining amplitude response. Theme accent colors remain authoritative.
+
+**Size** is separate from Height: `audioVisualizerSizePercent` defaults to 100 and clamps to 100-500.
+Older values below 100 normalize to 100. It enlarges the drawing without allocating a larger canvas
+or changing window bounds. Radial, Ring and Mirrored scale about the center; bottom-aligned styles
+scale about the bottom center. Wave variants retain their full-width overscan as described above.
+For radial modes, Size enlarges both the base circle and its excursion, whereas Height changes
+excursion only. Large sizes/heights can crop the drawing at the existing canvas edges.
+
+**Position Y** persists in `audioVisualizerPositionYPercent`, default 0, range -100 to 100.
+It shifts the drawing by a percentage of the current canvas height: negative moves up, positive
+moves down. It is independent of zoom and follows the available area during compact/expand.
+
+**Opacity** persists in `audioVisualizerOpacityPercent`, default 55, range 0-100. It applies directly
+and uniformly in every style/compositing mode, including with an artwork palette. Zero hides the
+visual drawing; it does not change audio volume or capture ownership. Updating opacity does not
+replace the root's JS-owned artwork/palette styles.
+
+**Flip X / Flip Y** are independent toggle buttons backed by `audioVisualizerFlipX` and
+`audioVisualizerFlipY`, both false by default. X reflects frequency distribution horizontally;
+Y anchors bottom-aligned bars/lines at the ceiling. Both apply to every style and survive buffer
+release. Position Y stays in menu coordinates, so positive values still move down after inversion.
+
+**Compositing mode** persists in `audioVisualizerBlend`: Normal=0, Invert=1, Difference=2,
+Overlay=3, Screen=4, Multiply=5, Exclusion=6. Invalid enum values normalize to Normal. Every mode
+keeps a pointer-transparent visualizer above the cover/background and below text, lyrics, controls
+and configuration forms. Non-Normal modes blend only with the background below them; they cannot
+invert or recolor foreground UI. Invert makes the source
+white before Difference composition. Its result is alpha-weighted by the drawing's coverage.
+These modes cannot invert pixels of other applications behind the transparent desktop window.
+Blending against transparent regions may be less visible than against actual HIT artwork/content.
+Size, Height, Position Y, Opacity, flips and composition apply immediately and persist independently. Settings -> Visualizer
+remains a separate configuration subpage and returns one level to Audio settings.
+
+During compact/expand, scene insets follow the shared animated focus progress instead of switching
+at its endpoints. The same canvas stays mounted and repaints its current values synchronously inside
+each ResizeObserver callback after changing the backing dimensions; no blank frame is deferred to the
+next animation frame. Actual sleep/disposal still releases the backing buffers and capture lease.
 
 ## Artwork, palette and appearance
 
@@ -95,8 +172,14 @@ The visualizer follows the Windows default output; it does not reroute playback.
 
 ## Menu settings and saved keys
 
-M2 on the current menu title opens Audio settings. Size is a compact uniform slider; expand for independent axes.
-The player, lyrics and settings all use the chosen 25-200% X/Y scale.
+M2 or the optional held-title gesture opens Audio settings. Its shared workspace exposes General,
+Size, Lyrics, Artwork, Background effects, Color adjustments, Visualizer and Hide buttons directly
+in the sidebar. Object M2 gestures remain shortcuts to those visible pages. There are no hidden
+configuration-only routes or additional inline Back buttons. A subtopic returns to General, then
+General returns to the player using the header chevron, M2, side Back or Escape.
+Size shows uniform, width and height sliders together, with editable plain values. The chosen
+25-200% X/Y scale applies to the player and lyrics. Configuration stays at 100% in the common
+610 x 420 workspace so changing player scale does not shrink its controls.
 Lyrics centering converts screen coordinates back to layout coordinates; resizing must not move the active verse outside its viewport.
 The lyric-source row also shows the song name in muted text on the opposite side.
 Show song title in lyrics and Show lyrics source independently hide those labels; both are enabled by default.
@@ -105,7 +188,7 @@ Show timeline in lyrics adds an interactive seek track flush with the sphere's b
 Track thickness is configurable from 1-6 px (default 2); dragging commits against the captured media generation.
 While pinned, the shared pointer-departure delay hides the common header and secondary artwork/lyrics/visualizer controls.
 The default is five seconds; Settings -> Compact after configures 0-10 seconds. Hover prevents compaction.
-Audio settings -> Hide buttons opens its own configuration screen, with independent Player and Lyrics switches.
+Audio settings -> Hide buttons selects a visible topic with independent Player and Lyrics switches.
 Each switch controls secondary-button hiding and compaction on that page only. Both default to enabled and persist independently.
 Every audio configuration screen, including Hide buttons, stays expanded regardless of either switch.
 Playback/timeline/verse actions remain usable. The player contracts; lyrics reclaim reading space without resizing the window.
@@ -142,10 +225,19 @@ Real movement/interaction restores controls; media polling and verse changes do 
 | `audioArtworkOnBeat` | false |
 | `audioArtworkBeatStrength` | 100; 0-200 percent |
 | `audioVisualizerEnabled` | false |
+| `audioVisualizerStyle` | Bars; stable values listed under Visualizer; retired 3 migrates to Smooth |
+| `audioVisualizerHeightPercent` | 100; 10-200 percent |
+| `audioVisualizerSizePercent` | 100; 100-500 percent |
+| `audioVisualizerPositionYPercent` | 0; -100 to 100 percent of current canvas height |
+| `audioVisualizerOpacityPercent` | 55; 0-100 percent |
+| `audioVisualizerFlipX`, `audioVisualizerFlipY` | false; independent orientation toggles |
+| `audioVisualizerBlend` | Normal; stable values listed under Visualizer |
 | `audioLyricsTimeline` | false |
 | `audioLyricsTimelineThickness` | 2; 1-6 px |
 
-Audio settings, Hide buttons, artwork settings, background effects and color adjustments set IsSettingsOpen so wheel navigation is blocked and M2 returns.
+All Audio configuration topics set IsSettingsOpen. Their right options pane scrolls locally, while
+wheel input elsewhere can navigate host menus; an open combobox temporarily blocks menu-wheel
+navigation everywhere. M2 and header Back return a single configuration level.
 Show source controls the origin label in normal and compact artwork layouts.
 Shared idle/modifier behavior belongs to shell JS, not duplicate listeners in Audio.
 On a configuration screen, the cover icon beside Pin/Close can temporarily hide an available artwork background.
@@ -175,3 +267,16 @@ User/provider/platform troubleshooting: [Troubleshooting](TROUBLESHOOTING.md).
 - [Process AppUserModelID](https://learn.microsoft.com/en-us/windows/win32/api/appmodel/nf-appmodel-getapplicationusermodelid)
 - [Restore/show window](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-showwindowasync)
 - [Foreground request](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-setforegroundwindow)
+
+
+YouTube/browser metadata can separate artist and song from artist-first video titles, remove official-video decorations and resolve Topic/VEVO channel suffixes. Matching still validates title/artist; a video with a different duration can use plain text without borrowing album timestamps. This is metadata matching, not audio fingerprinting or video-caption extraction. Spotify playback uses the published Windows media metadata and the same independent lyrics providers; the public Spotify API does not offer a documented lyrics integration in this implementation. No browser cookies or Spotify account tokens are read.
+
+Lyrics uses a musical-note host title icon and the shared host Back chevron; the duplicate Back to Audio button is removed. M2 and keyboard return remain available. Personal background images stay beneath the artwork layer; reading-cover toggles fade over that background for 650 ms, with immediate changes when animations are disabled.
+
+Artwork -> Artwork over background controls cover opacity from 0 to 100% (32% compatibility default), applied immediately and persisted independently of personal-image opacity. In blend mode, 0% reveals the personal background; 100% makes the cover layer opaque. Existing cover visibility, effects and fade rules still apply.
+
+Blend artwork with personal background is a separate persisted Audio -> Artwork switch, default OFF. OFF makes artwork exclusive while its cover is visible; the personal layer remains mounted at zero opacity and returns with the cover fade. ON displays both layers using their independent opacity settings. Hiding artwork or starting its disappearance restores the personal layer during the existing 650 ms fade. This does not change artwork color precedence. Visualizer Flip X/Flip Y labels remain on a single line with equal-width buttons.
+
+The Lyrics reading title routes M2/held-M1 configuration shortcuts directly to the Lyrics topic. Held-M1 title shortcuts are unavailable once any configuration is open.
+
+Audio configuration identifies the built-in feature as version 1.2.0. It is shipped and updated with HIT, not installed or updated as a separate extension.

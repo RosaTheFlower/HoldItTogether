@@ -1,4 +1,14 @@
 /* Dynamic Sphere: public geometry, interaction surface and fallback motion. */
+.sphere-title{position:relative;border-radius:999px;}
+.title-hold-fill{position:absolute;inset:0;z-index:0;pointer-events:none;border-radius:999px;background:var(--hit-accent);transform-origin:left;animation:hit-title-fill var(--title-hold-duration,700ms) linear both;}
+.title-hold-inverse{position:absolute;inset:0;z-index:1;pointer-events:none;display:flex;align-items:center;gap:7px;color:var(--hit-open-background,var(--hit-background));animation:hit-title-inverse var(--title-hold-duration,700ms) linear both;}
+@keyframes hit-title-fill{from{transform:scaleX(0);}to{transform:scaleX(1);}}
+@keyframes hit-title-inverse{from{clip-path:inset(0 100% 0 0);}to{clip-path:inset(0);}}
+@media(prefers-reduced-motion:reduce){.title-hold-fill,.title-hold-inverse{animation:none;}}
+.sphere-custom-backdrop { display:none;position:absolute;inset:0;z-index:0;pointer-events:none;border-radius:inherit;background-position:center;background-repeat:no-repeat; }
+.sphere-area[data-hit-opacity] { opacity:1;transition:opacity 0ms; }
+.sphere-area[data-hit-opacity][data-hit-opacity-idle="true"] { opacity:var(--hit-idle-opacity,.4);transition-duration:var(--hit-idle-fade,650ms); }
+@media(prefers-reduced-motion:reduce) { .sphere-area[data-hit-opacity] { transition-duration:0ms !important; } }
 
 @property --sphere-prism-angle {
     syntax: "<angle>";
@@ -350,3 +360,30 @@
         transition: none;
     }
 }
+.sphere-area[data-hit-resource-sleep="true"],
+.sphere-area[data-hit-resource-sleep="true"] *,
+.sphere-area[data-hit-resource-sleep="true"] *::before,
+.sphere-area[data-hit-resource-sleep="true"] *::after {
+    animation-play-state: paused !important;
+}
+
+.sphere-title-icon{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0;}.sphere-title{display:flex;align-items:center;gap:7px;}
+.sphere-heading{display:flex;align-items:center;gap:6px;min-width:0;}
+.sphere-action-back{flex:0 0 auto;pointer-events:auto;}
+
+.sphere-custom-backdrop.has-background-slides{background-image:none!important;overflow:hidden;}
+.custom-background-frame{position:absolute;inset:0;background-position:center;background-repeat:no-repeat;}
+.custom-background-enter.fade{animation:hit-background-fade var(--background-transition,1500ms) ease-in-out both;}
+.custom-background-enter.slide{animation:hit-background-slide var(--background-transition,1500ms) ease-in-out both;}
+.custom-background-enter.zoom{animation:hit-background-zoom var(--background-transition,1500ms) ease-in-out both;}
+@keyframes hit-background-fade{from{opacity:0;}to{opacity:1;}}
+@keyframes hit-background-slide{from{opacity:0;transform:translateX(12%);}to{opacity:1;transform:none;}}
+@keyframes hit-background-zoom{from{opacity:0;transform:scale(1.12);}to{opacity:1;transform:none;}}
+@media(prefers-reduced-motion:reduce){.custom-background-enter{animation:none!important;}}
+
+.custom-background-exit{animation:hit-background-fade-out var(--background-transition,1500ms) ease-in-out both;}
+@keyframes hit-background-fade-out{from{opacity:1;}to{opacity:0;}}
+@media(prefers-reduced-motion:reduce){.custom-background-exit{display:none;}}
+
+.sphere-title{padding:2px 8px;box-sizing:border-box;}
+.title-hold-inverse{padding:2px 8px;box-sizing:border-box;}

@@ -1,6 +1,8 @@
 import {configureEffects, renderAudioEffects, disposeEffects} from './audio-effects.js';
 import {renderSpectrum,refreshSpectrum,disconnectSpectrum} from './audio-spectrum.js';
+import {consumesWheel} from './hit-wheel-routing.js';
 export {renderSpectrum,disconnectSpectrum};
+export {configureSpectrum} from './audio-spectrum.js';
 const spectra=new WeakMap();
 export function syncSpectrum(root){
     const current=root?.querySelector('.audio-spectrum'),previous=spectra.get(root);
@@ -17,7 +19,7 @@ const scrolling = new WeakSet();
 export function enableLocalScroll(element) {
     if (!element || scrolling.has(element)) return;
     // Native scrolling stays inside the bounded view, outside Blazor's menu wheel handler.
-    element.addEventListener("wheel", event => event.stopPropagation(), {passive:true});
+    element.addEventListener("wheel", event => { if(consumesWheel(element,event))event.stopPropagation(); }, {passive:true});
     scrolling.add(element);
 }
 
@@ -70,11 +72,29 @@ export function disconnectLyrics(element) {
 const scenes = new WeakMap();
 const owners = new WeakMap();
 const artVariables = ["--audio-art-background","--audio-art-surface","--audio-art-accent","--audio-art-foreground","--audio-art-muted","--audio-artwork"];
+async function fadeCover(scene, reveal) {
+    const backdrop=scene.sphere?.querySelector(':scope > .sphere-audio-backdrop');
+    if(!backdrop)return;
+    if(reveal)delete scene.sphere.dataset.audioCoverHiding;else scene.sphere.dataset.audioCoverHiding='true';
+    const current=Number(getComputedStyle(backdrop).opacity);
+    scene.coverAnimation?.cancel();scene.coverAnimation=null;
+    if(matchMedia('(prefers-reduced-motion: reduce)').matches ||
+        document.getElementById('hit-motion-preference')?.textContent.trim())return;
+    if(getComputedStyle(backdrop).display==='none')return;
+    const target=Number(getComputedStyle(backdrop).opacity);
+    const animation=backdrop.animate([{opacity:reveal?0:current},{opacity:reveal?target:0}],
+        {duration:650,easing:'ease-in-out'});
+    scene.coverAnimation=animation;
+    try{await animation.finished;}catch{} // Rapid reopen replaces the outgoing transition.
+    if(scene.coverAnimation===animation)scene.coverAnimation=null;
+}
 function releaseShell(root, scene) {
     const sphere = scene.sphere;
     if (sphere && owners.get(sphere) === root) {
         delete sphere.dataset.audioTheme;
         delete sphere.dataset.audioCover;
+        delete sphere.dataset.audioBackgroundBlend;
+        delete sphere.dataset.audioCoverHiding;
         delete sphere.dataset.audioLyricsNeutral;
         delete sphere.dataset.audioDrift;
         for (const [name,previous] of scene.previous || []) {
@@ -85,6 +105,7 @@ function releaseShell(root, scene) {
     }
     scene.sphere = null;
     scene.previous = null;
+    document.dispatchEvent(new CustomEvent('hit-appearance-changed'));
 }
 function rgb(values) { return "rgb(" + values.map(value=>Math.round(Math.max(0,Math.min(255,value)))).join(",") + ")"; }
 function palette(image) {
@@ -136,6 +157,8 @@ export async function syncScene(root, artwork, enabled, visible, lyrics, options
     let scene = scenes.get(root);
     if (!scene) {scene={revision:0,source:null,colors:null,sphere:null};scenes.set(root,scene);}
     if (options.reuseArtwork === true) artwork = scene.source;
+    const revealCover=!scene.source || !!scene.clearing || !scene.sphere?.hasAttribute('data-audio-cover');
+    scene.clearing=null;
     const revision=++scene.revision;
     const globalAccent=options.global === true;
     const blur=Number.isFinite(options.blur) ? Math.max(0,Math.min(40,options.blur)) : 8;
@@ -147,15 +170,17 @@ export async function syncScene(root, artwork, enabled, visible, lyrics, options
         scene.backSphere.removeEventListener("pointerup",scene.backHandler,true);
         scene.backSphere=null;
     }
-    if(visible && (lyrics || options.customizing) && navigationSphere) {
+    if(visible && lyrics && !options.customizing && navigationSphere) {
         scene.backHandler=event=>{
             if(event.button!==2)return;
             // The shared title reserves M2 for the current menu's own settings.
             if(event.target.closest?.(".sphere-title, [data-hit-menu-trigger]"))return;
+            const back = navigationSphere.querySelector('.sphere-action-back') || root.querySelector('.audio-view-back');
+            if (!back) return;
             event.preventDefault();
             event.stopPropagation();
             if(scene.customizing && performance.now()-scene.customizingAt<220)return;
-            root.querySelector(".audio-view-back")?.click();
+            back.click();
         };
         scene.backSphere=navigationSphere;
         navigationSphere.addEventListener("pointerup",scene.backHandler,true);
@@ -170,6 +195,8 @@ export async function syncScene(root, artwork, enabled, visible, lyrics, options
     };
     const supported=typeof artwork==="string" && artwork.length<1500000 && /^data:image\/(?:png|jpe?g|webp|gif);base64,/i.test(artwork);
     if (!enabled || (!visible && !globalAccent) || !supported || !root.isConnected) {
+        await fadeCover(scene,false);
+        if(revision!==scene.revision)return;
         disposeEffects(scene.sphere);
         releaseShell(root,scene);
         retainNeutral();
@@ -207,32 +234,42 @@ export async function syncScene(root, artwork, enabled, visible, lyrics, options
         const zoom = Math.max(100,Math.min(180,Number(options.zoom)||100))/100;
         const saturation = (Number.isFinite(options.saturation) ? Math.max(0,Math.min(200,options.saturation)) : 80)/100;
         const distortion = Math.max(0,Math.min(30,Number(options.distortion)||0));
-        const shellValues={...scene.colors,"--audio-artwork":"url("+JSON.stringify(artwork)+")","--audio-cover-blur":blur+"px",'--audio-cover-zoom':String(zoom),'--audio-cover-saturation':String(saturation)};
+        const shellValues={...scene.colors,"--audio-cover-opacity":String(Number.isFinite(options.backgroundOpacity)?Math.max(0,Math.min(100,options.backgroundOpacity))/100:.32),"--audio-artwork":"url("+JSON.stringify(artwork)+")","--audio-cover-blur":blur+"px",'--audio-cover-zoom':String(zoom),'--audio-cover-saturation':String(saturation)};
         scene.previous=Object.keys(shellValues).map(name=>[name,{value:sphere.style.getPropertyValue(name),priority:sphere.style.getPropertyPriority(name)}]);
         for(const [name,value]of Object.entries(shellValues))sphere.style.setProperty(name,value);
         sphere.dataset.audioTheme = globalAccent ? "global" : "local";
+        sphere.dataset.audioBackgroundBlend=options.blendBackground===true?"true":"false";
         if (!neutral && (visible ? !lyrics || options.lyricsCover === true : globalAccent && options.cover !== false)) sphere.dataset.audioCover="true";
         if (neutral) sphere.dataset.audioLyricsNeutral='true';
         if (options.drift === true) sphere.dataset.audioDrift='true';
         owners.set(sphere,root);
         configureEffects(sphere,{blur,zoom:zoom*100,saturation:saturation*100,distortion,drift:options.drift === true,...options.effects});
+        if(revealCover)void fadeCover(scene,true);
         refreshSpectrum(root.querySelector('.audio-spectrum'));
+        document.dispatchEvent(new CustomEvent('hit-appearance-changed'));
     }
 }
-export function clearScene(root) {
+export function clearScene(root, immediate=false) {
     disconnectSpectrum(spectra.get(root));spectra.delete(root);
     disconnectSpectrum(root?.querySelector('.audio-spectrum'));
     const scene=scenes.get(root);
-    if(!scene)return;
-    scene.revision++;
+    if(!scene)return Promise.resolve();
+    if(scene.clearing&&!immediate)return scene.clearing;
+    const revision=++scene.revision;
     scene.backSphere?.removeEventListener("pointerup",scene.backHandler,true);
-    disposeEffects(scene.sphere);
-    releaseShell(root,scene);
     clearLyricsTimeline(root);
-    delete root.dataset.audioPalette;
-    for(const name of artVariables)root.style.removeProperty(name);
-    root.style.removeProperty("--audio-cover-blur");
-    scenes.delete(root);
+    if(immediate){scene.coverAnimation?.cancel();scene.coverAnimation=null;}
+    scene.clearing=(immediate?Promise.resolve():fadeCover(scene,false)).then(()=>{
+        if(scene.revision!==revision)return;
+        disposeEffects(scene.sphere);
+        releaseShell(root,scene);
+        clearLyricsTimeline(root);
+        delete root.dataset.audioPalette;
+        for(const name of artVariables)root.style.removeProperty(name);
+        root.style.removeProperty("--audio-cover-blur");
+        scenes.delete(root);
+    });
+    return scene.clearing;
 }
 
 const timelines = new WeakMap();

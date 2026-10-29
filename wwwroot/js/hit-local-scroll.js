@@ -1,7 +1,8 @@
+import { consumesWheel } from './hit-wheel-routing.js';
 const regions = new WeakMap();
 export function enableLocalScroll(element) {
     if (!element || regions.has(element)) return;
-    const stop = event => event.stopPropagation();
+    const stop = event => { if (consumesWheel(element,event)) event.stopPropagation(); };
     element.addEventListener("wheel", stop, {passive:true});
     regions.set(element, stop);
 }

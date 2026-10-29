@@ -1,8 +1,16 @@
 <Solution>
-  <Project Path="HoldItTogether.csproj" />
-  <Project Path="Modules/HIT.Sdk/HIT.Sdk.csproj" />
-  <Project Path="Modules/HIT.Example.Tests/HIT.Example.Tests.csproj" />
-  <Project Path="Modules/HIT.Example/HIT.Example.csproj" />
-  <Project Path="Modules/HIT.Chess/HIT.Chess.csproj" />
-  <Project Path="Modules/HIT.Chess.Tests/HIT.Chess.Tests.csproj" />
+  <Folder Name="/Application/">
+    <Project Path="HoldItTogether.csproj" />
+  </Folder>
+  <Folder Name="/SDK/">
+    <Project Path="Modules/HIT.Sdk/HIT.Sdk.csproj" />
+  </Folder>
+  <Folder Name="/Extensions/">
+    <Project Path="Modules/HIT.Example/HIT.Example.csproj" />
+    <Project Path="Modules/HIT.Chess/HIT.Chess.csproj" />
+  </Folder>
+  <Folder Name="/Tests/">
+    <Project Path="Modules/HIT.Example.Tests/HIT.Example.Tests.csproj" />
+    <Project Path="Modules/HIT.Chess.Tests/HIT.Chess.Tests.csproj" />
+  </Folder>
 </Solution>

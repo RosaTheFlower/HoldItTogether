@@ -17,6 +17,10 @@ static long Perft(Position p, int depth) => depth == 0 ? 1 : p.LegalMoves().Sum(
 static Move Find(Position p, string from, string to, int promotion = 0) => p.LegalMoves().Single(m => Position.Square(m.From) == from && Position.Square(m.To) == to && m.Promotion == promotion);
 
 var initial = Position.Initial();
+var varied=Enumerable.Range(0,32).Select(seed=>new ChessSearch(new Random(seed)).Choose(Position.Initial(),Difficulty.Hard,CancellationToken.None)).Distinct().ToArray();
+Check(varied.Length>=3&&varied.All(move=>move is not null&&initial.LegalMoves().Contains(move.Value)),"Opening repertoire varies among legal first moves.");
+try{new ChessSearch().Choose(initial,Difficulty.Hard,new CancellationToken(true));throw new Exception("Canceled opening lookup returned a move.");}catch(OperationCanceledException){}
+
 Check(Perft(initial, 1) == 20, "Initial perft 1");
 Check(Perft(initial, 2) == 400, "Initial perft 2");
 Check(Perft(initial, 3) == 8902, "Initial perft 3");
@@ -92,13 +96,15 @@ await using (var renderer = new HtmlRenderer(services, services.GetRequiredServi
         Check(api.Store.Value!.Moves.Count == 1, "Move persisted");
         await menu.OpenSettingsAsync();
         Check(menu.IsSettingsOpen && output.ToHtmlString().Contains("Play as") && !output.ToHtmlString().Contains("Resign"), "Settings and no FF action");
-        Check(output.ToHtmlString().IndexOf("Reset score",StringComparison.Ordinal)<output.ToHtmlString().IndexOf("Difficulty",StringComparison.Ordinal),"Reset score must appear first in Chess settings");
         await Call(menu, "set_DraftSide", "black");
         Check(!(bool)Get(menu, "_draftWhite")! && output.ToHtmlString().Contains("value=\"white\"") && output.ToHtmlString().Contains("value=\"black\""), "Selecting Black retains both options");
         await Call(menu, "set_DraftSide", "white");
         Check((bool)Get(menu, "_draftWhite")! && output.ToHtmlString().Contains("value=\"white\"") && output.ToHtmlString().Contains("value=\"black\""), "Selecting White retains both options");
         Check(!output.ToHtmlString().Contains("FACIL") && output.ToHtmlString().Contains(">Easy<") && output.ToHtmlString().Contains(">Medium<") && output.ToHtmlString().Contains(">Hard<"), "All difficulty labels are English");
         await File.WriteAllTextAsync("obj/chess-tests/settings.html", output.ToHtmlString());
+        await ((IHitMenuPages)menu).NavigateToPageAsync("Settings/Sound");
+        await File.WriteAllTextAsync("obj/chess-tests/sound-settings.html", output.ToHtmlString());
+        await ((IHitMenuPages)menu).NavigateToPageAsync("Settings/General");
         await Call(menu, "AskNewGame");
         await File.WriteAllTextAsync("obj/chess-tests/confirmation.html", output.ToHtmlString());
         await Call(menu, "CancelConfirm");
@@ -188,7 +194,7 @@ await using (var renderer = new HtmlRenderer(services, services.GetRequiredServi
 }
 Console.WriteLine("PASS: rendered board, SAN history/save/reload, last-move squares, checkmate flag, captures, White/Black buttons, no FF, new game, draws, clocks and compact/expand.");
 
-var fixture = Path.GetFullPath("artifacts/packages/dev.hit.chess-1.0.0.hitmenu");
+var fixture = Path.GetFullPath("artifacts/packages/dev.hit.chess-1.1.0.hitmenu");
 if (File.Exists(fixture))
 {
     var store = new ExtensionStore(Path.GetFullPath("obj/chess-tests/install-" + Guid.NewGuid().ToString("N")));

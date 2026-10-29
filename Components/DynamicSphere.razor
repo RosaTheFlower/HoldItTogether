@@ -5,9 +5,16 @@
 @inject DesktopWindowService DesktopWindow
 @inject HoldItTogether.Services.Extensions.ExtensionUi Extensions
 @inject HoldItTogether.Services.Settings.HitSettingsService Settings
+@inject HoldItTogether.Services.Diagnostics.HitResourcePolicy Resources
+@inject HoldItTogether.Services.Extensions.HitExtensionHub ExtensionHub
 
-<div @ref="_area" class="sphere-area" data-hit-geometry-pending="true">
+<div @ref="_area" class="sphere-area" data-hit-geometry-pending="true" data-hit-resource-sleep="@(Resources.IsSleeping ? "true" : "false")"
+     data-hit-opacity="@System.Text.Json.JsonSerializer.Serialize(new{enabled=Settings.Current.IdleOpacityEnabled,sphere=Settings.Current.IdleOpacitySphere,compact=Settings.Current.IdleOpacityCompact,open=Settings.Current.IdleOpacityOpen,delay=Settings.Current.IdleOpacityDelayMs,opacity=Settings.Current.IdleOpacityPercent,duration=Settings.Current.IdleOpacityTransitionMs})">
     <div class="dynamic-sphere @StateClass" data-hit-compact-delay="@Settings.Current.MenuCompactDelayMs"
+         data-hit-side-buttons="@(Settings.Current.MouseSideButtonsEnabled ? "true" : "false")"
+         data-hit-entry-animation="@(Settings.Current.MenuEntranceAnimations && !Settings.Current.RemoveAnimations ? "true" : "false")"
+         data-hit-setting-descriptions="@(Settings.Current.ShowSettingDescriptions ? "true" : "false")"
+         data-hit-show-cover-button="@(Settings.Current.ShowConfigurationCoverButton ? "true" : "false")" data-hit-hide-settings-artwork="@(Settings.Current.HideArtworkInSettings ? "true" : "false")" data-hit-title-hold="@(Settings.Current.TitleHoldEnabled ? "true" : "false")" data-hit-title-hold-delay="@Settings.Current.TitleHoldDelayMs"
          data-hit-placement="@($"{Settings.Current.WindowAllowOtherMonitors}:{Settings.Current.WindowEdgeReachPercent}")"
          tabindex="0"
          role="group"
@@ -20,15 +27,28 @@
          @onfocusin="HandleFocusIn"
          @onfocusout="HandleFocusOut"
          @onkeydown="HandleKeyDown">
+        <HoldItTogether.Components.Settings.CustomBackground Active="@(_state == SphereState.Open)" />
         <div class="sphere-audio-backdrop" aria-hidden="true"></div>
         <div class="sphere-content" inert="@(_state != SphereState.Open)">
             <header class="sphere-header" hidden="@_compactMenu" inert="@_compactMenu">
+                <div class="sphere-heading">
+                @if (_canGoBack)
+                {
+                    <button type="button" class="sphere-action sphere-action-back" data-no-drag aria-label="@Text.Get("Back")" title="@Text.Get("Back")"
+                            @onclick="GoBackAsync" @onclick:stopPropagation="true" @oncontextmenu:preventDefault="true" @oncontextmenu:stopPropagation="true" @onkeydown:stopPropagation="true">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14 6-6 6 6 6" /></svg>
+                    </button>
+                }
                 <h1 class="sphere-title @(_hasMenuSettings ? "has-settings" : "")"
                     tabindex="@(_hasMenuSettings ? 0 : -1)"
                     data-hit-menu-trigger="@(_hasMenuSettings ? "settings" : null)"
                     title="@(_hasMenuSettings ? "Right-click to configure this menu" : null)"
                     @oncontextmenu="OpenMenuSettingsAsync" @oncontextmenu:preventDefault="true"
-                    @oncontextmenu:stopPropagation="true" @onkeydown="HandleTitleKeyAsync" @onkeydown:stopPropagation="true">@_menuTitle</h1>
+                    @oncontextmenu:stopPropagation="true" @onkeydown="HandleTitleKeyAsync" @onkeydown:stopPropagation="true" aria-label="@_menuTitle">
+@if(Settings.Current.TitleDisplayMode!=0){@if(TitleIcon is { } icon){<svg class="sphere-title-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="@icon" /></svg>}else{<HitSettingsIcon />}}
+@if(Settings.Current.TitleDisplayMode!=2){<span>@_menuTitle</span>}
+</h1>
+                </div>
             <div class="sphere-actions" data-no-drag
                  @onclick:stopPropagation="true"
                  @onkeydown="HandleActionKeyDown"
@@ -64,9 +84,9 @@
             </div>
             </header>
             <HitMenuHost @ref="_menuHost" OnCloseRequested="CloseSphere" OnTitleChanged="UpdateTitle"
-                         OnSettingsAvailableChanged="UpdateSettingsAvailable" OnLayoutChanged="UpdateLayout"
+                         OnSettingsAvailableChanged="UpdateSettingsAvailable" OnBackAvailableChanged="UpdateBackAvailable" OnLayoutChanged="UpdateLayout"
                          OnPinRequested="SetPinned"
-                         IsPinned="@_pinnedOpen" IsVisible="@(_state == SphereState.Open)" />
+                         IsPinned="@_pinnedOpen" IsVisible="@(_state == SphereState.Open && !Resources.IsSleeping)" />
             <HoldItTogether.Components.Clock.ClockNotifications />
             <HoldItTogether.Components.Extensions.ExtensionNotification />
         </div>
@@ -82,13 +102,22 @@
     private HitMenuHost? _menuHost;
     private string _menuTitle = "HIT";
     private bool _hasMenuSettings;
+    private bool _canGoBack;
+    [JSInvokable] public void PublishHostState(bool open,bool compact,bool pinned)=>ExtensionHub.PublishHost(!open?HIT.Sdk.HitSurfaceState.Collapsed:compact?HIT.Sdk.HitSurfaceState.Compact:HIT.Sdk.HitSurfaceState.Open,DesktopWindow.IsVisible,pinned);
+    [JSInvokable] public Task OpenSettingsFromHold() => !_disposed&&Settings.Current.TitleHoldEnabled&&_menuHost?.IsConfiguration==false?OpenMenuSettingsAsync():Task.CompletedTask;
+    [JSInvokable] public Task NavigateMouse(int direction,bool contextOnly) => _disposed||_menuHost is null||
+        (direction!=-1&&direction!=1)||(!contextOnly&&!Settings.Current.MouseSideButtonsEnabled)
+        ?Task.CompletedTask:_menuHost.NavigateMouseAsync(direction,contextOnly);
     [JSInvokable]
     public Task<bool> CompactCurrentMenu() => !_disposed && _menuHost is not null ? _menuHost.CompactCurrentAsync() : Task.FromResult(false);
     private bool _compactMenu;
     private void UpdateLayout(HoldItTogether.Services.HitMenus.HitMenuLayout layout) =>
         _compactMenu = layout == HoldItTogether.Services.HitMenus.HitMenuLayout.Compact;
+    private string? TitleIcon => (_menuTitle??"").ToLowerInvariant() switch {"audio"=>"M5 9v6m5-11v16m5-13v10m5-7v4", "lyrics"=>"M9 18V5l12-2v13M9 9l12-2M9 18a3 3 0 1 1-3-3c2 0 3 1 3 3m12-2a3 3 0 1 1-3-3c2 0 3 1 3 3", "clock"=>"M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18m0 4v5l4 2", "chess"=>"M5 21h14v-3H7c0-4 4-5 7-8l-4 1-3 3-3-3 2-5 4-3 1-2 3 2c6 0 7 6 5 11l-1 4M12 7h.01", _=>null};
     private void UpdateTitle(string title) => _menuTitle = title;
     private void UpdateSettingsAvailable(bool available) => _hasMenuSettings = available;
+    private void UpdateBackAvailable(bool available) => _canGoBack = available;
+    private Task GoBackAsync() => _menuHost?.GoBackAsync() ?? Task.CompletedTask;
     private Task OpenMenuSettingsAsync() => _hasMenuSettings && _menuHost is not null
         ? _menuHost.OpenCurrentSettingsAsync() : Task.CompletedTask;
     private Task HandleTitleKeyAsync(KeyboardEventArgs args)
@@ -126,10 +155,12 @@
     {
         Extensions.OpenRequested += ShowExtensions;
         Settings.Changed += SettingsChanged;
+        Resources.Changed += ResourceStateChanged;
         Schedule(SphereState.Idle, TimeSpan.FromSeconds(10));
         if (Extensions.ShowExtensions || Extensions.ShowThemes) PinOpen();
     }
-    private void SettingsChanged() { if (!_disposed) _ = InvokeAsync(StateHasChanged); }
+    private void SettingsChanged() { if (!_disposed) _ = InvokeAsync(() => { if (!Settings.Current.AutomaticResourceSaving) Resources.Wake(); StateHasChanged(); }); }
+    private void ResourceStateChanged() { if (!_disposed) _ = InvokeAsync(StateHasChanged); }
     private void SetPinned(bool pinned) { if (pinned) PinOpen(); else _pinnedOpen = false; }
     private void ShowExtensions()
     {
@@ -248,6 +279,7 @@
 
     private void PinOpen()
     {
+        Resources.Wake();
         if (_isDragging)
         {
             return;
@@ -295,6 +327,7 @@
 
     private void HandlePointerEnter()
     {
+        Resources.Wake();
         if (!DesktopWindow.UsesNativePointerTracking)
         {
             SetPointerInside(true);
@@ -350,6 +383,9 @@
         {
             while (await timer.WaitForNextTickAsync(token))
             {
+                // Keep native wake detection responsive without dispatching idle work to Blazor.
+                if (Resources.IsSleeping && DesktopWindow.IsPointerOverContent(false) != true &&
+                    (_state != SphereState.Open || DesktopWindow.IsCoveredByFullscreen)) continue;
                 await InvokeAsync(async () =>
                 {
                     if (!_disposed && !_isDragging && DesktopWindow.IsPointerOverContent(_pointerInside) is bool inside &&
@@ -358,7 +394,14 @@
                         SetPointerInside(inside);
                         StateHasChanged();
                     }
-                    if (!_disposed && _themePointerTracking && _state != SphereState.Open &&
+                    if (!_disposed)
+                    {
+                        var covered = DesktopWindow.IsCoveredByFullscreen;
+                        Resources.Update(Settings.Current.AutomaticResourceSaving,
+                            _state is SphereState.Idle or SphereState.Away, covered,
+                            _pointerInside || _isDragging || (_focused && !covered), Environment.TickCount64);
+                    }
+                    if (!_disposed && !Resources.IsSleeping && _themePointerTracking && _state != SphereState.Open &&
                         _module is not null && DesktopWindow.GetThemePointer() is { } pointer &&
                         pointer != _lastThemePointer)
                     {
@@ -400,6 +443,7 @@
 
     private void Expand()
     {
+        Resources.Wake();
         if (_isDragging || _suppressHoverUntilExit)
         {
             return;
@@ -469,6 +513,7 @@
     {
         Extensions.OpenRequested -= ShowExtensions;
         Settings.Changed -= SettingsChanged;
+        Resources.Changed -= ResourceStateChanged;
         _disposed = true;
         DesktopWindow.CancelDrag();
         CancelTransition();

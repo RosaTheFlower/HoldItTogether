@@ -1,0 +1,4 @@
+interface:
+  display_name: "HIT SDK and Extensions"
+  short_description: "SDK contracts, capabilities, events, actions and packages"
+  default_prompt: "Use $hit-extensions to implement this HIT SDK or package change with compatible contracts and examples."

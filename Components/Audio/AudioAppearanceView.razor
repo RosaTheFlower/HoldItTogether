@@ -1,21 +1,19 @@
 @using HoldItTogether.Services.Settings
-<section class="audio-appearance-view" aria-label="Artwork settings" data-no-drag @oncontextmenu="BackRequested" @oncontextmenu:preventDefault="true">
-    <button type="button" class="hit-back audio-view-back" @onclick="BackRequested"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m11 5-5 5 5 5M6 10h10" /></svg>Audio</button>
+@using HoldItTogether.Components.Settings
+<section class="audio-appearance-view" aria-label="Artwork settings" data-no-drag @oncontextmenu:preventDefault="true">
     <label class="hit-setting-row"><span>OLED / white lyrics background</span><input class="hit-switch" type="checkbox" role="switch" aria-label="OLED or white lyrics background" checked="@Settings.AudioLyricsNeutralBackground" @onchange="args => Change(value => value with { AudioLyricsNeutralBackground = args.Value is true })" /></label>
     <label class="hit-setting-row"><span>Artwork behind lyrics</span><input class="hit-switch" type="checkbox" role="switch" aria-label="Artwork behind lyrics" disabled="@Settings.AudioLyricsNeutralBackground" checked="@Settings.AudioArtworkLyricsCover" @onchange="args => Change(value => value with { AudioArtworkLyricsCover = args.Value is true })" /></label>
     <label class="hit-setting-row"><span>Use color throughout HIT</span><input class="hit-switch" type="checkbox" role="switch" aria-label="Use color throughout HIT" checked="@Settings.AudioArtworkGlobalAccent" @onchange="args => Change(value => value with { AudioArtworkGlobalAccent = args.Value is true })" /></label>
-    @if (Settings.AudioArtworkGlobalAccent)
-    {
-        <label class="hit-setting-row"><span>Artwork behind other menus</span><input class="hit-switch" type="checkbox" role="switch" aria-label="Artwork behind other menus" checked="@Settings.AudioArtworkGlobalCover" @onchange="args => Change(value => value with { AudioArtworkGlobalCover = args.Value is true })" /></label>
-    }
-    <button type="button" class="hit-link-row" @onclick="EffectsRequested"><span>Background effects</span><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m8 5 5 5-5 5" /></svg></button>
+    <label class="hit-setting-row"><span>Artwork behind other menus</span><input class="hit-switch" type="checkbox" role="switch" aria-label="Artwork behind other menus" disabled="@(!Settings.AudioArtworkGlobalAccent)" checked="@Settings.AudioArtworkGlobalCover" @onchange="args => Change(value => value with { AudioArtworkGlobalCover = args.Value is true })" /></label>
+    <SettingToggle Label="Blend artwork with personal background" Description="Show artwork and your background image together. Turn off to show only artwork while its cover is visible." Value="Settings.AudioArtworkBlendWithBackground" Changed="v=>Change(s=>s with{AudioArtworkBlendWithBackground=v})" />
+    <SettingRange Label="Artwork over background" Description="Set how strongly artwork covers your personal background image." Value="Settings.AudioArtworkBackgroundOpacity" Min="0" Max="100" Unit="%" Changed="v=>Change(s=>s with{AudioArtworkBackgroundOpacity=(int)v})" />
     @if (Error is not null) { <p class="audio-error" role="alert">@Error</p> }
 </section>
 @code {
     [Parameter] public HitSettings Settings { get; set; } = new();
     [Parameter] public EventCallback<HitSettings> Changed { get; set; }
-    [Parameter] public EventCallback BackRequested { get; set; }
-    [Parameter] public EventCallback EffectsRequested { get; set; }
+
+
     [Parameter] public string? Error { get; set; }
     private Task Change(Func<HitSettings,HitSettings> update) => Changed.InvokeAsync(update(Settings));
 }

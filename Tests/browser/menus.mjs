@@ -6,7 +6,7 @@ import {inflateSync} from 'node:zlib';
 import {openBrowser} from './driver.mjs';
 
 const root=resolve('obj/menu-tests/browser');mkdirSync(root,{recursive:true});
-const views=Object.fromEntries(['settings','placement','info','info-data','themes','artwork','effects','colors','audio-controls','audio-settings','lyrics','lyrics-title','lyrics-source','lyrics-hidden','player'].map(name=>[name,readFileSync(`obj/menu-tests/${name}.html`,'utf8')]));
+const views=Object.fromEntries(['settings','placement','info','info-data','themes','artwork','effects','colors','audio-controls','audio-settings','lyrics','lyrics-plain','lyrics-title','lyrics-source','lyrics-hidden','player','clock-timer','clock-pomodoro-main'].map(name=>[name,readFileSync(`obj/menu-tests/${name}.html`,'utf8')]));
 writeFileSync(resolve(root,'index.html'),`<!doctype html><html lang="en"><head><meta charset="utf-8">
 ${['app.css','css/dynamic-sphere.css','css/hit-menus.css','css/menus.css','css/theme-base.css','css/audio-shell.css','css/hit-controls.css'].map(file=>`<link rel="stylesheet" href="../../../wwwroot/${file}">`).join('')}
 <style>.sphere-area{position:absolute;left:30px;top:30px}.dynamic-sphere{width:max-content!important;height:auto!important}.sphere-content{position:relative!important;opacity:1!important;visibility:visible!important}.hit-menu-host{position:relative}.audio-menu.test-lyrics{height:280px}.hit-menu-viewport.test-scale{--hit-menu-natural-width:360px;--hit-menu-natural-height:280px}</style>
@@ -29,9 +29,14 @@ function pixel(png) {
 try {
     for(const file of ['HIT-OBSIDIAN-EYES.css','HIT-OLED-OFF-WHITE.css','HIT-LIGHT.css']) {
         await evaluate(`themes.applyBase(${JSON.stringify(readFileSync('wwwroot/themes/'+file,'utf8'))});show('settings')`);await wait(60);
-        assert.equal(await evaluate("getComputedStyle(document.querySelector('select')).color===getComputedStyle(document.querySelector('.setting-row')).color"),true,'Select and settings labels inherit one theme palette');
-        const switchStyle=await evaluate("(()=>{const element=document.querySelector('.switch');element.checked=false;const s=getComputedStyle(element);return {w:s.width,h:s.height,border:s.borderColor,bg:s.backgroundColor}})()");
-        assert.ok(await evaluate("(()=>{const label=getComputedStyle(document.querySelector('.setting-compact-delay strong')),other=getComputedStyle(document.querySelector('.setting-row strong'));return label.fontSize===other.fontSize&&label.fontWeight===other.fontWeight&&label.color===other.color})()"),'Compact after matches the readable settings label');
+        assert.equal(await evaluate("document.querySelectorAll('.settings-topic').length"),11,'Settings exposes its complete sidebar');
+        for(const view of ['clock-timer','clock-pomodoro-main']){
+            await evaluate(`show('${view}');panel.dataset.hitMenu='HoldItTogether.Components.HitMenus.HitMenuClock'`);await wait(20);
+            assert.ok(await evaluate("const button=document.querySelector('.clock-button.is-primary'),clock=document.querySelector('.clock-menu');button&&getComputedStyle(button).color===getComputedStyle(clock).color"),'Timer/Pomodoro primary text follows the theme foreground');
+        }
+        await evaluate("show('settings')");
+        const switchStyle=await evaluate("(()=>{const element=document.querySelector('.hit-switch');element.checked=false;const s=getComputedStyle(element);return {w:s.width,h:s.height,border:s.borderColor,bg:s.backgroundColor}})()");
+        assert.ok(await evaluate("document.querySelector('.settings-content').scrollHeight>=document.querySelector('.settings-content').clientHeight"),'Settings content owns scrolling');
         for(const view of ['artwork','audio-settings','audio-controls','placement']) {
             await evaluate(`show('${view}',${view!=='placement'})`);await wait(30);
             const style=await evaluate("(()=>{const element=document.querySelector('input[type=checkbox]');element.checked=false;const s=getComputedStyle(element);return {w:s.width,h:s.height,border:s.borderColor,bg:s.backgroundColor}})()");
@@ -46,7 +51,7 @@ try {
         await evaluate("show('audio-settings',true)");
         assert.equal(await evaluate("[...document.querySelectorAll('input[type=range]')].filter(x=>x.max==='200').every(x=>x.min==='25')"),true);
         await evaluate("show('effects',true)");
-        assert.equal(await evaluate("document.querySelectorAll('.audio-effect-row').length"),7);
+        assert.equal(await evaluate("document.querySelectorAll('.audio-effect-row').length"),8);
         assert.equal(await evaluate("getComputedStyle(document.querySelector('.audio-effects-scroll')).scrollbarWidth"),'none');
         assert.equal(await evaluate("document.querySelectorAll('input[aria-label=\"Saturation\"]').length"),0,'Colors live on their own screen');
         await evaluate("show('colors',true)");
@@ -60,7 +65,7 @@ try {
             const effectShot=await command('Page.captureScreenshot',{format:'png'});writeFileSync(resolve(root,'effects.png'),Buffer.from(effectShot.data,'base64'));
         }
         await evaluate("show('info')");
-        assert.equal(await evaluate("Math.abs(document.querySelector('.info-github').getBoundingClientRect().width-document.querySelector('.info-view').getBoundingClientRect().width)<1"),true);
+        assert.ok(await evaluate("(()=>{const b=[...document.querySelectorAll('.info-action-row > button')].map(x=>x.getBoundingClientRect());return b.length===3&&Math.max(...b.map(x=>x.top))-Math.min(...b.map(x=>x.top))<2;})()"),'Info actions share one row');
         await evaluate("show('info-data')");
         assert.ok(await evaluate("[...document.querySelectorAll('.hit-link-row small')].every(s=>{const range=document.createRange();range.selectNode(s.parentElement.firstChild);return s.getBoundingClientRect().top-range.getBoundingClientRect().bottom>=3})"),'Info descriptions sit below their titles with a gap');
         await evaluate("show('themes');document.querySelector('.theme-list').style.maxHeight='65px'");await wait(60);
@@ -101,7 +106,12 @@ try {
     }
     await evaluate("show('effects',true);window.readingRoot=document.querySelector('.audio-menu');await audio.syncScene(readingRoot,cover,true,true,false,{global:true});window.beforeReadingCalls=calls.length");await wait(30);
     assert.equal(await evaluate("document.querySelector('[data-hit-reading-cover]').hidden"),false,'Configuration screens expose the header cover button');
-    await evaluate("document.querySelector('[data-hit-reading-cover]').click()");await wait(20);
+    await evaluate("sphere.dataset.hitShowCoverButton='false'");await wait(20);
+    assert.equal(await evaluate("document.querySelector('[data-hit-reading-cover]').hidden"),true,'The user can remove the header cover button');
+    await evaluate("sphere.dataset.hitHideSettingsArtwork='true'");await wait(20);
+    assert.equal(await evaluate('sphere.dataset.audioReadingHidden'),'true','Hiding the button does not disable the saved artwork policy');
+    await evaluate("delete sphere.dataset.hitHideSettingsArtwork;delete sphere.dataset.hitShowCoverButton");await wait(20);
+    await evaluate("document.querySelector('[data-hit-reading-cover]').click()");await wait(720);
     assert.equal(await evaluate("getComputedStyle(document.querySelector('.sphere-audio-backdrop')).display"),'none','The header button hides only the background cover');
     assert.equal(await evaluate('sphere.dataset.audioCover'),'true','The saved cover request remains intact');
     await evaluate("readingRoot.append(document.createTextNode(' '))");await wait(20);
@@ -113,6 +123,19 @@ try {
     assert.equal(await evaluate('calls.length===beforeReadingCalls'),true,'Reading overrides never call the persistence API');
     await evaluate("show('lyrics',true)");await wait(20);
     assert.equal(await evaluate("document.querySelector('[data-hit-reading-cover]').hidden"),true,'The temporary reading button is absent from the player and lyrics');
+    await evaluate("show('lyrics-plain',true)");await wait(40);
+    assert.equal(await evaluate("document.querySelectorAll('.lyric-line').length"),0,'Untimed lyrics never expose false seek controls');
+    assert.equal(await evaluate("document.querySelectorAll('.lyric-plain-line').length"),35);
+    await evaluate("show('player',true);window.opacityRoot=document.querySelector('.audio-menu');await audio.syncScene(opacityRoot,cover,true,true,false,{backgroundOpacity:0})");await wait(20);
+    assert.equal(await evaluate("getComputedStyle(document.querySelector('.sphere-audio-backdrop')).opacity"),'0','Zero artwork coverage reveals the personal background');
+    await evaluate("await audio.syncScene(opacityRoot,cover,true,true,false,{backgroundOpacity:100})");await wait(20);
+    assert.equal(await evaluate("getComputedStyle(document.querySelector('.sphere-audio-backdrop')).opacity"),'1','Full artwork coverage makes the cover layer opaque');
+    await evaluate("await audio.clearScene(opacityRoot,true)");
+    await evaluate("show('player',true);sphere.insertAdjacentHTML('afterbegin','<div class=\"sphere-custom-backdrop\" style=\"display:block;opacity:.6\"></div>');window.mixRoot=document.querySelector('.audio-menu');await audio.syncScene(mixRoot,cover,true,true,false,{blendBackground:false,backgroundOpacity:50})");await wait(720);
+    assert.equal(await evaluate("getComputedStyle(document.querySelector('.sphere-custom-backdrop')).opacity"),'0','Exclusive cover suppresses the personal background independently of cover opacity');
+    await evaluate("await audio.syncScene(mixRoot,cover,true,true,false,{blendBackground:true,backgroundOpacity:50})");await wait(720);
+    assert.equal(await evaluate("getComputedStyle(document.querySelector('.sphere-custom-backdrop')).opacity"),'0.6','Blend mode restores the personal image beneath the cover');
+    await evaluate("await audio.clearScene(mixRoot,true);document.querySelector('.sphere-custom-backdrop').remove()");
     // Measure the actual C# player/viewport markup before applying each content scale.
     await evaluate("panel.dataset.hitMenu='HoldItTogether.Components.HitMenus.HitMenuAudio';panel.innerHTML=views.player;window.scaled=document.querySelector('.hit-menu-scale');window.measured=document.querySelector('.hit-menu-viewport');viewport.observe(measured)");await wait(50);
     for(const factor of [.25,1,2]) {

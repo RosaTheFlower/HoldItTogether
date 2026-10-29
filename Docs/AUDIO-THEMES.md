@@ -48,14 +48,45 @@ Runtime palette attributes are independent of classes rewritten by Blazor and mu
 | Edge timeline | `.sphere-lyrics-timeline`, an unscaled child of the sphere; style in `@layer sphere` |
 | Current timing | `.lyric-line.is-current`, `.is-past`, `.is-future`, `[aria-current="true"]` |
 | Artwork form | `.audio-appearance-view`, `.appearance-blur`, `.appearance-global`, `.appearance-suboption`, `.appearance-switch` |
-| Menu form | `.audio-settings-view`, `.audio-size-disclosure`, `.audio-size-uniform`, `.audio-size-axis`, `.audio-setting-row` |
+| Menu form | `.settings-workspace[data-hit-settings-workspace]`, `.settings-sidebar`, `.settings-content`, `.audio-settings-view`, `.audio-setting-row` |
 | Effects form | `.audio-effects-view`, `.audio-effect-row` |
 | Color form / scrolling | `.audio-color-view`, `.audio-effects-scroll` |
 | Button-hiding form | `.audio-controls-view` |
 | Optical layers | `.audio-artwork-optics`, `.audio-artwork-copy`, `.audio-artwork-lens`, `.audio-artwork-chromatic`, `.audio-artwork-vignette`, `.audio-artwork-grain` |
 | Scaling | `.hit-menu-scale`, `.hit-menu-viewport`, `.hit-menu-surface` |
 
+The shared UI remodel replaces the former size disclosure's markup. Retarget custom form rules for
+`.audio-size-disclosure`, `.audio-size-uniform` and `.audio-size-axis` to the Size topic's
+`.settings-number`/`.settings-number-controls` rows. Stored size preferences and the Audio menu ID
+are unchanged; settings render at 100% while the player/lyrics retain their configured scale.
+
 Check the canonical CSS/component when adding a selector: classes describe the current markup, not a permanent arbitrary DOM extension API.
+
+All ten visualizer styles share `.audio-spectrum canvas`, its computed color and the existing background
+placement/opacity. Style and height are normalized user preferences applied by the canvas renderer,
+not additional DOM layers. Height scales drawing amplitude within the same bounds; it does not
+resize the player. The height range is 10-200%; vertical peaks can clip within that canvas.
+Radial styles use circular geometry based on its smaller dimension. Filled spectrum was removed;
+its persisted value maps to Smooth line. Preserve canvas dimensions and lifecycle across
+styles; see [Audio](AUDIO.md#visualizer) for their stable preference values and presentation details.
+
+`.audio-spectrum-layer` is an absolute, clipped, pointer-transparent sibling of `.audio-scene`.
+It preserves scene extents and stays at z-index 0 in every mode, after the artwork scene in paint
+order and below foreground UI. Compositing must never promote it above text, controls or forms.
+The root publishes
+`data-spectrum-style` (lowercase enum name) and `data-spectrum-blend` (lowercase composition name).
+Do not apply isolation to the new layer: that would prevent blending against its local backdrop.
+The audio root continues to isolate effects from other menus.
+
+The renderer sets `--audio-visualizer-opacity` on `.audio-spectrum` from the user's 0-100% preference
+(default 55%). This supersedes the earlier per-Wave/non-Normal opacity rules and works with artwork
+palette colors. Root artwork variables remain JS-owned and are not overwritten by Razor opacity updates.
+Size is 100-500%, distinct from Height (10-200%). Position Y is -100 to 100% of drawing height.
+Flip X/Y are drawing reflections; they do not transform controls or move native input regions.
+Every `data-spectrum-style` starting with `wave` uses the full scene area with no inset side gaps
+and overscans horizontally at all sizes. Its smooth vertical fit keeps high zoom visible.
+Scene insets interpolate with `--hit-focus-progress`; backing-buffer resize is repainted synchronously
+to avoid a transparent frame during compaction. Preserve clipping, input passthrough and reduced motion.
 
 ## Variables
 
@@ -145,3 +176,9 @@ Do not put a permanently clickable cursor on disabled or modifier-only actions w
 Test with and without media/capabilities, all four view states, arbitrary cover brightness,
 visualizer alone/cover alone/both, lyrics cover and neutral mode on/off, global cover/colors on/off, scales 25/100/200,
 idle reversal, Ctrl/Alt, reduced motion and keyboard focus. See [Audio](AUDIO.md) for supported behavior.
+
+The host sets --audio-cover-opacity from AudioArtworkBackgroundOpacity (0?100%, normalized at persistence). It scales the complete artwork/effect layer, leaving the custom background and foreground UI independent.
+
+The scene sets data-audio-background-blend on the sphere from AudioArtworkBlendWithBackground. With active cover and blend disabled, the personal backdrop is kept mounted but transitions to zero opacity. data-audio-reading-hidden, data-audio-cover-hiding and neutral Lyrics bypass suppression so the background can return during cover removal. Reduced motion skips the transition.
+
+AudioEffectSlider delegates to shared SettingRange. The public audio-effect-row class remains on its root, which is now an inline configuration row rather than a label wrapper; target descendants instead of requiring a label element. Sliders use small inline labels and explicit editable values/units, with help in tooltips.

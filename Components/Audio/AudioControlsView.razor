@@ -1,6 +1,5 @@
 @using HoldItTogether.Services.Settings
-<section class="audio-controls-view" aria-label="Hide buttons" data-no-drag @onwheel:stopPropagation="true" @oncontextmenu="BackRequested" @oncontextmenu:preventDefault="true">
-    <button type="button" class="hit-back audio-view-back" @onclick="BackRequested"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m11 5-5 5 5 5M6 10h10" /></svg>Audio settings</button>
+<section class="audio-controls-view" aria-label="Hide buttons" data-no-drag @oncontextmenu:preventDefault="true">
     <label class="hit-setting-row"><span>Player<small>Hide secondary buttons and compact the player.</small></span><input class="hit-switch" type="checkbox" role="switch" aria-label="Hide player buttons" @bind:get="Settings.AudioHidePlayerButtons" @bind:set="SetPlayer" /></label>
     <label class="hit-setting-row"><span>Lyrics<small>Hide secondary buttons for more reading space.</small></span><input class="hit-switch" type="checkbox" role="switch" aria-label="Hide lyrics buttons" @bind:get="Settings.AudioHideLyricsButtons" @bind:set="SetLyrics" /></label>
     @if (Error is not null) { <p class="audio-error" role="alert">@Error</p> }
@@ -9,7 +8,7 @@
     [Parameter] public HitSettings Settings { get; set; } = new();
     [Parameter] public EventCallback<bool> PlayerChanged { get; set; }
     [Parameter] public EventCallback<bool> LyricsChanged { get; set; }
-    [Parameter] public EventCallback BackRequested { get; set; }
+
     [Parameter] public string? Error { get; set; }
     private Task SetPlayer(bool enabled) => PlayerChanged.InvokeAsync(enabled);
     private Task SetLyrics(bool enabled) => LyricsChanged.InvokeAsync(enabled);

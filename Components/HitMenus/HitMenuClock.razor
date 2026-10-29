@@ -1,12 +1,14 @@
 @namespace HoldItTogether.Components.HitMenus
 @using System.Globalization
 @using HoldItTogether.Components.Clock
+@using HoldItTogether.Components.Settings
 @using HoldItTogether.Services.Clock
 @using HoldItTogether.Services.HitMenus
 @using HoldItTogether.Services.Settings
 @using Microsoft.JSInterop
 @attribute [HitMenuTitle("Clock")]
 @implements IHitMenuSettings
+@implements HIT.Sdk.IHitMenuPages
 @implements IAsyncDisposable
 @implements HIT.Sdk.IHitMenuCompact
 @inject HitClockService Clock
@@ -29,13 +31,12 @@
                           SecondaryValue="@SecondaryValue" SecondaryLabel="@SecondaryLabel" />
         </div>
     }
-    else if (_view == ClockView.Settings)
+    else if (IsSettingsOpen)
     {
-        <ClockSettingsView Options="@Options" Changed="SaveOptions" BackRequested="ReturnToMain" Error="@(_error ?? _snapshot.StorageError)" />
-    }
-    else if (_view == ClockView.SystemSettings)
-    {
-        <ClockSystemSettingsView Options="@Options" Changed="SaveOptions" BackRequested="ReturnToMain" Now="@_snapshot.LocalNow" />
+        <SettingsWorkspace Version="1.2.0" Topics="ClockSettingsTopics" Selected="@ClockSettingsTopic" SelectedChanged="SelectClockSettingsTopic">
+        @if (_view == ClockView.SystemSettings) { <ClockSystemSettingsView Options="@Options" Changed="SaveOptions" Now="@_snapshot.LocalNow" /> }
+        else { <ClockSettingsView Topic="@_clockSettingsTopic" Options="@Options" Changed="SaveOptions" Error="@(_error ?? _snapshot.StorageError)" /> }
+        </SettingsWorkspace>
     }
     else
     {
@@ -102,6 +103,19 @@
     private enum ClockView { Main, Settings, SystemSettings }
     [CascadingParameter(Name = "HitMenu")] public HitMenuContext? MenuContext { get; set; }
     private ClockView _view;
+    public string CurrentPage => IsSettingsOpen ? "Settings/"+ClockSettingsTopic : "Clock";
+    public bool CanReturnToParent => IsSettingsOpen;
+    public Task NavigateToPageAsync(string page) => InvokeAsync(() => { if (page.StartsWith("Settings/",StringComparison.Ordinal)) SelectClockSettingsTopic(page[9..]); else if(page=="Clock") ReturnToMain(); StateHasChanged(); });
+    private static readonly string[] ClockSettingsTopics = ["General", "Pomodoro", "World clocks"];
+    private string _clockSettingsTopic = "General";
+    private string ClockSettingsTopic => _view == ClockView.SystemSettings ? "World clocks" : _clockSettingsTopic;
+    private void SelectClockSettingsTopic(string topic)
+    {
+        if (!ClockSettingsTopics.Contains(topic)) return;
+        _clockSettingsTopic = topic;
+        _view = topic == "World clocks" ? ClockView.SystemSettings : ClockView.Settings;
+        _error = null;
+    }
     private ClockSnapshot _snapshot = new(DateTimeOffset.Now, new(), TimeSpan.FromMinutes(5), new(), TimeSpan.FromMinutes(25), [], null);
     private ClockPreferences Options => Settings.Current.Clock;
     private ClockMode Mode => Options.SelectedMode;
@@ -168,7 +182,7 @@
         {
             var layout = IsCompact ? HitMenuLayout.Compact : HitMenuLayout.Default;
             if (_publishedLayout != layout) { _publishedLayout = layout; if (MenuContext is not null) await MenuContext.LayoutRequested.InvokeAsync(layout); }
-            var title = _view == ClockView.Settings ? Text.Get("Clock settings") : _view == ClockView.SystemSettings ? Text.Get("World clocks") : Text.Get("Clock");
+            var title = Text.Get(IsSettingsOpen ? ClockSettingsTopic == "General" ? "Clock settings" : ClockSettingsTopic : "Clock");
             if (_publishedTitle != title) { _publishedTitle = title; if (MenuContext is not null) await MenuContext.TitleRequested.InvokeAsync(title); }
         }
         if (_visible && _ticker is null)
@@ -207,8 +221,8 @@
     }
     private void SelectMode(ClockMode mode) => Run(() => Settings.Update(value => value with { Clock = value.Clock with { SelectedMode = mode } }));
     private void SaveOptions(ClockPreferences value) => Run(() => Settings.Update(settings => settings with { Clock = value.Normalize() }));
-    public Task OpenSettingsAsync() => InvokeAsync(() => { _view = ClockView.Settings; _error = null; StateHasChanged(); });
-    public Task CloseSettingsAsync() => InvokeAsync(() => { ReturnToMain(); StateHasChanged(); });
+    public Task OpenSettingsAsync() => InvokeAsync(() => { _view = ClockView.Settings; _clockSettingsTopic = "General"; _error = null; StateHasChanged(); });
+    public Task CloseSettingsAsync() => InvokeAsync(() => { if (IsSettingsOpen && ClockSettingsTopic != "General") { _view = ClockView.Settings; _clockSettingsTopic = "General"; } else ReturnToMain(); StateHasChanged(); });
     private Task OpenReadoutSettingsAsync() => Mode == ClockMode.System
         ? InvokeAsync(() => { _view = ClockView.SystemSettings; _error = null; StateHasChanged(); }) : OpenSettingsAsync();
     private void ClickReadout() { if (MenuContext?.IsPinned == true) Compact(); }
@@ -238,7 +252,7 @@
     private Task HandleKey(KeyboardEventArgs args)
     {
         if (args.Key != "Escape") return Task.CompletedTask;
-        if (_view != ClockView.Main) ReturnToMain();
+        if (_view != ClockView.Main) return CloseSettingsAsync();
         else if (MenuContext?.IsPinned == true && _expanded) Compact();
         else return MenuContext?.CloseRequested.InvokeAsync() ?? Task.CompletedTask;
         return Task.CompletedTask;

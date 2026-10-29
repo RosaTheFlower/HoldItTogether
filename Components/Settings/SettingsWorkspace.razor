@@ -1,0 +1,24 @@
+@using HoldItTogether.Services.Settings
+@inject HitSettingsService Settings
+
+<section class="settings-workspace" data-hit-settings-workspace data-hit-view="@Selected.ToLowerInvariant().Replace(' ', '-')" data-descriptions="@(Settings.Current.ShowSettingDescriptions ? "true" : "false")" data-no-drag @onclick:stopPropagation="true">
+    <nav class="settings-sidebar" aria-label="@Text.Get("Settings topics")">
+        @foreach (var topic in Topics)
+        {
+            <button type="button" class="settings-topic" aria-label="@Text.Format("Open {0}", Text.Get(topic))" aria-current="@(Selected == topic ? "page" : null)" @onclick="() => SelectedChanged.InvokeAsync(topic)">@Text.Get(topic)</button>
+        }
+    </nav>
+    <div class="settings-content" data-hit-scroll tabindex="0">
+        <h2>@Text.Get(Selected)</h2>
+        @if(Version is not null){<p class="hit-muted settings-feature-version">@Text.Format("Version {0} - bundled with HIT",Version)</p>}
+        @ChildContent
+    </div>
+</section>
+
+@code {
+    [Parameter] public string? Version { get; set; }
+    [Parameter] public IReadOnlyList<string> Topics { get; set; } = [];
+    [Parameter] public string Selected { get; set; } = "General";
+    [Parameter] public EventCallback<string> SelectedChanged { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

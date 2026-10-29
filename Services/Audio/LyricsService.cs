@@ -7,10 +7,11 @@ namespace HoldItTogether.Services.Audio;
 
 public sealed record LyricLine(double Time, string Text);
 public readonly record struct LyricSeekRequest(long Generation, double Position);
-public sealed record SyncedLyrics(IReadOnlyList<LyricLine> Lines, string Source = "LRCLIB", string? SourceUrl = null)
+public sealed record SyncedLyrics(IReadOnlyList<LyricLine> Lines, string Source = "LRCLIB", string? SourceUrl = null, bool IsSynced = true)
 {
     public int CurrentIndex(double position)
     {
+        if (!IsSynced) return -1;
         var low = 0; var high = Lines.Count - 1; var result = -1;
         while (low <= high)
         {
@@ -33,6 +34,10 @@ public sealed class LyricsService : IDisposable
     private long _cacheBytes;
     private readonly Queue<DateTimeOffset> _syncLrcRequests = new();
     private readonly object _sync = new();
+    public void ClearCache()
+    {
+        lock (_sync) { _cache.Clear(); _cacheBytes = 0; }
+    }
     private static readonly Regex Timestamps = new(@"\[(?<m>\d{1,4}):(?<s>\d{2}(?:\.\d{1,3})?)\]", RegexOptions.NonBacktracking);
     public LyricsService() : this(new HttpClient()) { }
     public LyricsService(HttpClient http)
@@ -44,6 +49,7 @@ public sealed class LyricsService : IDisposable
 
     public async Task<SyncedLyrics?> FindAsync(MediaSnapshot media, CancellationToken token)
     {
+        media = ResolveMedia(media);
         if (!media.HasMedia || media.Duration <= 0 || media.Artist is "" or "System media" || media.Title == "Audio playing") return null;
         var title = CleanTitle(media.Title, media.Artist);
         var key = title + "\n" + media.Artist + "\n" + Math.Round(media.Duration);
@@ -56,14 +62,21 @@ public sealed class LyricsService : IDisposable
         var query = "track_name=" + Uri.EscapeDataString(title) + "&artist_name=" + Uri.EscapeDataString(media.Artist);
         var exactQuery = query + "&duration=" + Math.Round(media.Duration).ToString(CultureInfo.InvariantCulture);
         if (!string.IsNullOrWhiteSpace(media.Album)) exactQuery += "&album_name=" + Uri.EscapeDataString(media.Album);
-        SyncedLyrics? found;
+        SyncedLyrics? found, plain = null;
         var exactUrl = "https://lrclib.net/api/get?" + exactQuery;
         using (var exact = await GetJsonAsync(exactUrl, token))
+        {
             found = Timed(exact?.RootElement, "syncedLyrics", "LRCLIB", LrcLibUrl(exact?.RootElement, exactUrl));
+            if (exact is not null) plain = Plain(Text(exact.RootElement,"plainLyrics"), "LRCLIB", LrcLibUrl(exact.RootElement,exactUrl));
+        }
 
         if (found is null)
         {
             using var search = await GetJsonAsync("https://lrclib.net/api/search?" + query, token);
+            if (search?.RootElement.ValueKind == JsonValueKind.Array)
+                foreach (var item in search.RootElement.EnumerateArray())
+                    if (MatchesNames(media,title,Text(item,"trackName"),Text(item,"artistName")))
+                        plain ??= Plain(Text(item,"plainLyrics"),"LRCLIB",LrcLibUrl(item,"https://lrclib.net/api/search?"+query));
             if (search?.RootElement.ValueKind == JsonValueKind.Array)
                 foreach (var result in search.RootElement.EnumerateArray()
                     .Where(item => Matches(media, title, Text(item,"trackName"), Text(item,"artistName"), Numeric(item,"duration")))
@@ -104,6 +117,13 @@ public sealed class LyricsService : IDisposable
                     if (found is not null) break;
                 }
             }
+        }
+        if (found is null) found = plain;
+        if (found is null)
+        {
+            var url = "https://api.lyrics.ovh/v1/" + Uri.EscapeDataString(media.Artist) + "/" + Uri.EscapeDataString(title);
+            using var response = await GetJsonAsync(url,token);
+            if (response is not null) found = Plain(Text(response.RootElement,"lyrics"),"Lyrics.ovh",url);
         }
         token.ThrowIfCancellationRequested();
         lock (_sync)
@@ -187,13 +207,36 @@ public sealed class LyricsService : IDisposable
     private static double Numeric(JsonElement element, string property) =>
         element.ValueKind == JsonValueKind.Object && element.TryGetProperty(property, out var value) && value.ValueKind == JsonValueKind.Number && value.TryGetDouble(out var number) ? number : 0;
     private static bool Matches(MediaSnapshot expected, string title, string candidate, string artist, double duration)
+        => MatchesNames(expected,title,candidate,artist) && duration > 0 &&
+            Math.Abs(duration-expected.Duration)<=Math.Max(3,Math.Min(5,expected.Duration*.01));
+    private static bool MatchesNames(MediaSnapshot expected, string title, string candidate, string artist)
     {
         var left = Normalize(title);
         var right = Normalize(CleanTitle(candidate, expected.Artist));
         var artistWords = " " + Normalize(artist) + " ";
         var expectedArtist = Normalize(Regex.Split(expected.Artist, @"[,;&]| feat\.? | featuring ", RegexOptions.IgnoreCase)[0]);
-        return left.Length > 0 && left == right && expectedArtist.Length > 0 && artistWords.Contains(" " + expectedArtist + " ", StringComparison.Ordinal) &&
-            duration > 0 && Math.Abs(duration - expected.Duration) <= Math.Max(3, Math.Min(5, expected.Duration * .01));
+        return left.Length > 0 && left == right && expectedArtist.Length > 0 && artistWords.Contains(" " + expectedArtist + " ", StringComparison.Ordinal);
+    }
+    private static SyncedLyrics? Plain(string text,string source,string url)
+    {
+        if (string.IsNullOrWhiteSpace(text)) return null;
+        var lines = text.Replace("\r", "").Split('\n').Take(3000).Select(line=>new LyricLine(0,line.Trim())).ToArray();
+        return lines.Any(line=>line.Text.Length>0) ? new(lines,source,url,false) : null;
+    }
+    private static MediaSnapshot ResolveMedia(MediaSnapshot media)
+    {
+        var video = media.Source.Contains("youtube",StringComparison.OrdinalIgnoreCase) ||
+            Regex.IsMatch(media.Source,@"chrome|edge|firefox|brave|opera",RegexOptions.IgnoreCase) && Regex.IsMatch(media.Title,@"\s[-–—]\s") ||
+            Regex.IsMatch(media.Artist,@"(?:\s*-\s*Topic|VEVO)$",RegexOptions.IgnoreCase) ||
+            Regex.IsMatch(media.Title,@"[\[(](?:official(?: music)? video|lyric video|clipe oficial|vídeo oficial)",RegexOptions.IgnoreCase);
+        if (!video) return media;
+        var title = Regex.Replace(media.Title,@"\s*[-|]\s*YouTube\s*$","",RegexOptions.IgnoreCase);
+        var parts = Regex.Split(title,@"\s+[-–—]\s+",RegexOptions.None,TimeSpan.FromMilliseconds(100));
+        if (parts.Length>=2 && parts[0].Length is >0 and <160)
+            return media with { Artist=parts[0].Trim(),Title=string.Join(" - ",parts.Skip(1)) };
+        var artist = Regex.Replace(media.Artist,@"(?:\s*-\s*Topic|VEVO)$","",RegexOptions.IgnoreCase).Trim();
+        if(media.Artist.EndsWith("VEVO",StringComparison.OrdinalIgnoreCase))artist=Regex.Replace(artist,@"(?<=[a-z])(?=[A-Z])"," ");
+        return media with {Title=title,Artist=artist};
     }
     private static string Normalize(string value)
     {
@@ -205,7 +248,7 @@ public sealed class LyricsService : IDisposable
     }
     private static string CleanTitle(string title, string artist)
     {
-        var value = Regex.Replace(title, @"\s*[\[(](?:official(?: music)? video|official audio|lyrics?|lyric video|visuali[sz]er|audio|hd|4k)[^\])]*[\])]", "", RegexOptions.IgnoreCase);
+        var value = Regex.Replace(title, @"\s*[\[(](?:official(?: music| lyric)? (?:video|audio|visuali[sz]er)|lyrics?|lyric video|visuali[sz]er|audio|hd|4k|clipe oficial|v[ií]deo oficial|letra|legendado)[^\])]*[\])]", "", RegexOptions.IgnoreCase);
         foreach (var separator in new[] { " - ", " — ", " – " })
             if (value.StartsWith(artist + separator, StringComparison.OrdinalIgnoreCase)) value = value[(artist.Length + separator.Length)..];
         return value.Trim();

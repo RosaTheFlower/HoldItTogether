@@ -1,0 +1,4 @@
+interface:
+  display_name: "HIT Chess"
+  short_description: "Independent Chess rules, board, state and packaging"
+  default_prompt: "Use $hit-chess to implement this Chess change within its independent HIT extension boundary."

@@ -1,6 +1,7 @@
-# HIT 1.0 documentation
+# HIT documentation
 
-All maintained project documentation lives in this directory. Start here whether you use HIT,
+All maintained technical documentation lives in this directory. Repository agent instructions
+live in `AGENTS.md` and `.agents/skills/`, with their index linked below. Start here whether you use HIT,
 develop a menu, write a theme, or maintain the application. Documentation and public code examples
 use English, matching the interface. Commands run from the repository root unless stated otherwise.
 
@@ -10,7 +11,7 @@ use English, matching the interface. Commands run from the repository root unles
 | --- | --- |
 | Install, run, navigate and configure HIT | [Getting started](GETTING-STARTED.md) |
 | Build and distribute the Release/Dev installation wizard | [Windows installer](INSTALLER.md) |
-| Understand release versions, implemented features and limits | [Version 1.0](VERSION-1.0.md) |
+| Understand release versions, implemented features and limits | [Release scope](VERSION-1.0.md) |
 | Understand components, services, persistence and startup | [Architecture](ARCHITECTURE.md) |
 | Follow the shared interaction/layout contract | [Menus](MENUS.md) |
 | Apply shared controls, confirmations, spacing and theme rules | [Design system](DESIGN.md) |
@@ -19,6 +20,7 @@ use English, matching the interface. Commands run from the repository root unles
 | Build, install and distribute an independent `.hitmenu` | [Extensions](EXTENSIONS.md) |
 | Call the public SDK: media, clock, storage, theme and window | [API reference](API.md) |
 | Follow code, naming, threading and resource conventions | [Code conventions](CODE-CONVENTIONS.md) |
+| Use and maintain repository agent instructions and skills | [Agent workflows](AGENT-WORKFLOWS.md) |
 | Create a theme or follow the visual design system | [Themes and design](THEMES.md) |
 | Understand the music player, lyrics and capture | [Audio](AUDIO.md) |
 | Style the player, artwork, lyrics and visualizer | [Audio theme reference](AUDIO-THEMES.md) |
@@ -47,8 +49,10 @@ Built-in menu source remains the reference for integration details, while the SD
 
 | Item | Version |
 | --- | --- |
-| Application release | v2710 (27 October) |
-| Public SDK package | 1.0.2 |
+| Application release | 2v2910 (29 October) |
+| Built-in Audio / Clock | 1.2.0 / 1.2.0 (bundled with HIT) |
+| Optional Chess package | 1.1.0 |
+| Public SDK package | 1.2.0 |
 | SDK assembly identity | 1.0.0.0 |
 | `.hitmenu` format / `hitContractVersion` | `1` / `"1"` |
 | Imported CSS theme contract | 1 |

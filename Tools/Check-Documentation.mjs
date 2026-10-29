@@ -14,8 +14,31 @@ function walk(directory) {
     });
 }
 const markdown = walk(root).filter(path => extname(path).toLowerCase() === '.md');
-for (const path of markdown) if (!path.startsWith(docs + sep)) errors.push(`Documentation outside Docs/: ${relative(root, path)}`);
+const skillPath = /^\.agents\/skills\/([a-z0-9]+(?:-[a-z0-9]+)*)\/SKILL\.md$/;
+const repositoryPath = path => relative(root, path).split(sep).join('/');
+const instructions = markdown.filter(path => repositoryPath(path) === 'AGENTS.md' || skillPath.test(repositoryPath(path)));
+const instructionPaths = new Set(instructions);
+for (const path of markdown)
+    if (!path.startsWith(docs + sep) && !instructionPaths.has(path))
+        errors.push(`Documentation outside Docs/: ${relative(root, path)}`);
 const guides = markdown.filter(path => path.startsWith(docs + sep));
+let skills = 0;
+for (const path of instructions) {
+    const match = skillPath.exec(repositoryPath(path));
+    if (!match) continue;
+    skills++;
+    // A deliberately restricted YAML subset; descriptions use JSON strings (valid YAML scalars).
+    const content = readFileSync(path, 'utf8').replace(/\r\n/g, '\n');
+    const frontmatter = /^---\nname: ([a-z0-9]+(?:-[a-z0-9]+)*)\ndescription: ("[^\n]+")\n---\n/.exec(content);
+    if (!frontmatter) { errors.push(`${relative(root, path)}: expected name and JSON-quoted description frontmatter`); continue; }
+    if (frontmatter[1] !== match[1] || frontmatter[1].length > 64)
+        errors.push(`${relative(root, path)}: skill name must match its directory and contain at most 64 characters`);
+    try {
+        const description = JSON.parse(frontmatter[2]);
+        if (!description.trim() || description.length > 1024 || /[<>]/.test(description))
+            errors.push(`${relative(root, path)}: description must contain 1-1024 characters without angle brackets`);
+    } catch { errors.push(`${relative(root, path)}: description must be a valid JSON-quoted string`); }
+}
 const withoutFences = text => text.replace(/^```[^\n]*\n[\s\S]*?^```\s*$/gm, '');
 function anchors(path) {
     const seen = new Map();
@@ -26,7 +49,7 @@ function anchors(path) {
     }));
 }
 let links = 0, jsonBlocks = 0;
-for (const path of guides) {
+for (const path of [...guides, ...instructions]) {
     const text = readFileSync(path, 'utf8');
     if (!/^# .+/m.test(text)) errors.push(`Missing title: ${relative(root, path)}`);
     for (const match of withoutFences(text).matchAll(/!?\[[^\]]*\]\(([^)]+)\)/g)) {
@@ -60,4 +83,4 @@ if (process.argv.includes('--published')) {
     }
 }
 if (errors.length) { for (const error of errors) console.error(error); process.exitCode = 1; }
-else console.log(`PASS: ${guides.length} centralized guides, ${links} local links, ${jsonBlocks} JSON examples and documentation publication rules.`);
+else console.log(`PASS: ${guides.length} centralized guides, ${instructions.length} instruction files (${skills} skills), ${links} local links, ${jsonBlocks} JSON examples and documentation publication rules.`);

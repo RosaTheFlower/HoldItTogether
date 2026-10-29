@@ -1,0 +1,35 @@
+@using HoldItTogether.Services.Settings
+@inject HitSettingsService Settings
+<SettingToggle Label="Show artwork button in settings" Description="Show the temporary background-cover button in configuration headers." Value="Settings.Current.ShowConfigurationCoverButton" Changed="v=>Save(s=>s with {ShowConfigurationCoverButton=v})" />
+<SettingToggle Label="Hide artwork in settings" Description="Hide music cover backgrounds automatically on configuration screens." Value="Settings.Current.HideArtworkInSettings" Disabled="false" Changed="v=>Save(s=>s with {HideArtworkInSettings=v})" />
+<div class="settings-option">
+    <strong>@Text.Get("Menu titles")</strong>
+    <small class="setting-description">@Text.Get("Choose the presentation of menu titles. All modes retain accessible names.")</small>
+    <div class="settings-title-options" role="radiogroup" aria-label="@Text.Get("Menu titles")">
+        @for (var i = 0; i < 3; i++)
+        {
+            var mode = i;
+            <label>
+                <input type="radio" name="title-mode" checked="@(Settings.Current.TitleDisplayMode == mode)" @onchange="() => SetTitleMode(mode)" aria-label="@Text.Get(mode == 0 ? "Name only" : mode == 1 ? "Name and icon" : "Icon only")" />
+                <span class="settings-title-example" aria-hidden="true">
+                    @if (mode != 0) { <HitSettingsIcon /> }
+                    @if (mode != 2) { <span>@Text.Get("Settings")</span> }
+                </span>
+            </label>
+        }
+    </div>
+</div>
+
+@if(_error is not null){<p role="status">@_error</p>}
+@code {
+    private string? _error;
+    private void SetTitleMode(int mode) => Save(s => s with { TitleDisplayMode = mode });
+    private void Save(Func<HitSettings, HitSettings> update)
+    {
+        try { Settings.Update(update); _error = null; }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException or InvalidOperationException)
+        {
+            _error = Text.Get("Could not apply this change. Please try again.");
+        }
+    }
+}

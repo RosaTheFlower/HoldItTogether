@@ -1,0 +1,4 @@
+interface:
+  display_name: "HIT UI and Interaction"
+  short_description: "Menu views, controls, input and accessibility"
+  default_prompt: "Use $hit-ui to implement this HIT interface change using the documented menu and design contracts."

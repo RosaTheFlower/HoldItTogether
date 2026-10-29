@@ -1,0 +1,20 @@
+@using HoldItTogether.Services.Settings
+<HitDisclosure Title="@Text.Get("Idle transparency")" PanelId="idle-opacity-options">
+    <MainControl><input class="hit-switch" type="checkbox" role="switch" aria-label="@Text.Get("Automatic transparency")" checked="@Settings.IdleOpacityEnabled" @onchange="args=>Change(value=>value with{IdleOpacityEnabled=args.Value is true})" /></MainControl>
+    <ChildContent>
+        <p class="hit-muted">@Text.Get("Fade when the pointer leaves HIT. Interaction restores full opacity.")</p>
+        <label class="setting-row"><span>@Text.Get("Collapsed sphere")</span><input class="hit-switch" type="checkbox" role="switch" aria-label="Fade collapsed sphere" checked="@Settings.IdleOpacitySphere" @onchange="args=>Change(value=>value with{IdleOpacitySphere=args.Value is true})" /></label>
+        <label class="setting-row"><span>@Text.Get("Compact menu")</span><input class="hit-switch" type="checkbox" role="switch" aria-label="Fade compact menu" checked="@Settings.IdleOpacityCompact" @onchange="args=>Change(value=>value with{IdleOpacityCompact=args.Value is true})" /></label>
+        <label class="setting-row"><span>@Text.Get("Inactive open panel")</span><input class="hit-switch" type="checkbox" role="switch" aria-label="Fade inactive open panel" checked="@Settings.IdleOpacityOpen" @onchange="args=>Change(value=>value with{IdleOpacityOpen=args.Value is true})" /></label>
+        <SettingRange Label="Transparency delay" Description="Idle time before transparency starts." Value="Settings.IdleOpacityDelayMs" Min="0" Max="60000" Step="500" Unit="ms" Changed="v=>Change(s=>s with{IdleOpacityDelayMs=(int)v})" />
+        <SettingRange Label="Idle opacity" Description="Opacity while inactive; interacting restores full opacity." Value="Settings.IdleOpacityPercent" Min="10" Max="90" Step="5" Unit="%" Changed="v=>Change(s=>s with{IdleOpacityPercent=(int)v})" />
+        <SettingRange Label="Transparency fade duration" Description="Duration of the fade into the inactive opacity." Value="Settings.IdleOpacityTransitionMs" Min="0" Max="3000" Step="50" Unit="ms" Changed="v=>Change(s=>s with{IdleOpacityTransitionMs=(int)v})" />
+    </ChildContent>
+</HitDisclosure>
+@code{
+    [Parameter] public HitSettings Settings{get;set;}=new();
+    [Parameter] public EventCallback<HitSettings> Changed{get;set;}
+    private Task Change(Func<HitSettings,HitSettings> update)=>Changed.InvokeAsync(update(Settings).Normalize());
+    private Task Number(ChangeEventArgs args,int option)=>int.TryParse(args.Value?.ToString(),out var number)
+        ?Change(value=>option switch{0=>value with{IdleOpacityDelayMs=number},1=>value with{IdleOpacityPercent=number},_=>value with{IdleOpacityTransitionMs=number}}):Task.CompletedTask;
+}

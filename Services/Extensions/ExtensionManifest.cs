@@ -25,7 +25,7 @@ public sealed record ExtensionManifest
     public ExtensionMenu[] Menus { get; init; } = [];
 
     public static readonly HashSet<string> KnownCapabilities = new(StringComparer.Ordinal)
-    { "media.read", "media.control", "clock.read", "clock.control", "window.control", "theme.control", "links.open", "notifications" };
+    { "media.read", "media.control", "clock.read", "clock.control", "window.control", "theme.control", "links.open", "notifications", "events.subscribe", "host.read", "appearance.read", "media.spectrum", "actions.register", "actions.execute" };
 
     public void Validate()
     {

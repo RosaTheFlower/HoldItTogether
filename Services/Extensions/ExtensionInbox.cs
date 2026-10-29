@@ -33,6 +33,12 @@ public sealed class ExtensionInbox(ExtensionStore store, ExtensionUi ui, Extensi
                             ui.Open();
                             await activation.ActivateAsync(installed.Manifest.Id, installed.Manifest.Name);
                         }
+                        catch (OperationCanceledException) when (!token.IsCancellationRequested)
+                        {
+                            var canceled = Path.Combine(store.Inbox, "Canceled"); Directory.CreateDirectory(canceled);
+                            File.Move(file, Path.Combine(canceled, Guid.NewGuid().ToString("N") + "-" + info.Name));
+                            observed.Remove(file);
+                        }
                         catch (IOException) { /* Copy may still be in progress. */ }
                         catch (Exception error) when (error is not OperationCanceledException)
                         {

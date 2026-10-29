@@ -15,8 +15,9 @@ public sealed class HitMenuNavigator(int count)
     public int Count { get; } = Math.Max(0, count);
     public int SelectedIndex { get; private set; }
 
-    public bool Select(int index)
+    public bool Select(int index, bool wrap = false)
     {
+        if (wrap && Count > 0) index = (int)(((long)index % Count + Count) % Count);
         if (index < 0 || index >= Count || index == SelectedIndex) return false;
         SelectedIndex = index;
         _accumulated = 0;
@@ -61,14 +62,15 @@ public sealed class HitMenuNavigator(int count)
             ? 0
             : _accumulated - direction * steps * WheelThreshold;
 
-        var target = (int)Math.Clamp((long)SelectedIndex + (long)direction * steps, 0, Count - 1L);
+        var next = (long)SelectedIndex + (long)direction * steps;
+        var target = settings.InfiniteMenu ? (int)((next % Count + Count) % Count) : (int)Math.Clamp(next,0,Count-1L);
         if (!Select(target))
         {
             _accumulated = 0;
             return false;
         }
 
-        _accumulated = target is 0 || target == Count - 1 ? 0 : remainder;
+        _accumulated = !settings.InfiniteMenu && (target is 0 || target == Count - 1) ? 0 : remainder;
         _lastStep = now;
         _lastStepDirection = direction;
         return true;

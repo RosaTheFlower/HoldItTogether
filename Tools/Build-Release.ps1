@@ -9,7 +9,7 @@ try {
     }
     [xml]$project = Get-Content -LiteralPath 'HoldItTogether.csproj' -Raw
     $date = [datetime]::Parse([string]$project.Project.PropertyGroup.HitReleaseDate)
-    $version = 'v' + $date.ToString('ddMM')
+    $version = [string]$project.Project.PropertyGroup.HitReleaseGeneration + 'v' + $date.ToString('ddMM')
     $releaseRoot = Join-Path $workspace ('artifacts/releases/' + $version)
     if (Test-Path -LiteralPath $releaseRoot) { $releaseRoot += '-' + (Get-Date -Format 'yyyyMMdd-HHmmss-fff') }
     [IO.Directory]::CreateDirectory($releaseRoot) | Out-Null

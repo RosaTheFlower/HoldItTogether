@@ -94,3 +94,7 @@ they do not contain arbitrary crashes or runaway trusted plugin code.
 Pause view work when hidden, unsubscribe on disposal, bound caches and avoid resending images or CSS without changes.
 The clock worker is deliberately independent of visibility. Audio global artwork metadata is another explicit exception.
 Details and historical measurements: [Performance](PERFORMANCE.md).
+
+## Retained configuration presentation
+
+HitMenuHost records bounded session-local stable page history through optional SDK IHitMenuPages; InfiniteMenu wraps top-level navigation only and never invents forward history. Shared SettingRange/SettingToggle and SettingsWorkspace own built-in configuration structure. DOM-only controls, highlight/entrance transitions and wheel ownership have detachable JS lifetimes. Managed image policy is enforced by HitAppearanceService and AppearanceImageFileProvider; disabled GIFs retain references for re-enabling.

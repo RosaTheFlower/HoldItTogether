@@ -6,3 +6,5 @@
 .example-notes button { color:inherit; background:transparent; border:1px solid color-mix(in srgb,currentColor 12%,transparent); border-radius:7px; padding:9px 12px; cursor:pointer; }
 .example-notes button:hover { background:color-mix(in srgb,currentColor 8%,transparent); }
 .example-notes p { font-size:11px; color:var(--hit-menu-muted,var(--hit-muted)); line-height:1.6; }
+
+.example-notes:has(>.settings-workspace){width:610px;}

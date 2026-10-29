@@ -3,6 +3,8 @@ import { connectMenuChrome } from "./hit-menu-chrome.js";
 import { connectModifiers } from "./hit-modifiers.js";
 import { connectReadingBackground } from "./hit-reading-background.js";
 import { connectCompactMotion } from "./hit-compact-motion.js";
+import { connectNavigation } from "./hit-navigation.js";
+import { connectIdleOpacity } from "./hit-idle-opacity.js";
 
 const observers = new WeakMap();
 
@@ -15,6 +17,11 @@ export async function observe(element, dotnet) {
     const disconnectModifiers = connectModifiers(sphere);
     const disconnectReadingBackground = connectReadingBackground(sphere);
     const compactMotion=connectCompactMotion(sphere);
+    const disconnectNavigation=connectNavigation(sphere,dotnet);
+    const disconnectIdleOpacity=connectIdleOpacity(element,sphere);
+    let hostSignature='';
+    function publishHost(){const open=sphere.classList.contains('is-open'),compact=sphere.classList.contains('is-menu-compact')||sphere.dataset.hitControlsHidden==='true',pinned=sphere.classList.contains('is-pinned');const next=[open,compact,pinned,document.hidden].join(':');if(next!==hostSignature){hostSignature=next;dotnet.invokeMethodAsync('PublishHostState',open,compact,pinned).catch(()=>{});document.dispatchEvent(new CustomEvent('hit-appearance-changed'));}}
+    const hostObserver=new MutationObserver(publishHost);hostObserver.observe(sphere,{attributes:true,attributeFilter:['class','data-hit-controls-hidden']});document.addEventListener('visibilitychange',publishHost);publishHost();
     let disposed = false;
     let frame = 0;
     let measureFrame = 0;
@@ -59,6 +66,7 @@ export async function observe(element, dotnet) {
     }
 
     function onPointerMove(event) {
+        if (element.dataset.hitResourceSleep === 'true') return;
         if (!trackThemePointer || disposed) return;
         pointerEvent = { x: event.clientX, y: event.clientY };
         if (pointerFrame) return;
@@ -235,6 +243,9 @@ export async function observe(element, dotnet) {
     observers.set(element, () => {
         disposed = true;
         disconnectDragging();
+        disconnectNavigation();
+        disconnectIdleOpacity();
+        hostObserver.disconnect();document.removeEventListener('visibilitychange',publishHost);
         disconnectMenuChrome();
         disconnectModifiers();
         disconnectReadingBackground();
@@ -268,6 +279,7 @@ export function disconnect(element) {
 
 // Public, optional theme inputs. No theme can execute its own JavaScript.
 export function setPointer(element, x, y) {
+    if (element.dataset.hitResourceSleep === 'true') return;
     const sphere = element.querySelector(".dynamic-sphere");
     if (!sphere || !Number.isFinite(x) || !Number.isFinite(y)) return;
     x = Math.round(Math.max(-1, Math.min(1, x)) * 100) / 100;

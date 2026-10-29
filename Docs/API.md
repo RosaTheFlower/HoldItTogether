@@ -1,7 +1,8 @@
 # HIT public API reference
 
-Reference: application v2710, NuGet `HIT.Sdk` 1.0.2, namespace `HIT.Sdk`, contract `"1"`.
-The authoritative declarations are [Contracts.cs](../Modules/HIT.Sdk/Contracts.cs).
+Reference: application 2v2910, NuGet `HIT.Sdk` 1.2.0, namespace `HIT.Sdk`, contract `"1"`.
+The authoritative declarations are [Contracts.cs](../Modules/HIT.Sdk/Contracts.cs) and
+[Events.cs](../Modules/HIT.Sdk/Events.cs).
 These are in-process C# contracts, not HTTP endpoints. An extension references the SDK, never the executable's internal service types.
 Installation/manifest/build instructions: [Extensions](EXTENSIONS.md).
 
@@ -147,6 +148,64 @@ var options = await Api.Storage.ReadAsync<NoteOptions>("options", Api.Lifetime)
 await Api.Storage.WriteAsync("options", options with { Text = "A short note" }, Api.Lifetime);
 ```
 
+## Additive events and actions (SDK 1.1.0)
+
+The original IHitApi/IHitMedia/IHitAppearance interfaces and assembly identity remain unchanged.
+New hosts expose IHitApiV2 : IHitApi with Events and Actions. Existing contract-1 extensions continue
+loading. A new module referencing these types requires a host shipping SDK 1.1.0 or later; testing
+`api is IHitApiV2` does not make missing SDK types available on an old host. Declare the new capabilities
+so older hosts reject the package before executing it.
+
+| Capability | New operations |
+| --- | --- |
+| events.subscribe | Access IHitApiV2.Events; combine with the data-specific permission below |
+| host.read | ReadHost / SubscribeHost |
+| appearance.read | ReadAppearance / SubscribeAppearance |
+| media.read | SubscribeMedia (also required for the legacy ReadAsync) |
+| media.spectrum | SubscribeSpectrum; shared default-output FFT, not microphone/raw PCM |
+| actions.register | Register a package-owned action |
+| actions.execute | List and execute discoverable actions |
+
+SubscribeHost, SubscribeAppearance, SubscribeMedia and SubscribeSpectrum accept Action<T> plus an
+optional cancellation token and return IDisposable. The module lifetime is always linked. Pass
+VisibleLifetime for view-owned work and dispose subscriptions on view teardown. Up to 32 subscriptions
+and 32 registered actions are allowed per package. Observers run on background workers; use InvokeAsync
+for Blazor state. One pending snapshot per subscription replaces older pending values. Exceptions in
+observers are logged locally and isolated. Disposal/cancellation prevents new deliveries but cannot
+interrupt an observer already executing; trusted extension callbacks must remain short.
+
+Host state exposes Collapsed/Open/Compact, Visible, Pinned and Sleeping. Appearance snapshots include
+theme ID, reduced motion and a read-only map of computed --hit-* tokens; the map can be empty before
+the WebView publishes its first state. It reflects the active rendered surface, including music colors
+where those tokens are overridden; it is not a CSS parser or access to every theme rule.
+
+Media subscriptions share one host query at most every 500 ms and publish changed snapshots. There
+can still be a built-in Audio query; each extension does not create another poller. Spectrum subscriptions
+share the built-in analyzer/capture through reference-counted leases and provide 32 read-only bands
+at up to 20 Hz. Failures produce Capturing=false and an error; no synthetic signal is generated.
+SDK media/spectrum work pauses during host sleep, native hiding or when all subscribing packages
+are disabled, and stops owning capture when no spectrum subscribers remain. Module registrations
+stay available for re-enable; cooperative visible-lifetime subscriptions cancel when their view hides.
+
+```csharp
+// Manifest: capabilities ["events.subscribe", "host.read"]
+if (Api is IHitApiV2 current)
+{
+    var visible = VisibleLifetime; // capture before disposal
+    _subscription = current.Events.SubscribeHost(state =>
+        _ = InvokeAsync(() => { if (!visible.IsCancellationRequested) { _host = state; StateHasChanged(); } }), visible);
+}
+// Dispose _subscription from OnDisposeAsync / before replacing a visible-period subscription.
+```
+
+The independently compiled EventExample helper in the Notes example demonstrates the same contract.
+Actions.Register(localId, title, handler) returns an owned IDisposable. IDs use manifest ID syntax and
+are qualified as packageId:localId. Duplicate IDs are rejected. List filters disabled/cancelled owners;
+ExecuteAsync returns false for unavailable actions, links caller/module/host cancellation and propagates
+handler failures. Disposing a registration removes discovery; an already running handler must cooperate
+with cancellation. Actions do not install global shortcuts or bypass permissions; input bindings can
+reuse the registry in a later delivery. Marshal UI handlers onto the renderer thread explicitly.
+
 ## Media snapshots and commands
 
 ```csharp
@@ -190,7 +249,8 @@ if (media.HasMedia && media.CanSeek)
 ```
 
 This snippet belongs to a visible action handler, with the caller handling expected cancellation/errors.
-There is no public lyric-provider, FFT-stream, playlist-editing or output-device-selection API in SDK 1.
+There is no public lyric-provider, raw-PCM, playlist-editing or output-device-selection API.
+SDK 1.1 adds the shared 32-band spectrum subscription described above.
 The built-in player contains those supported internal integrations described in [Audio](AUDIO.md).
 
 ## Clock
@@ -220,7 +280,8 @@ Those are built-in settings in 1.0. See [Clock](CLOCK.md).
 Appearance.ThemeId and Appearance.ReducedMotion read current host preferences.
 SelectTheme accepts an existing exact ID, needs theme.control and persists through host settings.
 IDs: `default`, `bundled:HIT-OLED-OFF-WHITE.css`, `bundled:HIT-LIGHT.css`, or the exact `custom:{filename}.css` ID.
-The SDK has no theme-enumeration/import API or appearance change event; CSS inheritance updates presentation automatically.
+The SDK has no theme-enumeration/import API. SDK 1.1 adds an appearance subscription with computed
+tokens; CSS inheritance continues updating presentation automatically.
 
 AssetUrl validates a package-relative path and returns `extensions/{id}/{version}/{path}` with encoded path segments.
 Use it for `<img>` URLs or JS module imports. It does not guarantee existence or permit parent/absolute paths.
@@ -243,3 +304,18 @@ Declare capabilities, check supported actions, send current generation, pass can
 handle missing data/errors and release retained resources. Do not claim OS isolation or a guaranteed plugin RAM quota.
 Use only SDK contracts for public compatibility; undocumented internal types can change independently.
 Additive APIs and breaking contract changes require deliberate versioning and updated examples/tests.
+
+## Optional menu pages (SDK 1.2.0)
+
+IHitMenuPages adds stable navigation identities without changing IHitMenuSettings or assembly identity 1.0.0.0. Implement string CurrentPage, bool CanReturnToParent, and Task NavigateToPageAsync(string page). Page IDs must remain stable and at most 100 characters. Validate IDs, restore only presentation state, marshal renderer changes and publish the restored title. Do not execute domain actions (start games, timers or reset data) when restoring a page. The host records at most 50 visits per mounted menu for the current session, drops the forward branch on a new visit and clears history on removal/disabling. No new capability is required: this contract controls only the implementing menu. Older packages lacking the interface retain their existing settings contract; page-history mode does not guess their internal views. New Notes/Chess 1.0.2 packages illustrate the contract and require SDK 1.2.0 hosts.
+
+```csharp
+public string CurrentPage => IsSettingsOpen ? "settings" : "main";
+public bool CanReturnToParent => IsSettingsOpen;
+public Task NavigateToPageAsync(string page) => page switch
+{
+    "settings" => OpenSettingsAsync(),
+    "main" => CloseSettingsAsync(),
+    _ => Task.CompletedTask
+};
+```

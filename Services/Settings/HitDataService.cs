@@ -37,9 +37,11 @@ public sealed class HitDataService
         File.Delete(Path.Combine(root, "window.json"));
         File.Delete(Path.Combine(root, "window-fullscreen.json"));
         RemoveDirectory("Clock");
+        RemoveDirectory("Diagnostics");
         if (request.DeleteEverything)
         {
             RemoveDirectory("Themes");
+            RemoveDirectory("Appearance");
             RemoveDirectory("Modules");
         }
         else

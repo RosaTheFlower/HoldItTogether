@@ -1,55 +1,27 @@
 @using HoldItTogether.Services.Settings
-
-<section class="audio-settings-view" aria-label="@Text.Get("Audio settings")" data-no-drag
-         @onclick:stopPropagation="true" @oncontextmenu="ReturnAsync" @oncontextmenu:preventDefault="true"
-         @onpointerup="HandlePointerUp">
-    <button type="button" class="lyrics-back audio-view-back" aria-label="@Text.Get("Back to Audio")" title="@Text.Get("Back to Audio")" @onclick="ReturnAsync">
-        <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m11 5-5 5 5 5M6 10h10" /></svg>
-        <span>@Text.Get("Audio")</span>
-    </button>
-
-    <HitDisclosure Title="@Text.Get("Size")" PanelId="audio-size-options" CssClass="audio-size-disclosure">
-        <MainControl>
-            <div class="audio-size-uniform">
-                <input type="range" min="25" max="200" step="5" value="@UniformScale"
-                       aria-label="@Text.Get("Uniform audio size")" @oninput="PreviewUniform" @onchange="SaveUniform" @onwheel:stopPropagation="true" />
-                <output>@(ScaleX == ScaleY ? $"{ScaleX}%" : $"{ScaleX} × {ScaleY}%")</output>
-            </div>
-        </MainControl>
-        <ChildContent>
-            <label class="audio-size-axis">
-                <span>@Text.Get("Width · X")</span>
-                <input type="range" min="25" max="200" step="5" value="@ScaleX" aria-label="@Text.Get("Audio width")"
-                       @oninput="PreviewX" @onchange="SaveX" @onwheel:stopPropagation="true" />
-                <output>@ScaleX%</output>
-            </label>
-            <label class="audio-size-axis">
-                <span>@Text.Get("Height · Y")</span>
-                <input type="range" min="25" max="200" step="5" value="@ScaleY" aria-label="@Text.Get("Audio height")"
-                       @oninput="PreviewY" @onchange="SaveY" @onwheel:stopPropagation="true" />
-                <output>@ScaleY%</output>
-            </label>
-        </ChildContent>
-    </HitDisclosure>
-
-    <button type="button" class="hit-link-row" aria-label="Open Hide buttons" @onclick="ControlsRequested"><span>Hide buttons</span><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m8 5 5 5-5 5" /></svg></button>
-
-    <label class="audio-setting-row"><span>Show song title in lyrics</span><input class="hit-switch" type="checkbox" role="switch" aria-label="Show song title in lyrics" @bind:get="Settings.AudioLyricsShowTitle" @bind:set="SetLyricsTitle" /></label>
-    <label class="audio-setting-row"><span>Show lyrics source</span><input class="hit-switch" type="checkbox" role="switch" aria-label="Show lyrics source" @bind:get="Settings.AudioLyricsShowSource" @bind:set="SetLyricsSource" /></label>
-    <label class="audio-setting-row"><span>Show timeline in lyrics</span><input class="hit-switch" type="checkbox" role="switch" aria-label="Show timeline in lyrics" @bind:get="Settings.AudioLyricsTimeline" @bind:set="SetTimeline" /></label>
-    @if (Settings.AudioLyricsTimeline)
-    {
-        <label class="audio-size-axis"><span>Timeline thickness</span><input type="range" min="1" max="6" step="1" value="@Settings.AudioLyricsTimelineThickness" aria-label="Lyrics timeline thickness" @onchange="SetThickness" @onwheel:stopPropagation="true" /><output>@Settings.AudioLyricsTimelineThickness px</output></label>
-    }
-    <label class="audio-setting-row">
-        <span>@Text.Get("Show source")<small>@Text.Get("The app currently playing audio.")</small></span>
-        <input type="checkbox" class="appearance-switch" role="switch" aria-label="@Text.Get("Show audio source")"
-               @bind:get="Settings.AudioShowSource" @bind:set="SetSource" />
-    </label>
-    @if (Error is { } error) { <p class="audio-error" role="status">@error</p> }
+@using HoldItTogether.Components.Settings
+<section class="audio-settings-view" aria-label="@Text.Get("Audio settings")" data-no-drag>
+@if (Topic == "Size")
+{
+    <SettingRange Label="Uniform audio size" Description="Scale the player and lyrics equally on both axes." Value="@((int)Math.Round((Settings.AudioScaleX + Settings.AudioScaleY) / 10d) * 5)" Min="25" Max="200" Step="5" Unit="%" Changed="v => SizeChanged.InvokeAsync(((int)v, (int)v))" />
+    <SettingRange Label="Audio width" Description="Set the horizontal scale of the player and lyrics." Value="Settings.AudioScaleX" Min="25" Max="200" Step="5" Unit="%" Changed="v => SizeChanged.InvokeAsync(((int)v, Settings.AudioScaleY))" />
+    <SettingRange Label="Audio height" Description="Set the vertical scale of the player and lyrics." Value="Settings.AudioScaleY" Min="25" Max="200" Step="5" Unit="%" Changed="v => SizeChanged.InvokeAsync((Settings.AudioScaleX, (int)v))" />
+}
+else if (Topic == "Lyrics")
+{
+    <SettingToggle Label="Show song title in lyrics" Description="Display the track name above the lyrics." Value="Settings.AudioLyricsShowTitle" Changed="LyricsTitleChanged" />
+    <SettingToggle Label="Show lyrics source" Description="Display the lyrics provider and its source link." Value="Settings.AudioLyricsShowSource" Changed="LyricsSourceChanged" />
+    <SettingToggle Label="Show timeline in lyrics" Description="Show the seekable playback timeline along the edge of the lyrics." Value="Settings.AudioLyricsTimeline" Changed="TimelineChanged" />
+    <SettingRange Label="Lyrics timeline thickness" Description="Set the thickness of the lyrics playback timeline." Value="Settings.AudioLyricsTimelineThickness" Min="1" Max="6" Unit="px" Disabled="!Settings.AudioLyricsTimeline" Changed="v => TimelineThicknessChanged.InvokeAsync((int)v)" />
+}
+else
+{
+    <SettingToggle Label="Show audio source" Description="Display the application currently playing audio." Value="Settings.AudioShowSource" Changed="ShowSourceChanged" />
+}
+@if (Error is { } error) { <p class="audio-error" role="status">@error</p> }
 </section>
-
 @code {
+    [Parameter] public string Topic { get; set; } = "General";
     [Parameter, EditorRequired] public HitSettings Settings { get; set; } = new();
     [Parameter] public string? Error { get; set; }
     [Parameter] public EventCallback<(int X, int Y)> SizeChanged { get; set; }
@@ -58,29 +30,4 @@
     [Parameter] public EventCallback<bool> LyricsTitleChanged { get; set; }
     [Parameter] public EventCallback<bool> LyricsSourceChanged { get; set; }
     [Parameter] public EventCallback<int> TimelineThicknessChanged { get; set; }
-    [Parameter] public EventCallback BackRequested { get; set; }
-    [Parameter] public EventCallback ControlsRequested { get; set; }
-    private int? _previewX, _previewY;
-    private int ScaleX => _previewX ?? Settings.AudioScaleX;
-    private int ScaleY => _previewY ?? Settings.AudioScaleY;
-    private int UniformScale => (int)Math.Round((ScaleX + ScaleY) / 2d / 5) * 5;
-    private static int Read(ChangeEventArgs args, int fallback) => int.TryParse(args.Value?.ToString(), out var value) ? Math.Clamp(value, 25, 200) : fallback;
-    private void PreviewUniform(ChangeEventArgs args) { _previewX = _previewY = Read(args, UniformScale); }
-    private void PreviewX(ChangeEventArgs args) => _previewX = Read(args, ScaleX);
-    private void PreviewY(ChangeEventArgs args) => _previewY = Read(args, ScaleY);
-    private Task SaveUniform(ChangeEventArgs args) { PreviewUniform(args); return SaveSize(); }
-    private Task SaveX(ChangeEventArgs args) { PreviewX(args); return SaveSize(); }
-    private Task SaveY(ChangeEventArgs args) { PreviewY(args); return SaveSize(); }
-    private async Task SaveSize()
-    {
-        await SizeChanged.InvokeAsync((ScaleX, ScaleY));
-        _previewX = _previewY = null;
-    }
-    private Task SetSource(bool enabled) => ShowSourceChanged.InvokeAsync(enabled);
-    private Task SetTimeline(bool enabled) => TimelineChanged.InvokeAsync(enabled);
-    private Task SetLyricsTitle(bool enabled) => LyricsTitleChanged.InvokeAsync(enabled);
-    private Task SetLyricsSource(bool enabled) => LyricsSourceChanged.InvokeAsync(enabled);
-    private Task SetThickness(ChangeEventArgs args) => int.TryParse(args.Value?.ToString(), out var value) ? TimelineThicknessChanged.InvokeAsync(Math.Clamp(value, 1, 6)) : Task.CompletedTask;
-    private Task ReturnAsync() => BackRequested.InvokeAsync();
-    private Task HandlePointerUp(PointerEventArgs args) => args.Button == 2 ? ReturnAsync() : Task.CompletedTask;
 }

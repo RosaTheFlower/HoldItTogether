@@ -1,0 +1,4 @@
+interface:
+  display_name: "HIT Audio"
+  short_description: "Media, lyrics, artwork, shared capture and effects"
+  default_prompt: "Use $hit-audio to implement or diagnose this HIT audio behavior with correct ownership and lifecycle."

@@ -1,9 +1,6 @@
 @using HoldItTogether.Services.Clock
 
 <section class="clock-system-settings" aria-label="@Text.Get("World clocks")" data-no-drag>
-    <button type="button" class="clock-back" @onclick="() => BackRequested.InvokeAsync()" aria-label="@Text.Get("Back to Clock")">
-        <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m11 5-5 5 5 5M6 10h10" /></svg>@Text.Get("Clock")
-    </button>
     <p class="clock-world-hint">@Text.Get("The first clock is primary. The second appears when dual clocks are enabled.")</p>
     <HitScrollRegion CssClass="clock-world-list" Label="@Text.Get("World clocks list")">
         @for (var index = 0; index < Options.SystemClocks.Length; index++)
@@ -79,7 +76,6 @@
 @code {
     [Parameter, EditorRequired] public ClockPreferences Options { get; set; } = new();
     [Parameter] public EventCallback<ClockPreferences> Changed { get; set; }
-    [Parameter] public EventCallback BackRequested { get; set; }
     [Parameter] public DateTimeOffset Now { get; set; }
     private string _newName = "", _newZone = ClockTimeZones.LocalId;
     private int? _expandedClock;

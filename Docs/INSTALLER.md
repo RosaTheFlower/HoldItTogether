@@ -41,10 +41,10 @@ The script also recognizes `artifacts/tools/innosetup/ISCC.exe` and standard Inn
 Reuse a release that contains the current host's installer import command:
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File Tools/Build-Installer.ps1 -ReleaseDirectory artifacts/releases/v2710
+powershell -NoProfile -ExecutionPolicy Bypass -File Tools/Build-Installer.ps1 -ReleaseDirectory artifacts/releases/2v2910
 ```
 
-The output is `installer/HIT-vDDMM-win-x64-Setup.exe` within that release directory.
+The output is `installer/HIT-NvDDMM-win-x64-Setup.exe` within that release directory.
 The build stages source from an explicit directory list, excluding bin/obj/artifacts, Git/IDE state, links and user settings.
 All generated payloads, compiler downloads and setup executables remain ignored under `artifacts`.
 `Installer/HoldItTogether.iss` is the maintained installer definition; follow the official [Inno Setup documentation](https://jrsoftware.org/ishelp/).
@@ -71,7 +71,7 @@ The generated installer is unsigned unless separately signed with a publisher's 
 ## Validation
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File Tools/Test-Installer.ps1 -ReleaseDirectory artifacts/releases/v2710
+powershell -NoProfile -ExecutionPolicy Bypass -File Tools/Test-Installer.ps1 -ReleaseDirectory artifacts/releases/2v2910
 ```
 
 The integration helper compiles a test variant without shortcuts or uninstall registry registration, installs all four

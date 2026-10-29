@@ -25,7 +25,7 @@
         {
             if (_busy || _disposed) return;
             var css = filename.EndsWith(".css", StringComparison.OrdinalIgnoreCase);
-            _busy = true;
+            _busy = true; Ui.SetBusy(true);
             if (css) Ui.OpenThemes(); else Ui.Open();
             Ui.Report(css ? "Importing theme…" : "Installing extension…");
             try
@@ -44,7 +44,7 @@
             }
             catch (OperationCanceledException) { }
             catch (Exception error) { Ui.Report("Installation failed: " + error.GetBaseException().Message, true); }
-            finally { _busy = false; }
+            finally { _busy = false; Ui.SetBusy(false); }
         }
     }
     [JSInvokable] public void DropError(string message) { Ui.Open(); Ui.Report(message, true); }

@@ -4,6 +4,7 @@
 @using Microsoft.AspNetCore.Components.Web
 @inherits HitMenuComponent
 @implements IHitMenuSettings
+@implements IHitMenuPages
 @implements IHitMenuCompact
 
 <section @ref="_root" class="chess-menu @(_compact ? "is-compact" : "") @(IsSettingsOpen ? "shows-settings" : "")" data-no-drag
@@ -11,18 +12,17 @@
          data-hit-view="@(IsSettingsOpen ? "settings" : _compact ? "compact" : "board")"
          data-position="@($"{_generation}:{_state.Moves.Count}:{_state.PlayerWhite}")" data-game="@_generation" data-ply="@_state.Moves.Count"
          data-last-from="@_lastMove?.From" data-last-to="@_lastMove?.To" data-last-capture="@(_lastCaptured != 0 ? "true" : "false")"
-         data-sound-enabled="@(_state.SoundEnabled ? "true" : "false")" data-hit-layout-pending="@(!_loaded ? "true" : null)" @onkeydown="OnKeyDown">
+         data-sound-enabled="@(_state.SoundEnabled ? "true" : "false")" data-hit-layout-pending="@(!_loaded ? "true" : null)" @onkeydown="OnKeyDown" @onkeydown:stopPropagation="IsSettingsOpen">
     @if (IsSettingsOpen)
     {
-        <div class="chess-settings">
-            <button type="button" class="chess-back" @onclick="CloseSettingsAsync" aria-label="Back to Chess">
-                <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m11 5-5 5 5 5M6 10h10" /></svg>Chess
-            </button>
-            <button type="button" class="chess-reset-score hit-link-row" aria-label="Reset score" @onclick="AskClearScore">
-                <span>Reset score<small>Clear Win / Loss · @_state.Wins / @_state.Losses</small></span>
-                <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m8 5 5 5-5 5" /></svg>
-            </button>
-            @if (_scoreMessage is not null) { <p class="chess-setting-hint" role="status">@_scoreMessage</p> }
+        <div class="chess-settings settings-workspace" data-hit-settings-workspace data-hit-view="@_settingsTopic.ToLowerInvariant()">
+            <nav class="settings-sidebar" aria-label="Chess settings topics">
+                @foreach(var topic in new[]{"General","Sound","Score"}){<button type="button" class="settings-topic" aria-label="@($"Open {topic}")" aria-current="@(_settingsTopic==topic?"page":null)" @onclick="()=>SelectSettingsTopicAsync(topic)">@topic</button>}
+            </nav>
+            <div class="settings-content" data-hit-scroll tabindex="0">
+                <h2>@(_settingsTopic=="General"?"Chess settings":_settingsTopic)</h2>
+                <p class="hit-muted">Chess 1.1.0</p>
+                @if(_settingsTopic=="General"){
             <label class="chess-setting-row" for="chess-difficulty">
                 <span>Difficulty</span>
                 <select id="chess-difficulty" aria-label="Difficulty" @bind="_draftDifficulty">
@@ -42,17 +42,27 @@
                     <option value="5">5 minutes</option><option value="10">10 minutes</option><option value="15">15 minutes</option><option value="30">30 minutes</option>
                 </select>
             </label>
+
+                    <button type="button" class="hit-button chess-new-game" title="Apply the selected options and start a new game, preserving your record." @onclick="AskNewGame">New game</button>
+                }else if(_settingsTopic=="Sound"){
             <label class="chess-setting-row">
                 <span>Move sounds<small>Moves and captures</small></span>
                 <input type="checkbox" class="chess-switch" role="switch" aria-label="Move sounds" checked="@_state.SoundEnabled" @onchange="SoundChangedAsync" />
             </label>
-            <button type="button" class="chess-new-game" @onclick="AskNewGame">
-                <span>New game<small>Apply these options. Keep your record.</small></span>
+
+                }else{
+            <button type="button" class="chess-reset-score hit-link-row" aria-label="Reset score" @onclick="AskClearScore">
+                <span>Reset score<small>Clear Win / Loss · @_state.Wins / @_state.Losses</small></span>
                 <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m8 5 5 5-5 5" /></svg>
             </button>
-            @if (!string.IsNullOrEmpty(_storageMessage)) { <p class="chess-error" role="status">@_storageMessage</p> }
+            @if (_scoreMessage is not null) { <p class="chess-setting-hint" role="status">@_scoreMessage</p> }
+
+                }
+                @if(!string.IsNullOrEmpty(_storageMessage)){<p class="chess-error" role="status">@_storageMessage</p>}
+            </div>
         </div>
     }
+
     else
     {
         <div class="chess-overview">

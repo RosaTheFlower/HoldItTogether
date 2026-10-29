@@ -1,0 +1,37 @@
+import assert from 'node:assert/strict';
+import {mkdirSync,writeFileSync} from 'node:fs';
+import {resolve} from 'node:path';
+import {setTimeout as wait} from 'node:timers/promises';
+import {openBrowser} from './driver.mjs';
+const root=resolve('obj/mouse-navigation-browser');mkdirSync(root,{recursive:true});
+writeFileSync(resolve(root,'index.html'),`<!doctype html><link rel="stylesheet" href="../../wwwroot/css/dynamic-sphere.css"><style>#sphere{--hit-accent:#8ab4f8;--hit-open-background:#16181c}.sphere-title{width:max-content}</style><div id="sphere" data-hit-side-buttons="true" data-hit-title-hold="true" data-hit-title-hold-delay="300"><h1 id="title" class="sphere-title" data-hit-menu-trigger="settings">Audio</h1><div class="hit-menu-host" data-hit-configuration="false" id="host"><div id="content">Settings</div></div></div><script type="module">import {connectNavigation} from '../../wwwroot/js/hit-navigation.js';window.calls=[];window.disconnect=connectNavigation(sphere,{invokeMethodAsync:async(...args)=>calls.push(args)});window.fire=(target,type,button=0,x=10)=>target.dispatchEvent(new PointerEvent(type,{button,pointerId:1,isPrimary:true,clientX:x,clientY:10,bubbles:true,cancelable:true}));window.ready=true;</script>`);
+const browser=await openBrowser(root),{evaluate}=browser;
+try{
+    await evaluate("fire(title,'pointerdown');fire(title,'pointerup')");await wait(360);
+    assert.deepEqual(await evaluate('calls'),[],'Short press must not configure');
+    await evaluate("fire(title,'pointerdown')");
+    assert.equal(await evaluate("title.querySelectorAll('.title-hold-fill,.title-hold-inverse').length"),2);
+    assert.equal(await evaluate("getComputedStyle(title.querySelector('.title-hold-fill')).animationDuration"),'0.3s');
+    assert.equal(await evaluate("getComputedStyle(title).paddingLeft"),'8px','Title pill has increased horizontal padding');
+    assert.equal(await evaluate("getComputedStyle(title.querySelector('.title-hold-inverse')).paddingLeft"),'8px','Inverse text retains matching padding');
+    await wait(360);
+    assert.deepEqual(await evaluate('calls'),[['OpenSettingsFromHold']]);
+    assert.equal(await evaluate("title.querySelectorAll('.title-hold-fill,.title-hold-inverse').length"),0,'Completed holds clean up the pill');
+    await evaluate("fire(title,'pointerup');calls.length=0;fire(title,'pointerdown');fire(title,'pointermove',0,30)");await wait(360);
+    assert.deepEqual(await evaluate('calls'),[],'Movement cancels the hold');
+    await evaluate("calls.length=0;host.dataset.hitConfiguration='true';fire(title,'pointerdown')");await wait(360);
+    assert.deepEqual(await evaluate('calls'),[],'Configuration titles cannot start a held-M1 action');
+    assert.equal(await evaluate("title.querySelectorAll('.title-hold-fill,.title-hold-inverse').length"),0,'Configuration titles never create a pill');
+    await evaluate("fire(content,'pointerdown',2);content.dispatchEvent(new MouseEvent('contextmenu',{button:2,bubbles:true,cancelable:true}))");
+    assert.deepEqual(await evaluate('calls'),[['NavigateMouse',-1,true]],'M2 requests one level only');
+    await evaluate("calls.length=0;host.dataset.hitConfiguration='false';fire(content,'pointerdown',2);host.dataset.hitConfiguration='true';content.dispatchEvent(new MouseEvent('contextmenu',{button:2,bubbles:true,cancelable:true}))");
+    assert.deepEqual(await evaluate('calls'),[],'Opening on pointerup must not immediately close on contextmenu');
+    await evaluate("fire(content,'pointerdown',3);fire(content,'pointerup',3);fire(content,'auxclick',3)");
+    assert.deepEqual(await evaluate('calls'),[['NavigateMouse',-1,false]],'Side button fires once');
+    await evaluate("calls.length=0;sphere.dataset.hitSideButtons='false';sphere.dataset.hitTitleHold='false'");await wait(20);
+    await evaluate("fire(content,'pointerdown',4);fire(content,'pointerup',4);fire(title,'pointerdown')");await wait(360);
+    assert.deepEqual(await evaluate('calls'),[],'Disabled gestures must not navigate');
+    await evaluate("disconnect();sphere.dataset.hitSideButtons='true';fire(content,'pointerdown',3);fire(content,'pointerup',3)");
+    assert.deepEqual(await evaluate('calls'),[],'Disposed listeners must not fire');
+    console.log('PASS: title hold/release/movement, single-level M2, opening gesture protection, side-button deduplication, options and teardown.');
+}finally{await browser.close();}

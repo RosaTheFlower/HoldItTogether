@@ -11,11 +11,10 @@ It does not modify the built-in menus or require a network connection.
 powershell -NoProfile -ExecutionPolicy Bypass -File Tools/Pack-HitMenu.ps1 -Project Modules/HIT.Chess/HIT.Chess.csproj
 ```
 
-Install `artifacts/packages/dev.hit.chess-1.0.0.hitmenu` through Settings -> Extensions -> Install .hitmenu,
+Install `artifacts/packages/dev.hit.chess-1.1.0.hitmenu` through Settings -> Extensions -> Install .hitmenu,
 or drop the package on HIT. A new installation loads immediately; updating a loaded Chess version restarts HIT automatically.
-The stable menu ID is `dev.hit.chess:chess`. Version 1.0.0 requires the updated host with SDK 1.0.2 for its shared compact action.
-The current package is the former 1.6.1 development build renumbered to the initial 1.0.0 release; the features and saved-game format remain intact.
-Development packages numbered 1.0.1 through 1.6.1 are obsolete. Remove those installed versions before installing this release, because the standard installer correctly rejects a lower-version update. Preserve `Modules/State/dev.hit.chess` to keep the game and score.
+The stable menu ID is `dev.hit.chess:chess`. At the user's request, the 1.0.1 settings redesign was reverted and its generated package removed. Version 1.0.0 retains the compact previous interface, native selectors and the existing saved-game format. The host header identifies Chess with a knight icon.
+If 1.0.1 was already installed, import 1.0.0 and confirm the downgrade. Saved state is kept; replacing loaded code requires the normal graceful restart.
 See [Extensions](EXTENSIONS.md) for package installation and lifecycle details.
 
 ## Playing
@@ -36,15 +35,15 @@ Draws do not change Win / Loss. Record and in-progress moves persist through the
 
 Right-click the shared title to open settings. The title also supports the standard keyboard settings gesture.
 All controls are in English. Settings provide Easy, Medium or Hard, White or Black, time per side and Move sounds.
-Controls use the compact row, native select, switch, Back link and forward action patterns from the built-in Clock and Settings menus.
+The previous compact settings screen keeps all game options together, including Move sounds and Reset score. It does not opt into the new shared workspace.
 The side select binds explicit string values to avoid boolean option-formatting mismatches.
-Reset score is the first settings action, directly below Back and above Difficulty. Its second confirmation resets persisted Win/Loss only;
+Reset score is the first settings action. Its second confirmation resets persisted Win/Loss only;
 Cancel/Escape leave the record intact. The current game, moves, clock and options are preserved.
 There is no Board controls entry in settings; the board gestures documented below remain available.
 Choose New game to apply the game options; replacing an active game requires a native modal confirmation with Cancel focused initially.
 Confirmation uses the host's shared `.hit-confirm` design, matching theme/extension deletion dialogs in every theme.
 Backdrops are transparent, without dimming or blur; Cancel receives initial focus.
-Back, right-click return, or Escape returns to the board. Restarting a game preserves the record.
+Back, right-click return or Escape returns to the board. New game still applies draft options only after confirmation. Restarting a game preserves the record.
 The New game action below an ended game restarts with the current preferences.
 Result and confirmation buttons use the same 32 px height, 8 px corners, muted secondary treatment and accent primary treatment as Clock buttons.
 
@@ -154,3 +153,15 @@ Opening checks use the actual animated host, verifying stylesheet/readiness gati
 a fixed corner anchor, content without blur/slide, canvas release on closing and immediate sizing with reduced motion.
 Screenshots are written to `obj/chess-tests/browser`.
 Native desktop focus, physical dragging and installation/restart still require a running HIT session for manual verification.
+
+Version 1.0.2 keeps the restored compact UI and adds the optional SDK 1.2.0 page-history contract. It requires a host shipping SDK 1.2.0; existing 1.0.0 packages remain supported by the host. The board/game rules and saved-game identity are unchanged.
+
+## Chess 1.1.0
+
+The new optional package adopts the host settings workspace with General, Sound and Score topics, shared wheel selects, descriptions and host Back navigation. The board, saved-game ID, score and rules stay compatible. Existing installed extensions are not silently replaced; import the new package to use its layout. The host also normalizes the legacy New game action so the existing form remains usable without upgrading.
+
+New game and Reset score confirmations use equal-width actions in a single flex row, with single-line labels. The host preserves this geometry for older installed packages as well. Browser checks verify full-row sizing, label fit and shared confirmation styling in all three bundled themes.
+
+Settings labels share one left edge and retain the flexible portion of each row. Difficulty, side and time selectors occupy a fixed 132-pixel right column, keeping their labels and controls on the same line.
+
+A small offline repertoire indexes exact legal board states and varies initial moves and replies across nine opening lines. Each candidate is checked against legal moves; leaving the repertoire resumes the existing bounded iterative search. Cancellation is honored before opening selection. No engine/network/model service was added.

@@ -76,7 +76,52 @@
 .sphere-area .dynamic-sphere .hit-menu-panel dialog.hit-confirm::backdrop { background: transparent; backdrop-filter: none; }
 .sphere-area .dynamic-sphere .hit-menu-panel dialog.hit-confirm h2 { margin: 0 0 8px; font-size: 14px; font-weight: 600; color: var(--hit-control-text); }
 .sphere-area .dynamic-sphere .hit-menu-panel dialog.hit-confirm p { margin: 0; color: var(--hit-control-muted); font-size: 11px; line-height: 1.6; overflow-wrap: anywhere; }
-.sphere-area .dynamic-sphere .hit-menu-panel .dialog-actions { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 8px; margin-top: 20px; }
+.sphere-area .dynamic-sphere .hit-menu-panel dialog.hit-confirm .dialog-actions { display: flex; gap: 8px; margin-top: 20px; }
+.sphere-area .dynamic-sphere .hit-menu-panel dialog.hit-confirm .dialog-actions > button { flex: 1 1 0; min-width: 0; width: 0; white-space: nowrap; }
 .hit-scroll-hint { mask-image: linear-gradient(to bottom,transparent,#000 var(--hit-overflow-top,0px),#000 calc(100% - var(--hit-overflow-bottom,0px)),transparent); }
 .hit-scroll-hint[hidden] { display: none; }
+.hit-spinner { display:inline-block;box-sizing:border-box;flex:0 0 auto;width:16px;height:16px;border:2px solid color-mix(in srgb,currentColor 22%,transparent);border-top-color:currentColor;border-radius:50%;vertical-align:middle;animation:hit-spinner-turn .8s linear infinite; }
+.hit-busy-action{position:relative;}
+.hit-busy-action[aria-busy=true]>.hit-busy-label{visibility:hidden;}
+.hit-busy-indicator{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;}
+@keyframes hit-spinner-turn { to { transform:rotate(360deg); } }
+@media(prefers-reduced-motion:reduce) { .hit-spinner { animation:none; } }
 @media(prefers-reduced-motion:reduce) { .sphere-area .dynamic-sphere .hit-menu-panel :is(.hit-button,.hit-switch::after,.switch::after,.appearance-switch::after,.clock-switch::after,.extension-switch::after,.chess-switch::after) { transition: none; } }
+
+/* Flat shared controls: functional state colors and keyboard outlines remain visible. */
+.sphere-area .dynamic-sphere .hit-menu-panel :is(input[type=text],input[type=number],input[type=search],input[type=color],textarea,select,.settings-combobox,.hit-button,.clock-button,.chess-button,.theme-button,.theme-buttons button,.extension-install,.appearance-image-picker){background:transparent!important;border-color:transparent!important;box-shadow:none!important;}
+.sphere-area .dynamic-sphere .hit-menu-panel input[type=color]{border:0!important;padding:0!important;}
+.sphere-area .dynamic-sphere .hit-menu-panel input[type=color]::-webkit-color-swatch-wrapper{padding:0;}
+.sphere-area .dynamic-sphere .hit-menu-panel input[type=color]::-webkit-color-swatch{border:0;border-radius:5px;}
+.sphere-area .dynamic-sphere .hit-menu-panel input[type=color]::-moz-color-swatch{border:0;border-radius:5px;}
+.sphere-area .dynamic-sphere .hit-menu-panel :is(input[type=number],.settings-inline-number){appearance:textfield;}
+.sphere-area .dynamic-sphere .hit-menu-panel input[type=number]::-webkit-inner-spin-button,.sphere-area .dynamic-sphere .hit-menu-panel input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0;}
+.sphere-area .dynamic-sphere .hit-menu-panel .settings-select-popup{border-color:transparent;box-shadow:none;}
+.sphere-area .dynamic-sphere .hit-menu-panel :is(.hit-button,.clock-button,.chess-button,.theme-button,.extension-install):hover:not(:disabled){color:var(--hit-control-text);}
+
+/* Quiet outlines and full-row actions. Explicit toolbar/icon layouts keep their own sizing. */
+.sphere-area .dynamic-sphere .hit-menu-panel :is(select,.settings-combobox,.hit-button,.clock-button,.chess-button,.theme-button,.theme-buttons button,.extension-install,.appearance-image-picker){border:1px solid color-mix(in srgb,var(--hit-control-muted) 16%,transparent)!important;}
+.sphere-area .dynamic-sphere .hit-menu-panel :is(.hit-button,.clock-button,.chess-button,.theme-button){box-sizing:border-box;width:100%;min-width:0;}
+.sphere-area .dynamic-sphere .hit-menu-panel :is(.appearance-actions,.example-actions,.clock-actions,.chess-actions,.theme-buttons,.dialog-actions,.info-action-row){display:flex;gap:8px;}
+.sphere-area .dynamic-sphere .hit-menu-panel :is(.appearance-actions,.example-actions,.clock-actions,.chess-actions,.theme-buttons,.dialog-actions,.info-action-row)>button{flex:1 1 0;min-width:0;width:0!important;}
+.sphere-area .dynamic-sphere .hit-menu-panel .appearance-background-actions>.hit-button{width:auto;flex:none;}
+.sphere-area .dynamic-sphere .hit-menu-panel :is(.hit-button,.clock-button,.chess-button).is-primary{color:var(--hit-control-text);}
+.sphere-area .dynamic-sphere .hit-menu-panel .settings-select-popup{border:1px solid color-mix(in srgb,var(--hit-control-muted) 16%,transparent);}
+
+/* Settings sliders keep a clear, outlined empty track and a darker thumb. */
+.sphere-area .dynamic-sphere .hit-menu-panel .settings-workspace input[type=range]{appearance:none;background:transparent;cursor:pointer;height:20px;min-width:0;}
+.sphere-area .dynamic-sphere .hit-menu-panel .settings-workspace input[type=range]::-webkit-slider-runnable-track{height:6px;border:1px solid color-mix(in srgb,var(--hit-control-muted) 24%,transparent);border-radius:999px;background:linear-gradient(to right,var(--hit-control-accent) var(--range-fill,0%),transparent var(--range-fill,0%));}
+.sphere-area .dynamic-sphere .hit-menu-panel .settings-workspace input[type=range]::-webkit-slider-thumb{appearance:none;width:13px;height:13px;margin-top:-4.5px;border:0;border-radius:50%;background:color-mix(in srgb,var(--hit-control-accent) 65%,#000);}
+.sphere-area .dynamic-sphere .hit-menu-panel .settings-workspace input[type=range]::-moz-range-track{height:4px;border:1px solid color-mix(in srgb,var(--hit-control-muted) 24%,transparent);border-radius:999px;background:transparent;}
+.sphere-area .dynamic-sphere .hit-menu-panel .settings-workspace input[type=range]::-moz-range-progress{height:4px;background:var(--hit-control-accent);border-radius:999px;}
+.sphere-area .dynamic-sphere .hit-menu-panel .settings-workspace input[type=range]::-moz-range-thumb{width:13px;height:13px;border:0;border-radius:50%;background:color-mix(in srgb,var(--hit-control-accent) 65%,#000);}
+
+.theme-delete-dialog .dialog-actions{display:flex;gap:8px;}
+.theme-delete-dialog .dialog-actions>button{flex:1;min-width:0;}
+
+/* Typed fields use the same quiet outline as buttons; slider values stay unboxed. */
+.sphere-area .dynamic-sphere .hit-menu-panel :is(input[type=text],input[type=search],input[type=password],input[type=email],input[type=url],input[type=number],textarea){border:1px solid color-mix(in srgb,var(--hit-control-muted) 16%,transparent)!important;border-radius:8px;padding:6px 9px;box-sizing:border-box;color:var(--hit-control-text);}
+.sphere-area .dynamic-sphere .hit-menu-panel :is(.settings-number-controls input[type=number],.settings-inline-number){border:0!important;border-radius:0;padding:2px 0;}
+.sphere-area .dynamic-sphere .hit-menu-panel .clock-menu .clock-button.is-primary{color:var(--clock-text,var(--hit-menu-text,var(--hit-text)))!important;}
+
+.sphere-area .dynamic-sphere .hit-menu-panel .chess-new-game{box-sizing:border-box;width:100%;min-height:36px;padding:8px 12px;border:1px solid color-mix(in srgb,var(--hit-control-muted) 16%,transparent);border-radius:8px;background:transparent;color:var(--hit-control-text);font-size:11px;}

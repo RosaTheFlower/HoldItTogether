@@ -80,6 +80,7 @@
     [Parameter] public EventCallback OnCloseRequested { get; set; }
     [Parameter] public EventCallback<string> OnTitleChanged { get; set; }
     [Parameter] public EventCallback<bool> OnSettingsAvailableChanged { get; set; }
+    [Parameter] public EventCallback<bool> OnBackAvailableChanged { get; set; }
     [Parameter] public EventCallback<HitMenuLayout> OnLayoutChanged { get; set; }
     [Parameter] public EventCallback<bool> OnPinRequested { get; set; }
     private string? _selectedId;
@@ -91,6 +92,34 @@
     private readonly Dictionary<string, HitMenuLayout> _layouts = [];
     private readonly HashSet<string> _failedMenus = [];
     private bool _contextStartedInSettings;
+    private bool? _publishedBackAvailable;
+    private readonly Dictionary<string, HitPageHistory> _pageHistories = [];
+    private bool _restoringPage;
+    private HIT.Sdk.IHitMenuPages? CurrentPages => _components.TryGetValue(_selectedId ?? "", out var component) ? component.Instance as HIT.Sdk.IHitMenuPages : null;
+    private void ObservePage()
+    {
+        if (_restoringPage || _selectedId is null || CurrentPages is not { } pages) return;
+        if (!_pageHistories.TryGetValue(_selectedId, out var history)) _pageHistories[_selectedId] = history = new();
+        history.Visit(pages.CurrentPage);
+    }
+    public bool IsConfiguration => _selectedId == HitMenuCatalog.SettingsId || CurrentSettings?.IsSettingsOpen == true;
+    public bool CanGoBack => CurrentPages?.CanReturnToParent ?? (CurrentSettings is IHitMenuSettings builtIn ? builtIn.CanGoBack : CurrentSettings?.IsSettingsOpen == true);
+    public async Task GoBackAsync()
+    {
+        if (!CanGoBack || CurrentSettings is not { } settings) return;
+        await settings.CloseSettingsAsync();
+        await PublishMenuAsync();
+        await InvokeAsync(StateHasChanged);
+    }
+    private async Task PublishBackAvailableAsync()
+    {
+        ObservePage();
+        var available = CanGoBack;
+        if (_publishedBackAvailable == available) return;
+        _publishedBackAvailable = available;
+        await OnBackAvailableChanged.InvokeAsync(available);
+    }
+    protected override Task OnAfterRenderAsync(bool firstRender) => PublishBackAvailableAsync();
     private HitMenuLayout CurrentLayout => _selectedId is null ? HitMenuLayout.Default : _layouts.GetValueOrDefault(_selectedId);
     private bool CurrentHasSettings => !_disposed && _selectedId != HitMenuCatalog.SettingsId && !_failedMenus.Contains(_selectedId ?? "") &&
         Catalog.Menus.FirstOrDefault(menu => menu.Id == _selectedId)?.ComponentType is { } type &&
@@ -112,6 +141,32 @@
 
     public Task OpenCurrentSettingsAsync() => CurrentHasSettings && CurrentSettings is { } settings
         ? settings.OpenSettingsAsync() : Task.CompletedTask;
+    public async Task NavigateMouseAsync(int direction,bool contextOnly)
+    {
+        if(_disposed)return;
+        if (!contextOnly)
+        {
+            var behavior = direction < 0 ? Settings.Current.MouseBackBehavior : Settings.Current.MouseForwardBehavior;
+            if (behavior == "pages")
+            {
+                ObservePage();
+                if (CurrentPages is not { } pages || _selectedId is null || !_pageHistories.TryGetValue(_selectedId, out var history) || history.Peek(direction) is not { } target) return;
+                _restoringPage = true;
+                try { await pages.NavigateToPageAsync(target); if (pages.CurrentPage == target) history.Move(direction); }
+                finally { _restoringPage = false; }
+                await PublishMenuAsync(); await InvokeAsync(StateHasChanged); return;
+            }
+            if (behavior == "menus") { await SelectMenuAsync(_navigation.SelectedIndex+direction); return; }
+        }
+        if(CurrentSettings is {IsSettingsOpen:true} settings)
+        {
+            if(direction<0){await settings.CloseSettingsAsync();await PublishMenuAsync();await InvokeAsync(StateHasChanged);}
+            return;
+        }
+        if(direction<0&&CurrentSettings is HoldItTogether.Components.HitMenus.HitMenuAudio audio&&audio.IsLyricsOpen)
+        {await audio.CloseSettingsAsync();return;}
+        if(!contextOnly)await SelectMenuAsync(_navigation.SelectedIndex+direction);
+    }
 
     private async Task ExtensionFailedAsync(string menuId)
     {
@@ -142,6 +197,7 @@
     {
         await OnTitleChanged.InvokeAsync(CurrentTitle);
         await OnSettingsAvailableChanged.InvokeAsync(CurrentHasSettings);
+        await PublishBackAvailableAsync();
         await OnLayoutChanged.InvokeAsync(CurrentLayout);
     }
 
@@ -156,7 +212,6 @@
 
     public async Task HandleWheelAsync(WheelEventArgs args)
     {
-        if (CurrentSettings is { IsSettingsOpen: true }) return;
         if (_navigation.Scroll(args.DeltaX, args.DeltaY, args.DeltaMode, args.CtrlKey,
                                Environment.TickCount64, Settings.Current))
         {
@@ -169,7 +224,7 @@
 
     private async Task SelectMenuAsync(int index)
     {
-        if (_navigation.Select(index))
+        if (_navigation.Select(index,Settings.Current.InfiniteMenu))
         {
             _selectedId = Catalog.Menus[index].Id;
             _visited.Add(_selectedId);
@@ -180,11 +235,12 @@
 
     private Task RequestTitleAsync(string menuId, string title) =>
         SetTitleAsync(menuId, title);
-    private Task SetTitleAsync(string menuId, string title)
+    private async Task SetTitleAsync(string menuId, string title)
     {
-        if (_disposed || _failedMenus.Contains(menuId) || menuId != _selectedId) return Task.CompletedTask;
+        if (_disposed || _failedMenus.Contains(menuId) || menuId != _selectedId) return;
         _titles[menuId] = title.Length > 100 ? title[..100] : title;
-        return OnTitleChanged.InvokeAsync(_titles[menuId]);
+        await OnTitleChanged.InvokeAsync(_titles[menuId]);
+        await PublishBackAvailableAsync();
     }
 
     private async Task RequestLayoutAsync(string menuId, HitMenuLayout layout)
@@ -204,7 +260,7 @@
             var ids = Catalog.Menus.Select(menu => menu.Id).ToHashSet();
             _visited.RemoveWhere(id => !ids.Contains(id));
             _failedMenus.RemoveWhere(id => !ids.Contains(id));
-            foreach (var id in _components.Keys.Where(id => !ids.Contains(id)).ToArray()) { _components.Remove(id); _layouts.Remove(id); _titles.Remove(id); }
+            foreach (var id in _components.Keys.Where(id => !ids.Contains(id)).ToArray()) { _components.Remove(id); _layouts.Remove(id); _titles.Remove(id); _pageHistories.Remove(id); }
             _navigation = new HitMenuNavigator(Catalog.Menus.Count);
             var next = Catalog.Menus.ToList().FindIndex(menu => menu.Id == _selectedId);
             if (next < 0) next = Math.Max(0, Catalog.Menus.ToList().FindIndex(menu => menu.Id == HitMenuCatalog.SettingsId));

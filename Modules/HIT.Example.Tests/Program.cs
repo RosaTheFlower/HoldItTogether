@@ -17,16 +17,23 @@ using Microsoft.JSInterop;
 using Microsoft.AspNetCore.Components.RenderTree;
 using HoldItTogether.Components;
 
+if(args.Contains("--package-checks")){await PackageLifecycleChecks.RunAsync();return;}
+if(args.Contains("--placement-checks")){PlacementChecks.Run();return;}
+if(args.Contains("--navigation-checks")){NavigationChecks.Run();PlacementChecks.Run();return;}
+if(args.Contains("--sdk-spectrum-checks")){SpectrumLeaseChecks.Run();return;}
 if (args.Contains("--window-checks"))
 {
     WindowTopmostChecks.Run();
     WindowGeometryChecks.Run();
     FullscreenPlacementChecks.Run();
+    ResourceSavingChecks.Run();
+    DiagnosticChecks.Run();
+    await DiagnosticChecks.RunAutomaticAsync();
     return;
 }
 
-var repo = Path.GetFullPath(args.FirstOrDefault() ?? Environment.CurrentDirectory);
-var fixture = Path.Combine(repo, "artifacts/packages/dev.hit.example-1.0.0.hitmenu");
+var repo = Path.GetFullPath(args.FirstOrDefault(arg=>!arg.StartsWith("--",StringComparison.Ordinal)) ?? Environment.CurrentDirectory);
+var fixture = Path.Combine(repo, "artifacts/packages/dev.hit.example-1.0.2.hitmenu");
 if (!File.Exists(fixture)) throw new Exception("Build the sample using Tools/Pack-HitMenu.ps1 first.");
 var root = Path.Combine(repo, "obj/extension-tests", Guid.NewGuid().ToString("N"));
 Directory.CreateDirectory(root);
@@ -124,11 +131,15 @@ Check(new ExtensionStore(store.Root).State.Order[0] == menu.Id, "Order not persi
 Console.WriteLine("PASS: external assembly loading, API capabilities, scoped storage, assets, ordering and enable/disable.");
 
 var services = new ServiceCollection().AddLogging().AddSingleton(store).AddSingleton(runtime).AddSingleton(ui).AddSingleton(catalog)
+    .AddSingleton<HoldItTogether.Services.Diagnostics.HitResourcePolicy>()
+    .AddSingleton<HoldItTogether.Services.Diagnostics.HitPerformanceSampler>()
+    .AddSingleton<HoldItTogether.Services.Diagnostics.HitDiagnosticLog>()
     .AddSingleton(settings).AddSingleton(themes).AddSingleton(clock).AddSingleton<IHitMediaService>(media)
+    .AddSingleton(new HitAppearanceService(settings,themes,Path.Combine(root,"Appearance")))
     .AddSingleton<HoldItTogether.Services.Diagnostics.HitMemorySampler>().AddSingleton<AudioSpectrumService>()
     .AddSingleton(new LyricsService(new HttpClient())).AddSingleton<IExternalLinkService, NoLinks>()
     .AddSingleton<HoldItTogether.Services.HitApplicationService>().AddSingleton<ExtensionActivationService>()
-            .AddSingleton<HoldItTogether.Services.Diagnostics.HitUpdateService>().AddSingleton<HoldItTogether.Services.Settings.HitDataService>()
+            .AddSingleton(new HoldItTogether.Services.Diagnostics.HitUpdateService(new HttpClient(new ReleaseNotesFixture()))).AddSingleton<HoldItTogether.Services.Settings.HitDataService>()
             .AddSingleton<IJSRuntime, NoJs>();
 await using var provider = services.BuildServiceProvider();
 await using var renderer = new HtmlRenderer(provider, provider.GetRequiredService<ILoggerFactory>());
@@ -147,14 +158,65 @@ await using (var interactive = new InteractiveRenderer(provider, provider.GetReq
 {
     await interactive.Dispatcher.InvokeAsync(async () =>
     {
-        var (id, host) = await interactive.MountAsync<HitMenuHost>();
+        var backAvailable = false; var headerTitle = "";
+        var receiver = new object();
+        var (id, host) = await interactive.MountAsync<HitMenuHost>(new() {
+            [nameof(HitMenuHost.OnBackAvailableChanged)] = EventCallback.Factory.Create<bool>(receiver, value => backAvailable = value),
+            [nameof(HitMenuHost.OnTitleChanged)] = EventCallback.Factory.Create<string>(receiver, value => headerTitle = value)
+        });
         Check(interactive.Errors.Count == 0, string.Join("; ", interactive.Errors.Select(error => error.ToString())));
+        await host.ShowExtensionsAsync();
+        Check(!host.CanGoBack && !backAvailable, "The root Settings screen has no header Back");
+        await interactive.DispatchEventAsync(interactive.Event(id,"button","aria-label","Open Extensions","onclick"),null,new MouseEventArgs());
+        Check(!host.CanGoBack && !backAvailable && headerTitle == "Extensions", $"Extensions publishes its title and header Back availability: canBack={host.CanGoBack}, published={backAvailable}, title={headerTitle}, errors={string.Join("; ", interactive.Errors)}");
+        await interactive.DispatchEventAsync(interactive.Event(id,"button","aria-label","Open Info","onclick"),null,new MouseEventArgs());
+        await interactive.DispatchEventAsync(interactive.Event(id,"button","aria-label","Open Performance","onclick"),null,new MouseEventArgs());
+        Check(headerTitle == "Performance" && backAvailable, "Nested Info pages publish their own header title");
+        await host.GoBackAsync();
+        Check(headerTitle == "Info" && !backAvailable, "Header Back returns from Performance to Info");
+        await host.GoBackAsync();
+        Check(headerTitle == "Info" && !host.CanGoBack && !backAvailable, "Info is a peer topic without a header Back");
+        await host.GoBackAsync();
+        Check(!backAvailable && headerTitle == "Info", "Back on a peer topic is a no-op");
+        settings.Update(value=>value with {MouseBackBehavior="pages",MouseForwardBehavior="pages"});
+        await interactive.DispatchEventAsync(interactive.Event(id,"button","aria-label","Open Personalization","onclick"),null,new MouseEventArgs());
+        await interactive.DispatchEventAsync(interactive.Event(id,"button","aria-label","Open Interaction","onclick"),null,new MouseEventArgs());
+        await host.NavigateMouseAsync(-1,false);
+        Check(headerTitle=="Personalization" && !backAvailable,"Page Back restores a peer topic without adding a parent chevron");
+        await host.NavigateMouseAsync(1,false);
+        Check(headerTitle=="Interaction","Page Forward restores the visited topic");
+        await host.NavigateMouseAsync(-1,false);
+        await interactive.DispatchEventAsync(interactive.Event(id,"button","aria-label","Open Info","onclick"),null,new MouseEventArgs());
+        await interactive.DispatchEventAsync(interactive.Event(id,"button","aria-label","Open Performance","onclick"),null,new MouseEventArgs());
+        await host.NavigateMouseAsync(-1,false);
+        Check(headerTitle=="Info" && !backAvailable,"History Back restores the Info root");
+        await host.NavigateMouseAsync(1,false);
+        Check(headerTitle=="Performance" && backAvailable,"History Forward restores a nested Info page");
+        await host.NavigateMouseAsync(-1,false);
+        await interactive.DispatchEventAsync(interactive.Event(id,"button","aria-label","Open Accessibility","onclick"),null,new MouseEventArgs());
+        await host.NavigateMouseAsync(1,false);
+        Check(headerTitle=="Accessibility","Visiting a new page clears the forward branch");
+        settings.Update(value=>value with {MouseBackBehavior="menus",MouseForwardBehavior="menus"});
+        await host.NavigateMouseAsync(-1,false);
+        Check(headerTitle!="Accessibility","Menu-mode Back changes HIT menus even from configuration");
+        if(headerTitle=="Notes")
+        {
+            await host.OpenCurrentSettingsAsync();
+            await interactive.DispatchEventAsync(interactive.Event(id,"button","aria-label","Open Storage","onclick"),null,new MouseEventArgs());
+            settings.Update(value=>value with {MouseBackBehavior="pages",MouseForwardBehavior="pages"});
+            await host.NavigateMouseAsync(-1,false);
+            Check(headerTitle=="Notes settings","Independent Notes participates in page Back through the SDK contract");
+            await host.NavigateMouseAsync(1,false);
+            Check(headerTitle=="Storage","Independent Notes participates in page Forward through the SDK contract");
+        }
+        settings.Update(value=>value with {MouseBackBehavior="legacy",MouseForwardBehavior="legacy"});
         await host.ShowExtensionsAsync();
         await interactive.DispatchEventAsync(interactive.Event(id, "button", "aria-label", "Open Extensions", "onclick"), null, new MouseEventArgs());
         Check(interactive.Graph(id).Any(frame => frame.FrameType == RenderTreeFrameType.Text && frame.TextContent.Contains("Drag menus to reorder")), "Extensions page did not open");
         var field = typeof(HitMenuHost).GetField("_selectedId", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!;
         await host.HandleWheelAsync(new WheelEventArgs { DeltaY = -120 });
-        Check((string?)field.GetValue(host) == HitMenuCatalog.SettingsId, "Extensions did not block menu scroll");
+        Check((string?)field.GetValue(host) != HitMenuCatalog.SettingsId, "Wheel outside the options pane should navigate menus");
+        await host.ShowExtensionsAsync();
         await interactive.DispatchEventAsync(interactive.Event(id, "button", "aria-label", "Move Clock up", "onclick"), null, new MouseEventArgs());
         Check((string?)field.GetValue(host) == HitMenuCatalog.SettingsId, "Reordering switched the active page");
         await interactive.DispatchEventAsync(interactive.Event(id, "input", "aria-label", "Enable Audio", "onchange"), null, new ChangeEventArgs { Value = false });
@@ -166,20 +228,24 @@ await using (var interactive = new InteractiveRenderer(provider, provider.GetReq
 }
 Console.WriteLine("PASS: real host navigation, reorder with stable selection, builtin disable, blocked scroll and right-click return.");
 await MenuChecks.RunAsync(provider, root, repo);
-WindowGeometryChecks.Run();
-WindowTopmostChecks.Run();
-FullscreenPlacementChecks.Run();
-PlacementChecks.Run();
-
+NavigationChecks.Run();
+await BackgroundGalleryChecks.RunAsync(provider);
+var releaseNotes=await new HoldItTogether.Services.Diagnostics.HitUpdateService(new HttpClient(new ReleaseNotesFixture())).ReadChangelogAsync(CancellationToken.None);
+Check(releaseNotes.Version=="2v2910"&&releaseNotes.Body=="Release fixture notes.","GitHub release metadata and notes are loaded from the response");
+await LyricsChecks.RunAsync();
+await AppearanceChecks.RunAsync(repo);
+await SdkEventChecks.RunAsync(repo);
+await ResourceSavingChecks.RunAudioAsync(provider);
+if(args.Contains("--ui-checks"))return;
 var update = Alter(manifest: m => m.Set("version", "1.1.0"));
 await Install(update);
 Check(!await runtime.ActivateAsync(installed.Manifest.Id), "Replacing loaded code must request a graceful restart");
-Check(store.State.Packages.Single().PreviousVersion == "1.0.0", "Previous version lost");
-Check(Directory.Exists(Path.Combine(store.Root, "Installed/dev.hit.example/1.0.0")), "Loaded version overwritten");
+Check(store.State.Packages.Single().PreviousVersion == installed.Manifest.Version, "Previous version lost");
+Check(Directory.Exists(Path.Combine(store.Root, "Installed/dev.hit.example/"+installed.Manifest.Version)), "Loaded version overwritten");
 await Install(Alter(manifest:m=>m.Set("version","1.2.0")));
 var cleared = await runtime.ClearOldVersionsAsync();
 Check(cleared.Removed==1 && cleared.Skipped==0,"Cleanup removes obsolete unloaded version");
-Check(Directory.Exists(Path.Combine(store.Root,"Installed/dev.hit.example/1.0.0")) && Directory.Exists(Path.Combine(store.Root,"Installed/dev.hit.example/1.2.0")),"Cleanup preserves loaded and selected versions");
+Check(Directory.Exists(Path.Combine(store.Root,"Installed/dev.hit.example/"+installed.Manifest.Version)) && Directory.Exists(Path.Combine(store.Root,"Installed/dev.hit.example/1.2.0")),"Cleanup preserves loaded and selected versions");
 Check(store.State.Packages.Single().PreviousVersion is null && File.Exists(Path.Combine(store.Root,"State/dev.hit.example/test.json")),"Cleanup clears unavailable rollback and preserves user data");
 Check((await runtime.ClearOldVersionsAsync()).Removed==0,"Cleanup is idempotent");
 // Reinstall a rollback target to exercise the existing rollback/removal path.
@@ -198,6 +264,15 @@ await ExtensionPackageBootstrap.InstallAsync(bootstrapStore,fixture);
 Check(bootstrapStore.State.Packages.Length==1,"Reinstalling the same package preserves the existing module");
 Check(await ExtensionPackageBootstrap.RunAsync(["--hit-install-package"])==2,"Malformed installer arguments fail before creating any user profile");
 Console.WriteLine("PASS: headless installer imports, idempotent optional modules and isolated profile handling.");
+WindowGeometryChecks.Run();
+WindowTopmostChecks.Run();
+FullscreenPlacementChecks.Run();
+ResourceSavingChecks.Run();
+DiagnosticChecks.Run();
+await DiagnosticChecks.RunAutomaticAsync();
+PlacementChecks.Run();
+
+
 Console.WriteLine("All extension tests passed. Test data: " + root);
 
 record JsonObjectBuilder(System.Text.Json.Nodes.JsonObject Value) { public void Set<T>(string key, T value) => Value[key] = JsonSerializer.SerializeToNode(value); }
@@ -205,7 +280,9 @@ sealed class SilentSound : IClockSound { public void Play() { } }
 sealed class NoLinks : IExternalLinkService { public bool OpenWebPage(string? address) => false; }
 sealed class FakeMedia : IHitMediaService
 {
-    public Task<MediaSnapshot> ReadAsync(CancellationToken token) => Task.FromResult(MediaSnapshot.Empty);
+    public int Reads, Releases;
+    public Task<MediaSnapshot> ReadAsync(CancellationToken token) { Interlocked.Increment(ref Reads); return Task.FromResult(MediaSnapshot.Empty); }
+    public Task ReleaseArtworkAsync() { Interlocked.Increment(ref Releases); return Task.CompletedTask; }
     public Task<bool> ExecuteAsync(MediaAction action, long generation, double position, CancellationToken token) => Task.FromResult(false);
 }
 sealed class NoJs : IJSRuntime
@@ -225,10 +302,10 @@ sealed class InteractiveRenderer(IServiceProvider services, ILoggerFactory logge
     public List<Exception> Errors { get; } = [];
     protected override void HandleException(Exception exception) => Errors.Add(exception);
     protected override Task UpdateDisplayAsync(in RenderBatch batch) => Task.CompletedTask;
-    public async Task<(int, T)> MountAsync<T>() where T : IComponent
+    public async Task<(int, T)> MountAsync<T>(Dictionary<string,object?>? parameters = null) where T : IComponent
     {
         var component = (T)InstantiateComponent(typeof(T)); var id = AssignRootComponentId(component);
-        await RenderRootComponentAsync(id); return (id, component);
+        await RenderRootComponentAsync(id, parameters is null ? ParameterView.Empty : ParameterView.FromDictionary(parameters)); return (id, component);
     }
     public IEnumerable<RenderTreeFrame> Graph(int id) => Graph(id, []);
     private IEnumerable<RenderTreeFrame> Graph(int id, HashSet<int> visited)
@@ -258,13 +335,16 @@ public sealed class SampleHost : ComponentBase
 {
     [Parameter] public IHitApi Api { get; set; } = default!;
     [Parameter] public Type ComponentType { get; set; } = default!;
+    [Parameter] public Action<HIT.Sdk.IHitMenuSettings>? SettingsCaptured { get; set; }
     protected override void BuildRenderTree(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder builder)
     {
         builder.OpenComponent<CascadingValue<HitContext>>(0);
         builder.AddAttribute(1, "Name", "HitExtension");
         builder.AddAttribute(2, "Value", new HitContext(true, true, false, _ => Task.CompletedTask, _ => Task.CompletedTask, _ => Task.CompletedTask, () => Task.CompletedTask));
         builder.AddAttribute(3, "ChildContent", (RenderFragment)(content =>
-        { content.OpenComponent(0, ComponentType); content.AddAttribute(1, "Api", Api); content.CloseComponent(); }));
+        { content.OpenComponent(0, ComponentType); content.AddAttribute(1, "Api", Api); content.AddComponentReferenceCapture(2,value=>{if(value is HIT.Sdk.IHitMenuSettings settings)SettingsCaptured?.Invoke(settings);});content.CloseComponent(); }));
         builder.CloseComponent();
     }
 }
+
+sealed class ReleaseNotesFixture : HttpMessageHandler { protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request,CancellationToken token)=>Task.FromResult(new HttpResponseMessage(System.Net.HttpStatusCode.OK){Content=new StringContent("""{"tag_name":"2v2910","name":"HIT 2v2910","body":"Release fixture notes."}""")}); }

@@ -9,6 +9,7 @@ import { setTimeout as wait } from 'node:timers/promises';
 const root = resolve('obj/chess-tests/browser'); mkdirSync(root, { recursive: true });
 const board = readFileSync('obj/chess-tests/board.html', 'utf8');
 const settings = readFileSync('obj/chess-tests/settings.html', 'utf8');
+const soundSettings = readFileSync('obj/chess-tests/sound-settings.html', 'utf8');
 const confirmation = readFileSync('obj/chess-tests/confirmation.html', 'utf8');
 const extensionConfirmation = readFileSync('obj/extensions-preview.html', 'utf8');
 const played = readFileSync('obj/chess-tests/played.html', 'utf8');
@@ -24,7 +25,7 @@ const importTarget = resolve(root, importUrl);
 mkdirSync(resolve(importTarget, '..'), { recursive: true });
 writeFileSync(importTarget, readFileSync('Modules/HIT.Chess/Assets/chess.js', 'utf8'));
 writeFileSync(resolve(root, 'index.html'), `<!doctype html><html lang="en"><head><meta charset="utf-8">
-${['app.css', 'css/dynamic-sphere.css', 'css/hit-menus.css', 'css/theme-base.css', 'css/hit-controls.css'].map(file => `<link rel="stylesheet" href="../../../wwwroot/${file}">`).join('')}
+${['app.css', 'css/dynamic-sphere.css', 'css/hit-menus.css', 'css/menus.css', 'css/theme-base.css', 'css/hit-controls.css'].map(file => `<link rel="stylesheet" href="../../../wwwroot/${file}">`).join('')}
 <style id="fixture-layout">body{background:#888}.sphere-area{position:absolute;left:40px;top:40px}.dynamic-sphere{width:max-content!important;height:auto!important}.sphere-content{position:relative!important;opacity:1!important;visibility:visible!important}.hit-menu-host{position:relative}</style>
 </head><body><div class="sphere-area"><div class="dynamic-sphere is-open is-pinned" id="sphere"><div class="sphere-content">
 <header class="sphere-header"><h1 class="sphere-title">Chess</h1></header>
@@ -35,6 +36,7 @@ import * as extensions from '../../../wwwroot/js/hit-extensions.js';
 import {connectMenuChrome} from '../../../wwwroot/js/hit-menu-chrome.js';
 import {connect} from '../../../Modules/HIT.Chess/Assets/chess.js';
 import * as nativeSphere from '../../../wwwroot/js/dynamic-sphere.js';
+import * as settingsControls from '../../../wwwroot/js/settings-controls.js';settingsControls.connectDocument();
 window.errors=[];window.calls=[];window.themes=themes;window.extensions=extensions;window.nativeSphere=nativeSphere;
 window.soundStarts=[];window.audioContexts=[];window.soundBuffers=[];
 const NativeAudioContext=window.AudioContext;
@@ -107,6 +109,14 @@ try {
             template.innerHTML=${JSON.stringify(confirmation)};const chess=template.content.querySelector('dialog');panel.append(chess);themes.setDeleteDialog(chess,true);const actual=style(chess);chess.close();chess.remove();return{expected,actual};
         })()`);
         assert.deepEqual(dialogComparison.actual,dialogComparison.expected,'Chess New game exactly shares the Remove extension visual controls in '+file);
+        const actionLayout = await evaluate(`(()=>{const template=document.createElement('template');template.innerHTML=${JSON.stringify(confirmation)};const dialog=template.content.querySelector('dialog');panel.append(dialog);themes.setDeleteDialog(dialog,true);const row=dialog.querySelector('.dialog-actions').getBoundingClientRect(),buttons=[...dialog.querySelectorAll('.dialog-actions button')].map(button=>{const r=button.getBoundingClientRect();return {x:r.x,y:r.y,width:r.width,height:r.height,overflow:button.scrollWidth>button.clientWidth}});return {rowWidth:row.width,buttons}})()`);
+        assert.ok(actionLayout.buttons.every(button=>button.width>100&&button.height<=36&&!button.overflow),'Confirmation labels fit on one line in '+file);
+        assert.equal(actionLayout.buttons[0].y,actionLayout.buttons[1].y,'Confirmation actions share one row');
+        assert.ok(Math.abs(actionLayout.buttons[0].width-actionLayout.buttons[1].width)<1,'Confirmation actions have equal widths');
+        assert.ok(Math.abs(actionLayout.buttons.reduce((width,button)=>width+button.width,8)-actionLayout.rowWidth)<1,'Confirmation actions fill their row');
+        const dialogShot = await command('Page.captureScreenshot', { format: 'png' });
+        writeFileSync(resolve(root, 'confirmation-' + file + '.png'), Buffer.from(dialogShot.data, 'base64'));
+        await evaluate("document.querySelector('dialog').close();document.querySelector('dialog').remove()");
         const shot = await command('Page.captureScreenshot', { format: 'png' });
         writeFileSync(resolve(root, file + '.png'), Buffer.from(shot.data, 'base64'));
     }
@@ -263,14 +273,17 @@ try {
     await wait(25);
     assert.equal(await evaluate("document.querySelectorAll('.chess-moving-piece').length"), 0, 'Changing motion preference cancels active animations');
     await show(settings);
+    await wait(60);
     assert.equal(await evaluate("document.querySelector('.chess-settings').scrollWidth > document.querySelector('.chess-settings').clientWidth"), false);
     assert.equal(await evaluate("document.querySelector('.chess-settings').textContent.includes('Resign')"), false, 'FF removed');
     assert.deepEqual(await evaluate("[...document.querySelectorAll('#chess-side option')].map(o=>o.textContent)"), ['White', 'Black']);
     assert.equal(await evaluate("document.getElementById('chess-side').value"), 'white');
     assert.deepEqual(await evaluate("[...document.querySelectorAll('#chess-difficulty option')].map(o=>o.textContent)"), ['Easy', 'Medium', 'Hard']);
     assert.equal(await evaluate("document.querySelector('.chess-settings').textContent.includes('Board controls')"), false, 'Only the Board controls settings entry was removed');
-    assert.equal(await evaluate("document.querySelector('[aria-label=\"Move sounds\"]').getAttribute('role')"), 'switch');
     await screenshot('settings');
+    await show(soundSettings);
+    assert.equal(await evaluate("document.querySelector('[aria-label=\"Move sounds\"]').getAttribute('role')"), 'switch');
+    await show(settings);
     await evaluate(`(()=>{const template=document.createElement('template');template.innerHTML=${JSON.stringify(confirmation)};document.querySelector('.chess-menu').append(template.content.querySelector('dialog'));connection.confirm()})()`);
     assert.equal(await evaluate("document.querySelector('dialog').matches(':modal')"), true);
     assert.equal(await evaluate('document.activeElement.textContent'), 'Cancel');

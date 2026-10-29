@@ -14,17 +14,20 @@ Prefer an explicit view enum for mutually exclusive screens. Define Back, Escape
 | --- | --- | --- |
 | Main | Frequent information/actions | Normal menu navigation |
 | Detail/reading | Lyrics or expanded content | Return to the owning main screen |
-| Menu settings | Preferences for that menu | M2 on title; blocks wheel-based menu switching |
+| Menu settings | Preferences for that menu | M2 on title; local scrolling consumes wheel until its boundary |
 | Object settings | Preferences for one control/object | M2 on the object; same settings-open contract |
 | Confirmation | Identified destructive operation | Modal focus, safe cancel, explicit second action |
 
 The host owns the single h1 title, pin/close buttons, margins and dots.
+When the selected menu can return within its current view, a keyboard-accessible chevron Back
+button appears immediately before that title. It returns one level without closing or unpinning HIT.
+The button is absent on root pages, including every System Settings sidebar topic. Info detail pages retain the chevron.
 Use h2/h3 for content sections. Do not duplicate the common header inside the menu.
 Publish a title when entering a view; do not republish unchanged titles on every render.
 
 ## Navigation, state and visibility
 
-Scroll down/up advances/returns without wrapping. Large gestures can traverse several menus when cooldown is disabled.
+Scroll down/up advances/returns. General -> Infinite menu optionally wraps the last/first boundary; it defaults OFF. Large gestures can traverse several menus when cooldown is disabled.
 Dots provide deliberate click/keyboard navigation even when settings block the wheel.
 The initial built-in order is Audio, Clock, Settings; persisted user order takes priority.
 Settings stays last and enabled. State is keyed by stable menu ID, never only by numeric position.
@@ -65,12 +68,20 @@ public Task CloseSettingsAsync() => InvokeAsync(() => {
 ```
 
 Include object-setting views in IsSettingsOpen too. The flag blocks menu-wheel navigation immediately.
+The built-in `IHitMenuSettings` additionally exposes `CanGoBack`, defaulting to `IsSettingsOpen`.
+Override it when a reading page can return or a permanently configured root cannot. Header Back
+invokes the existing `CloseSettingsAsync` path. Independent SDK menus keep the SDK contract unchanged:
+their header Back is available while `IsSettingsOpen` is true. Title changes also refresh header
+navigation availability; publish a distinct title for each configuration/detail view.
 The title supports right-click, ContextMenu, Shift+F10 and Enter when focused.
 M2 inside open settings returns without collapsing/unpinning HIT. The host records state at pointer-down,
 so the same M2 that opens settings does not immediately close them.
 
-Settings itself does not advertise title settings. Its Scroll speed, Info, Extensions and Themes subviews use the interface internally for wheel blocking and return.
-Provide a visible Back button and keyboard access. Avoid intercepting the configurable title or object trigger with a competing return handler.
+Settings itself does not advertise title settings. Its topic workspace uses the interface for
+configuration policies and single-level return. The right pane consumes wheel while it can scroll in the requested direction. Scrollable configuration regions retain input at boundaries. Clean non-scrollable areas may navigate HIT. Marked extension workspaces use the same DOM routing; third-party code that explicitly intercepts wheel retains its own behavior.
+Feature subviews provide a visible Back button and keyboard access; the Settings workspace uses
+its sidebar and the shared header chevron instead of Back to Settings. Avoid intercepting the configurable title or object trigger
+with a competing return handler.
 
 ## Object configuration and modifier hints
 
@@ -136,7 +147,8 @@ Configuration screens expose the header's temporary cover toggle beside Pin/Clos
 The override belongs to the current menu/view only, resets on navigation, and never persists to storage.
 
 Built-in `HitMenuViewport` supports X/Y scaling from 25-200%. It separates natural content size from measured scaled size.
-Do not overwrite its JS-owned measurement styles from Razor. Audio settings scale with the player and lyrics.
+Do not overwrite its JS-owned measurement styles from Razor. Audio's configured X/Y scale applies
+to the player and lyrics; configuration uses the shared workspace at 100% for readable controls.
 Lyrics follow layout coordinates divided by the actual transform scale. Shell-owned artwork stays independent of content scaling.
 External menus can set CSS dimensions; the public SDK does not expose the internal viewport component as a service.
 
@@ -193,3 +205,7 @@ Use [Design](DESIGN.md) for common controls, confirmation geometry, colors and s
 Build large option lists only when opened. Preserve drafts in view state instead of hidden DOM.
 Compare visible state before rerendering large trees; do not render lyrics at every position tick within the same verse.
 Cancel obsolete I/O, detach events and dispose JS/resources. Full conventions: [Code conventions](CODE-CONVENTIONS.md).
+
+Page history is optional through SDK IHitMenuPages (see API). Mouse Back and Forward independently select Page history, HIT menus, or the legacy parent-then-menu behavior. System Settings topics are peer pages; visit history does not make them hierarchical parents. In configuration, actually scrollable regions retain wheel ownership at both boundaries; only clean non-scrollable areas can navigate menus. Editable widgets and modal/open-picker guards retain input ownership.
+
+Stable data-hit-view markers also identify entrance transitions. Changing a topic or reopening a hidden panel reveals its content once; live status/clock/media updates keep the same identity and do not replay the entrance. The host manages this through hit-view-transitions.js with teardown and reduced-motion cancellation.

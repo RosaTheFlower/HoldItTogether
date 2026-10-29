@@ -2,7 +2,7 @@
   <PropertyGroup><TargetFramework>net8.0</TargetFramework><ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable><GenerateDependencyFile>true</GenerateDependencyFile></PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../HIT.Sdk/HIT.Sdk.csproj" Condition="Exists('../HIT.Sdk/HIT.Sdk.csproj')" />
-    <PackageReference Include="HIT.Sdk" Version="1.0.2" Condition="!Exists('../HIT.Sdk/HIT.Sdk.csproj')" />
+    <PackageReference Include="HIT.Sdk" Version="1.2.0" Condition="!Exists('../HIT.Sdk/HIT.Sdk.csproj')" />
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>
 </Project>

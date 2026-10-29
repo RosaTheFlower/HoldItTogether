@@ -1,6 +1,9 @@
 # HIT extension packages — format 1 / SDK 1
 
-Application v2710; SDK NuGet 1.0.2. Complete signatures, DTOs, capability rules and examples are in [API](API.md).
+Application 2v2910; SDK NuGet 1.2.0. Complete signatures, DTOs, capability rules and examples are in [API](API.md).
+SDK 1.1 adds IHitApiV2 events/actions without changing the original interfaces or assembly identity.
+New event-using packages declare events.subscribe plus the data-specific capability and require the
+new host; old contract-1 packages remain supported. See [events and actions](API.md#additive-events-and-actions-sdk-110).
 Shared UI rules are in [Menus](MENUS.md); code/lifetime rules are in [Code conventions](CODE-CONVENTIONS.md).
 
 The `.hitmenu` installer, startup loader, public SDK and extension manager are implemented.
@@ -24,10 +27,30 @@ The executable example is split into [module/service](../Modules/HIT.Example/Ser
 [Razor layout](../Modules/HIT.Example/Layout/ExampleMenu.razor),
 [CSS](../Modules/HIT.Example/Layout/css/notes.css) and [manifest](../Modules/HIT.Example/manifest.json).
 It contains note persistence, a settings subview and a deliberate call to the shared HIT timer.
+The 1.0.2 example exposes General and Storage topics using the host's shared workspace markup.
 The template changes the project/namespace from HIT.Example; review the visible manifest name/author and remove sample actions/capabilities you do not need.
 Public component names do not have to begin with HitMenu for external packages: the manifest supplies their exact types.
 
 ## User flow
+
+Repository-owned extension settings use the same shared layout as built-ins. Declare a root
+`.settings-workspace[data-hit-settings-workspace]`, a `.settings-sidebar` of `.settings-topic`
+buttons with `aria-current="page"` for the active topic, and a `.settings-content[data-hit-scroll]`
+pane with its heading and native bound form controls. The updated host automatically enhances
+selects/ranges with its three-row wheel picker, numeric values, descriptions and cleanup, and supplies
+the structural CSS. Keep C# event handlers, normalization, storage and confirmation semantics in
+the extension. Native elements remain the underlying value/event boundary; no host assembly
+reference or copy of the picker implementation belongs in the module.
+Publish the selected page title through Context.SetTitleAsync. IsSettingsOpen remains true for
+all topic pages; CloseSettingsAsync returns a subtopic to General, then General to the main view.
+Do not duplicate shared title/pin/close/header Back controls in the workspace. Existing SDK menus
+use the shared marked-pane wheel routing: scroll while content remains in the requested direction; empty boundaries may navigate HIT. Third-party code can still intercept its own events.
+
+The host owns discovery observers and generated-control listeners. Hidden menu panels dismiss
+their picker; removal/disabling releases controls and pending animations. Module disposal still
+owns its subscriptions, workers and package-local DOM resources. The host description preference
+is applied to marked extension workspaces without exposing global preference writes to modules.
+
 
 Open **Settings → Extensions**, immediately above the final **Themes** row.
 The row opens a separate page. Right-click or the Back button returns to Settings.
@@ -105,9 +128,9 @@ the installer does not compile loose `.cs` or `.razor` files.
 
 IDs contain lowercase letters, digits, dots or hyphens. Menu identity is `{packageId}:{menuId}`.
 Names, translations and version updates must not change IDs. Versions use three or four numeric components.
-An update must increase the version. Reimporting identical bytes is idempotent.
+Updates can increase the version or, after explicit confirmation, downgrade it. Reimporting identical bytes is idempotent.
 Clear old versions at the bottom of Extensions removes obsolete installed version directories.
-It preserves both the registry-selected and currently loaded versions, State and Logs; linked/locked trees are skipped.
+For active packages it preserves the registry-selected and currently loaded versions. Removed packages retain only code still loaded in the current process. State and Logs are kept; linked/locked trees are skipped.
 Deleting the previous rollback target clears its registry pointer. Cleanup and activation are serialized.
 
 ## Public SDK and services
@@ -218,7 +241,7 @@ dotnet pack Modules/HIT.Sdk/HIT.Sdk.csproj -c Release -o artifacts/sdk
 powershell -NoProfile -ExecutionPolicy Bypass -File Tools/Pack-HitMenu.ps1 -Project Modules/HIT.Example/HIT.Example.csproj
 ```
 
-The ready-to-install example is `artifacts/packages/dev.hit.example-1.0.0.hitmenu`.
+The ready-to-install example is `artifacts/packages/dev.hit.example-1.0.2.hitmenu`.
 It demonstrates local note storage, right-click settings, editable CSS and the shared timer API.
 It is not automatically installed into the user's profile.
 
@@ -290,3 +313,7 @@ Build the example first. The native tests use a disposable profile below obj and
 Coverage includes archive validation, failed-install atomicity, independent component loading, SDK capabilities, storage,
 assets, persisted order, built-in disabling, stable selection, right-click return, blocked scroll, versioned updates and rollback.
 The browser test checks all three bundled themes, scoped CSS/keyframes and the file-drop stream handoff.
+
+### Confirmed downgrades and removed-package cleanup
+
+Importing a lower version asks for confirmation in the shared host dialog, including file picker, drop and Inbox imports. Cancel leaves the selected version unchanged. An identical retained version can be selected again without overwriting loaded files; different bytes under the same retained version remain rejected. Saved extension data is preserved. Clear old versions also deletes code versions belonging to packages removed in HIT. Currently loaded code is skipped until restart.

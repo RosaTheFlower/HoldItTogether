@@ -1,0 +1,24 @@
+@using HoldItTogether.Services.Settings
+@inject HitSettingsService Settings
+
+<section class="image-settings-view" aria-label="@Text.Get("Images")" data-no-drag>
+    <h2>@Text.Get("Images")</h2>
+    <SettingToggle Label="Allow GIF backgrounds" Description="Accept GIF imports and display selected GIF backgrounds. Turning this off keeps their references for later." Value="Settings.Current.AllowGifBackgrounds" Changed="v=>Save(s=>s with{AllowGifBackgrounds=v})" />
+    <SettingToggle Label="Unlimited image size" Description="Allow background images of any file size. The image dimension limit still applies." Value="@(Settings.Current.Appearance.BackgroundImageLimitMb is null)" Changed="v=>Save(s=>s with{Appearance=s.Appearance with{BackgroundImageLimitMb=v?null:2}})" />
+    <label class="hit-setting-row"><span>@Text.Get("Maximum size per image (MB)")<small>@Text.Get("Minimum 250 KB. Applies to new imports.")</small></span><input type="number" min="0.25" step="0.25" aria-label="@Text.Get("Maximum size per image (MB)")" disabled="@(Settings.Current.Appearance.BackgroundImageLimitMb is null)" value="@Settings.Current.Appearance.BackgroundImageLimitMb?.ToString(System.Globalization.CultureInfo.InvariantCulture)" @onchange="SetLimit" /></label>
+    @if(_error is not null){<p class="settings-error" role="alert">@_error</p>}
+</section>
+
+@code {
+    private string? _error;
+    private void Save(Func<HitSettings,HitSettings> change)
+    {
+        try { Settings.Update(change); _error=null; }
+        catch(Exception error) when(error is IOException or UnauthorizedAccessException or InvalidOperationException) { _error=Text.Get("Could not apply image settings."); }
+    }
+    private void SetLimit(ChangeEventArgs args)
+    {
+        if(double.TryParse(args.Value?.ToString(),System.Globalization.CultureInfo.InvariantCulture,out var value)&&double.IsFinite(value))
+            Save(s=>s with{Appearance=s.Appearance with{BackgroundImageLimitMb=Math.Max(.25,value)}});
+    }
+}

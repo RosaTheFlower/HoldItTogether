@@ -1,0 +1,31 @@
+import assert from 'node:assert/strict';
+import {mkdirSync,writeFileSync,readFileSync} from 'node:fs';
+import {resolve} from 'node:path';
+import {setTimeout as wait} from 'node:timers/promises';
+import {openBrowser} from './driver.mjs';
+const root=resolve('obj/menu-transition-browser');mkdirSync(root,{recursive:true});
+const markup=readFileSync('obj/menu-tests/audio-workspace.html','utf8');
+writeFileSync(resolve(root,'index.html'),`<!doctype html><div class="sphere-area"><div class="dynamic-sphere" data-hit-entry-animation="true"><section class="hit-menu-panel">${markup}</section></div></div><script type="module">import * as entries from '../../wwwroot/js/hit-view-transitions.js';window.entries=entries;window.pane=document.querySelector('.settings-content');window.workspace=document.querySelector('[data-hit-view]');entries.connectEntries();window.ready=true;</script>`);
+const browser=await openBrowser(root),{evaluate,command}=browser;
+try{
+    assert.ok(await evaluate('pane.getAnimations().length>0'),'Opening a configuration animates its content');
+    await wait(230);
+    await evaluate("workspace.dataset.hitView='visualizer'");await wait(40);
+    assert.ok(await evaluate('pane.getAnimations().length>0'),'Switching topics animates the new page');
+    await evaluate("workspace.dataset.hitView='artwork'");await wait(40);
+    assert.equal(await evaluate('pane.getAnimations().length'),1,'Rapid topic changes replace the previous animation');
+    await wait(230);
+    await evaluate("pane.append(document.createTextNode('live status'))");await wait(40);
+    assert.equal(await evaluate('pane.getAnimations().length'),0,'Ordinary content updates do not replay entrances');
+    await evaluate("document.querySelector('.dynamic-sphere').dataset.hitEntryAnimation='false';workspace.dataset.hitView='general'");await wait(40);
+    assert.equal(await evaluate('pane.getAnimations().length'),0,'The menu preference disables entrances');
+    await evaluate("document.querySelector('.dynamic-sphere').dataset.hitEntryAnimation='true';workspace.dataset.hitView='effects'");await wait(40);
+    await evaluate("document.documentElement.dataset.hitMotion='off'");await wait(40);
+    assert.equal(await evaluate('pane.getAnimations().length'),0,'Remove animations cancels active entrances');
+    await evaluate("document.documentElement.dataset.hitMotion='on'");
+    await command('Emulation.setEmulatedMedia',{features:[{name:'prefers-reduced-motion',value:'reduce'}]});
+    await evaluate("workspace.dataset.hitView='size'");await wait(40);
+    assert.equal(await evaluate('pane.getAnimations().length'),0,'System reduced motion suppresses entrances');
+    await evaluate('entries.disconnectEntries()');
+    console.log('PASS: menu/topic entrances, interruption, unchanged renders, opt-out, Remove animations, reduced motion and cleanup.');
+}finally{await browser.close();}

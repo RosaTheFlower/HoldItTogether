@@ -2,6 +2,28 @@
 // Rules are parsed by the browser, then scoped before entering the live document.
 let style;
 let motionStyle;
+let appearanceStyle;
+let appearanceWatch;
+export function unwatchAppearance(){appearanceWatch?.();appearanceWatch=null;}
+export function watchAppearance(reference){
+    unwatchAppearance();let frame=0,last='',disposed=false;
+    const motionPreference=matchMedia('(prefers-reduced-motion: reduce)');
+    const update=()=>{if(frame||disposed)return;frame=requestAnimationFrame(()=>{frame=0;
+        const sphere=document.querySelector('.dynamic-sphere'),panel=sphere?.querySelector('.hit-menu-panel:not([hidden])'),style=getComputedStyle(panel||sphere||document.documentElement);
+        const tokens=Object.fromEntries(['--hit-background','--hit-open-background','--hit-idle-background','--hit-text','--hit-muted','--hit-accent','--hit-menu-text','--hit-menu-muted','--hit-font','--hit-menu-font','--hit-open-radius'].map(key=>[key,style.getPropertyValue(key).trim()]));
+        const next=JSON.stringify([tokens,motionPreference.matches]);if(next!==last){last=next;reference.invokeMethodAsync('PublishAppearanceTokens',tokens,motionPreference.matches).catch(()=>{});}
+    });};
+    for(const event of ['hit-theme-status','hit-appearance-changed'])document.addEventListener(event,update);
+    motionPreference.addEventListener('change',update);
+    update();appearanceWatch=()=>{disposed=true;cancelAnimationFrame(frame);motionPreference.removeEventListener('change',update);for(const event of ['hit-theme-status','hit-appearance-changed'])document.removeEventListener(event,update);};
+}
+export function applyAppearance(css) {
+    const compiled=compile(css);
+    appearanceStyle??=Object.assign(document.createElement('style'),{id:'hit-personal-appearance'});
+    appearanceStyle.textContent=compiled;
+    document.head.append(appearanceStyle);
+    document.dispatchEvent(new CustomEvent('hit-theme-status'));
+}
 
 
 function selectors(value) {
@@ -118,6 +140,7 @@ export function apply(css, readError = null) {
     document.dispatchEvent(new CustomEvent("hit-theme-status"));
     // Preserve the final override after every theme change.
     if (motionStyle) document.head.append(motionStyle);
+    if (appearanceStyle) document.head.append(appearanceStyle);
     return document.documentElement.dataset.hitThemeError || null;
 }
 

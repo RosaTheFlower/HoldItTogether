@@ -1,0 +1,4 @@
+interface:
+  display_name: "HIT Themes and Appearance"
+  short_description: "Themes, personalization, backgrounds and CSS contracts"
+  default_prompt: "Use $hit-themes to implement this HIT appearance change while preserving theme and export contracts."

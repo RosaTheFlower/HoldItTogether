@@ -43,7 +43,9 @@ internal static class HostRendering
         using var catalog = new HitMenuCatalog(store, runtime);
         var js = new HostJs();
         var services = new ServiceCollection().AddLogging().AddSingleton(store).AddSingleton(runtime).AddSingleton(ui).AddSingleton(catalog)
+            .AddSingleton<HitResourcePolicy>().AddSingleton<HitPerformanceSampler>().AddSingleton<HitDiagnosticLog>().AddSingleton<HitExtensionHub>()
             .AddSingleton(settings).AddSingleton(themes).AddSingleton(clock).AddSingleton<IHitMediaService>(media)
+            .AddSingleton(new HitAppearanceService(settings,themes,Path.Combine(root,"Appearance")))
             .AddSingleton<DesktopWindowService>().AddSingleton<HitMemorySampler>().AddSingleton<AudioSpectrumService>()
             .AddSingleton(new LyricsService(new HttpClient())).AddSingleton<IExternalLinkService, NoLinks>()
             .AddSingleton<HoldItTogether.Services.HitApplicationService>().AddSingleton<ExtensionActivationService>()
@@ -81,6 +83,7 @@ internal static class HostRendering
                 await renderer.DispatchEventAsync(renderer.EventByLabel(id, "Play as", "onchange"), null, new ChangeEventArgs { Value = "white" });
                 if (!(bool)chess.GetType().GetField("_draftWhite", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(chess)!)
                     throw new Exception("White option did not select White.");
+                await ((HIT.Sdk.IHitMenuPages)chess).NavigateToPageAsync("Settings/Sound");
                 await renderer.DispatchEventAsync(renderer.EventByLabel(id, "Move sounds", "onchange"), null, new ChangeEventArgs { Value = false });
                 if ((await menu.Api.Storage.ReadAsync<HIT.Chess.Services.ChessState>("chess-v1"))!.SoundEnabled)
                     throw new Exception("Mute switch did not persist.");
@@ -240,7 +243,7 @@ internal static class HostRendering
         {
             if (identifier == "styles" && owner.StylesReady is { } ready) return WaitForStylesAsync<T>(ready.Task);
             if (identifier == "sync" && typeof(T) == typeof(int)) return ValueTask.FromResult((T)(object)owner.PresentationDuration);
-            if (identifier == "connect" && args?[1] is { } reference)
+            if (identifier == "connect" && args is { Length: > 1 } && args[1] is { } reference)
             {
                 owner.ChessMenus.Add((IComponent)reference.GetType().GetProperty("Value")!.GetValue(reference)!);
                 if (owner.FailConnect) throw new JSException("Deliberate JS startup failure");

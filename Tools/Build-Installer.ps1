@@ -14,7 +14,7 @@ try {
     $release=(Resolve-Path -LiteralPath $ReleaseDirectory).Path
     [xml]$project=Get-Content -LiteralPath 'HoldItTogether.csproj' -Raw
     $date=[datetime]::Parse([string]$project.Project.PropertyGroup.HitReleaseDate)
-    $version='v'+$date.ToString('ddMM')
+    $version=[string]$project.Project.PropertyGroup.HitReleaseGeneration+'v'+$date.ToString('ddMM')
     $application=Join-Path $release ('HIT-'+$version+'-win-x64-self-contained')
     if (!(Test-Path -LiteralPath (Join-Path $application 'coreclr.dll'))) { throw 'Build the self-contained release first.' }
     if (!$Compiler) {

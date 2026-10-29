@@ -8,8 +8,12 @@ using HoldItTogether.Services.Themes;
 
 namespace HoldItTogether.Services.Extensions;
 
-public sealed class ExtensionApi : IHitApi, IHitMedia, IHitClock, IHitAppearance
+public sealed class ExtensionApi : IHitApiV2, IHitMedia, IHitClock, IHitAppearance,IHitEvents,IHitActions
 {
+    private readonly HitExtensionHub? _hub;
+    private HitExtensionHub Hub=>_hub??throw new NotSupportedException("Events require a host event hub.");
+    public IHitEvents Events{get{Demand("events.subscribe");return this;}}
+    public IHitActions Actions=>this;
     private readonly ExtensionManifest _manifest;
     private readonly ExtensionStore _store;
     private readonly IHitMediaService _media;
@@ -28,10 +32,11 @@ public sealed class ExtensionApi : IHitApi, IHitMedia, IHitClock, IHitAppearance
     public string ThemeId => _settings.Current.Theme;
     public bool ReducedMotion => _settings.Current.RemoveAnimations;
     public ExtensionApi(ExtensionManifest manifest, ExtensionStore store, IHitMediaService media, HitClockService clock,
-        HitSettingsService settings, HitThemeService themes, IExternalLinkService links, ExtensionUi ui, CancellationToken lifetime = default)
+        HitSettingsService settings, HitThemeService themes, IExternalLinkService links, ExtensionUi ui, CancellationToken lifetime = default,HitExtensionHub? hub=null)
     {
         _manifest = manifest; _store = store; _media = media; _clock = clock; _settings = settings; _themes = themes; _links = links; _ui = ui;
         Lifetime = lifetime;
+        _hub=hub;
         Storage = new ExtensionStorage(Path.Combine(store.Root, "State", manifest.Id));
     }
     public void Demand(string capability)
@@ -56,7 +61,10 @@ public sealed class ExtensionApi : IHitApi, IHitMedia, IHitClock, IHitAppearance
     }
     public async Task<HitMediaState> ReadAsync(CancellationToken cancellationToken = default)
     {
-        Demand("media.read"); var state = await _media.ReadAsync(cancellationToken);
+        Demand("media.read"); return MediaState(await _media.ReadAsync(cancellationToken));
+    }
+    internal static HitMediaState MediaState(MediaSnapshot state)
+    {
         return new(state.Generation, state.HasMedia, state.Title, state.Artist, state.Album, state.Source, state.Artwork,
             state.Playing, state.Position, state.Duration, state.CanToggle, state.CanPrevious, state.CanNext, state.CanSeek,
             state.CanLoop, state.CanShuffle, state.Loop.ToString(), state.Shuffle, state.SeekMinimum, state.SeekMaximum);
@@ -93,6 +101,26 @@ public sealed class ExtensionApi : IHitApi, IHitMedia, IHitClock, IHitAppearance
         if (!_themes.GetThemes().Any(theme => theme.Id == themeId)) throw new ArgumentException("Theme not found.");
         _settings.Update(value => value with { Theme = themeId });
     }
+    public HitHostState ReadHost(){Demand("host.read");return Hub.Host;}
+    public HitAppearanceState ReadAppearance(){Demand("appearance.read");return Hub.Appearance;}
+    private IDisposable Watch<T>(string capability,Action<T> observer,CancellationToken token)
+    {
+        Demand(capability);Lifetime.ThrowIfCancellationRequested();
+        var linked=CancellationTokenSource.CreateLinkedTokenSource(token,Lifetime);
+        try{return new OwnedWatch(Hub.Subscribe(ExtensionId,observer,linked.Token,()=>!Lifetime.IsCancellationRequested&&Hub.Enabled(ExtensionId)),linked);}
+        catch{linked.Dispose();throw;}
+    }
+    private sealed class OwnedWatch:IDisposable
+    {private readonly IDisposable _subscription;private readonly CancellationTokenSource _lifetime;private readonly CancellationTokenRegistration _registration;private int _disposed;
+        public OwnedWatch(IDisposable subscription,CancellationTokenSource lifetime){_subscription=subscription;_lifetime=lifetime;_registration=lifetime.Token.Register(Dispose);}
+        public void Dispose(){if(Interlocked.Exchange(ref _disposed,1)!=0)return;_subscription.Dispose();_registration.Unregister();_lifetime.Dispose();}}
+    public IDisposable SubscribeHost(Action<HitHostState> observer,CancellationToken cancellationToken=default)=>Watch("host.read",observer,cancellationToken);
+    public IDisposable SubscribeAppearance(Action<HitAppearanceState> observer,CancellationToken cancellationToken=default)=>Watch("appearance.read",observer,cancellationToken);
+    public IDisposable SubscribeMedia(Action<HitMediaState> observer,CancellationToken cancellationToken=default)=>Watch("media.read",observer,cancellationToken);
+    public IDisposable SubscribeSpectrum(Action<HitSpectrumFrame> observer,CancellationToken cancellationToken=default)=>Watch("media.spectrum",observer,cancellationToken);
+    public IDisposable Register(string id,string title,Func<CancellationToken,Task> execute){Demand("actions.register");return Hub.Register(ExtensionId,id,title,execute,Lifetime);}
+    public IReadOnlyList<HitActionDescriptor> List(){Demand("actions.execute");return Hub.Actions();}
+    public async Task<bool> ExecuteAsync(string qualifiedId,CancellationToken cancellationToken=default){Demand("actions.execute");if(!Hub.Enabled(ExtensionId))return false;using var linked=CancellationTokenSource.CreateLinkedTokenSource(Lifetime,cancellationToken);return await Hub.ExecuteAsync(qualifiedId,linked.Token);}
 }
 
 internal sealed class ExtensionStorage(string directory) : IHitStorage
@@ -150,6 +178,8 @@ public sealed class ExtensionUi
     public event Action? Changed;
     public string? Message { get; private set; }
     public bool IsError { get; private set; }
+    public bool IsBusy { get; private set; }
+    public void SetBusy(bool busy) { if (IsBusy == busy) return; IsBusy = busy; Changed?.Invoke(); }
     public void Open() { ShowThemes = false; ShowExtensions = true; OpenRequested?.Invoke(); }
     public void OpenThemes(string? selected = null) { SelectedThemeId = selected; ShowExtensions = false; ShowThemes = true; OpenRequested?.Invoke(); }
     public void Report(string message, bool error = false) { Message = message; IsError = error; Changed?.Invoke(); }

@@ -1,0 +1,77 @@
+@using HoldItTogether.Services.Settings
+@using HoldItTogether.Services.Themes
+@using HoldItTogether.Services.Diagnostics
+@implements IAsyncDisposable
+@inject HitAppearanceService Appearance
+@inject HitSettingsService Settings
+@inject HitResourcePolicy Resources
+
+<div class="sphere-custom-backdrop @(_current is not null ? "has-background-slides" : "")" aria-hidden="true">
+    @if (_current is not null)
+    {
+        @if (_previous is not null && _preferences.BackgroundMode == "smooth")
+        {
+            <div @key="(_frame, false)" class="custom-background-frame custom-background-exit" style="@FrameStyle(_previous)"></div>
+        }
+        <div @key="_frame" class="custom-background-frame custom-background-enter @(_preferences.BackgroundMode == "smooth" ? _preferences.BackgroundTransition : "cut")" style="@FrameStyle(_current)"></div>
+    }
+</div>
+
+@code {
+    [Parameter] public bool Active { get; set; }
+    private HitAppearancePreferences _preferences = new();
+    private HitAppearancePreferences? _source;
+    private string? _current, _previous;
+    private int _index, _frame;
+    private bool _active, _disposed;
+    private long _generation;
+    private CancellationTokenSource? _cycle;
+    private Task? _worker, _refresh;
+    protected override void OnInitialized()
+    {
+        Appearance.Changed += Changed; Settings.Changed += Changed; Resources.Changed += Changed;
+    }
+    protected override void OnParametersSet() { if (_active != Active || !ReferenceEquals(_source, Appearance.Current)) Changed(); }
+    private void Changed() { if (!_disposed) _refresh = InvokeAsync(RefreshAsync); }
+    private async Task RefreshAsync()
+    {
+        var generation = ++_generation;
+        _cycle?.Cancel();
+        if (_worker is not null) await _worker;
+        if (_disposed || generation != _generation) return;
+        _cycle?.Dispose(); _cycle = new();
+        _active = Active; _source = Appearance.Current; _preferences = _source.Normalize();
+        var images = _preferences.ImageIds.Select(Appearance.ImageUrl).Where(url => url is not null).Select(url => url!).ToArray();
+        _index = Math.Max(0, Array.IndexOf(images, _current));
+        var current = _preferences.Enabled && _preferences.BackgroundMode != "single" ? images.ElementAtOrDefault(_index) : null;
+        if (_current != current) _frame++;
+        _current = current; _previous = null;
+        if (_active && !Resources.IsSleeping && _current is not null && images.Length > 1)
+            _worker = CycleAsync(images, _cycle.Token);
+        StateHasChanged();
+    }
+    private async Task CycleAsync(string[] images, CancellationToken token)
+    {
+        try
+        {
+            while (true)
+            {
+                await Task.Delay(TimeSpan.FromSeconds(_preferences.BackgroundIntervalSeconds), token);
+                await InvokeAsync(() =>
+                {
+                    if (_disposed || token.IsCancellationRequested) return;
+                    _previous = _current; _index = (_index + 1) % images.Length; _current = images[_index]; _frame++;
+                    StateHasChanged();
+                });
+            }
+        }
+        catch (OperationCanceledException) when (token.IsCancellationRequested) { }
+    }
+    private string FrameStyle(string url) => $"background-image:url('{url}');background-size:{(_preferences.ImageFit == "stretch" ? "100% 100%" : _preferences.ImageFit)};--background-transition:{(Settings.Current.RemoveAnimations ? 0 : _preferences.BackgroundTransitionMs)}ms";
+    public async ValueTask DisposeAsync()
+    {
+        _disposed = true; _generation++;
+        Appearance.Changed -= Changed; Settings.Changed -= Changed; Resources.Changed -= Changed;
+        _cycle?.Cancel(); if (_worker is not null) await _worker; if (_refresh is not null) await _refresh; _cycle?.Dispose();
+    }
+}

@@ -32,7 +32,13 @@ Choosing/importing/deleting a personal theme never rewrites or deletes canonical
 
 ## Importing, editing and removing
 
-Open the final Settings -> Themes row for management, or use its combobox for immediate activation.
+For built-in palette/shape editing without writing CSS, use Settings -> Personalization.
+It applies a separate compiled CSS override above the selected theme, saves changes automatically and can save named visual
+profiles or export a theme-compatible CSS file including the base theme. See
+[personalization](SETTINGS.md#personalization-and-visual-profiles) for autosave/undo and artwork-color
+precedence. Disabling the override restores the existing theme rather than rewriting any theme file.
+
+Open the Settings -> Themes topic for management, or use its full-width combobox for immediate activation.
 The list separates selection from activation: click selects, Ctrl+click selects several, double-click or Enter activates.
 Open folder and Delete selected sit above the final Import CSS action. CSS may also be dropped anywhere on HIT.
 An imported `.css` file is copied into `%LOCALAPPDATA%\HoldItTogether\Themes`; edit that installed copy.
@@ -150,7 +156,8 @@ Use quick response with long deceleration, never delayed interactivity. Transpar
 
 Disclosures use title -> main control -> chevron on one line. They start collapsed.
 Large fields mount only when expanded. A plain RAM label needs no subtitle.
-Scroll speed, Info, Extensions and Themes open dedicated views; Themes is last and retains a combobox for quick activation.
+Settings topics open dedicated views; Info stays at the sidebar bottom. Themes retains a full-width
+combobox for quick activation, and Personalization has its own topic.
 All lists retain scrolling with hidden scrollbars and subtle hints only at clipped edges.
 Destructive actions use native dialogs with safe initial focus, cancel/Escape, an explicit second action and modal wheel/focus handling.
 
@@ -161,3 +168,9 @@ Test Audio with neither, either and both spectrum/artwork enabled; lyrics cover 
 Clock full/compact/dual/world settings; Settings disclosures and Extensions including confirmation.
 Check Dark/OLED/Light-style contrast, large fonts, scaling, monitor edges, reduced motion and missing external assets.
 Do not add page scroll, invisible clickable controls, content-selection regressions or resize oscillation.
+
+### Personal background slideshow selectors
+
+The custom background remains the `.sphere-custom-backdrop` child of the sphere, ordered below `.sphere-audio-backdrop`. Live slides use at most two `.custom-background-frame` children; the incoming `.custom-background-enter` supports `fade`, `slide`, `zoom` or `cut`. These presentation classes do not change the menu foreground layer. Embedded exports place keyframes inside `@layer sphere` so normal theme scoping renames them. GIF and WebP exports retain their original encoded animation; CSS export still has the total 1 MB limit.
+
+Managed GIF assets obey Settings -> Images -> Allow GIF backgrounds. Disabling it suppresses their local asset URLs and embedded personal-image exports while retaining file references. Images of another supported format can still display in the selected sequence.

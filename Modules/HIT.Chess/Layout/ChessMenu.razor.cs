@@ -171,9 +171,15 @@ public partial class ChessMenu
         await Context.SetLayoutAsync(HitLayout.Default);
     }
 
+    private string _settingsTopic="General";
+    private async Task SelectSettingsTopicAsync(string topic){if(topic is not ("General" or "Sound" or "Score"))return;_settingsTopic=topic;await Context.SetTitleAsync(topic=="General"?"Chess settings":topic);await InvokeAsync(StateHasChanged);}
+    public string CurrentPage => IsSettingsOpen ? "Settings/"+_settingsTopic : "Chess";
+    public bool CanReturnToParent => IsSettingsOpen;
+    public async Task NavigateToPageAsync(string page){if(page=="Chess"){await CloseSettingsAsync();return;}if(page=="Settings"||page.StartsWith("Settings/",StringComparison.Ordinal)){await OpenSettingsAsync();await SelectSettingsTopicAsync(page=="Settings"?"General":page[9..]);}}
     public async Task OpenSettingsAsync()
     {
         if (_disposed) return;
+        _settingsTopic="General";
         _compact = false; IsSettingsOpen = true; ClearSelection(); CancelConfirm();
         _draftDifficulty = _state.Difficulty; _draftWhite = _state.PlayerWhite; _draftMinutes = _state.Minutes;
         _searchCancellation?.Cancel();

@@ -1,14 +1,16 @@
 @using HoldItTogether.Services.Settings
-<section class="window-placement-view" aria-label="Window placement" data-no-drag @onwheel:stopPropagation="true">
-    <button type="button" class="hit-back" @onclick="BackRequested"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m11 5-5 5 5 5M6 10h10" /></svg>Settings</button>
+<section class="window-placement-view" aria-label="Window placement" data-no-drag>
+    <h2>@Text.Get("Window placement")</h2>
+    @if (ShowBack) { <button type="button" class="hit-back" @onclick="BackRequested"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m11 5-5 5 5 5M6 10h10" /></svg>Settings</button> }
     <label class="hit-setting-row"><span>Magnetize<small>Snap near monitor and taskbar edges.</small></span><input type="checkbox" class="hit-switch" role="switch" aria-label="Magnetize" checked="@Settings.WindowMagnetize" @onchange="args=>Change(value=>value with {WindowMagnetize=args.Value is true})" /></label>
     <label class="hit-setting-row"><span>Allow other monitors<small>Keep HIT on the primary monitor when off.</small></span><input type="checkbox" class="hit-switch" role="switch" aria-label="Allow other monitors" checked="@Settings.WindowAllowOtherMonitors" @onchange="args=>Change(value=>value with {WindowAllowOtherMonitors=args.Value is true})" /></label>
-    <label class="placement-padding"><span>Edge padding<small>100% touches the edge. Lower values leave more space.</small></span><input type="range" min="85" max="100" step="1" aria-label="Edge padding" value="@Settings.WindowEdgeReachPercent" @onchange="PaddingChanged" /><output>@Settings.WindowEdgeReachPercent%</output></label>
+    <label class="hit-setting-row"><span>@Text.Get("Snap to center")<small>@Text.Get("When magnetism is enabled, snap independently to the horizontal and vertical monitor centers.")</small></span><input type="checkbox" class="hit-switch" role="switch" aria-label="Snap to center" disabled="@(!Settings.WindowMagnetize)" checked="@Settings.WindowMagnetizeCenter" @onchange="args=>Change(value=>value with {WindowMagnetizeCenter=args.Value is true})" /></label>
+    <SettingRange CssClass="placement-padding" Label="Edge padding" Description="100% touches the edge. Lower values leave more space." Value="Settings.WindowEdgeReachPercent" Min="85" Max="100" Unit="%" Changed="v=>Change(s=>s with{WindowEdgeReachPercent=(int)v})" />
 </section>
 @code {
     [Parameter] public HitSettings Settings {get;set;}=new();
     [Parameter] public EventCallback<HitSettings> Changed {get;set;}
     [Parameter] public EventCallback BackRequested {get;set;}
+    [Parameter] public bool ShowBack { get; set; } = true;
     private Task Change(Func<HitSettings,HitSettings> update)=>Changed.InvokeAsync(update(Settings).Normalize());
-    private Task PaddingChanged(ChangeEventArgs args)=>int.TryParse(args.Value?.ToString(),out var number)?Change(value=>value with {WindowEdgeReachPercent=number}):Task.CompletedTask;
 }

@@ -18,6 +18,8 @@ internal static class Program
     [STAThread]
     private static void Main(string[] args)
     {
+        if(args.FirstOrDefault()=="--hit-profile")
+        {Environment.ExitCode=HitPerformanceRecorder.RunAsync(args).GetAwaiter().GetResult();return;}
         if(args.FirstOrDefault()=="--hit-install-package")
         {Environment.ExitCode=ExtensionPackageBootstrap.RunAsync(args).GetAwaiter().GetResult();return;}
         System.Globalization.CultureInfo.DefaultThreadCurrentCulture = System.Globalization.CultureInfo.GetCultureInfo("en-US");
@@ -34,24 +36,33 @@ internal static class Program
         builder.Services.AddSingleton<HitSettingsService>();
         builder.Services.AddSingleton<WindowPositionStore>();
         builder.Services.AddSingleton<HitMemorySampler>();
+        builder.Services.AddSingleton<HitPerformanceSampler>();
+        builder.Services.AddSingleton<HitDiagnosticLog>();
+        builder.Services.AddSingleton<HitAutomaticReporter>();
+        builder.Services.AddSingleton<HitResourcePolicy>();
         builder.Services.AddSingleton<HitUpdateService>();
         builder.Services.AddSingleton<HitDataService>();
         builder.Services.AddSingleton<HitApplicationService>();
         builder.Services.AddSingleton<HitThemeService>();
+        builder.Services.AddSingleton<HitAppearanceService>();
         builder.Services.AddSingleton<DesktopWindowService>();
         builder.Services.AddSingleton<HitMenuCatalog>();
         builder.Services.AddSingleton<ExtensionStore>();
         builder.Services.AddSingleton<ExtensionUi>();
         builder.Services.AddSingleton<ExtensionRuntime>();
+        builder.Services.AddSingleton<HitExtensionHub>();
         builder.Services.AddSingleton<ExtensionActivationService>();
         builder.Services.AddSingleton<ExtensionInbox>();
         builder.Services.AddSingleton<IFileProvider>(provider => new CompositeFileProvider(
+            new AppearanceImageFileProvider(provider.GetRequiredService<HitAppearanceService>()),
             new ExtensionFileProvider(provider.GetRequiredService<ExtensionStore>()),
             new PhysicalFileProvider(Path.Combine(AppContext.BaseDirectory, "wwwroot"))));
         builder.RootComponents.Add<App>("app");
 
         var app = builder.Build();
         var settings = app.Services.GetRequiredService<HitSettingsService>();
+        var diagnostics = app.Services.GetRequiredService<HitDiagnosticLog>();
+        diagnostics.Record("host","started");
         var clock = app.Services.GetRequiredService<HitClockService>();
         var extensions = app.Services.GetRequiredService<ExtensionRuntime>();
         extensions.InitializeAsync().GetAwaiter().GetResult();
@@ -77,12 +88,17 @@ internal static class Program
         desktop.Attach(app.MainWindow);
         app.Services.GetRequiredService<HitApplicationService>().BindClose(() => app.MainWindow.Invoke(() => app.MainWindow.Close()));
 
+        var reporter=app.Services.GetRequiredService<HitAutomaticReporter>();
+        reporter.Start();
         try { app.Run(); }
         finally
         {
+            diagnostics.Record("host","stopping");
+            reporter.DisposeAsync().AsTask().GetAwaiter().GetResult();
             app.Services.GetRequiredService<DesktopWindowService>().SavePosition();
             inbox.DisposeAsync().AsTask().GetAwaiter().GetResult();
             extensions.DisposeAsync().AsTask().GetAwaiter().GetResult();
+            app.Services.GetRequiredService<HitExtensionHub>().DisposeAsync().AsTask().GetAwaiter().GetResult();
             settings.UnbindRuntime();
             clock.DisposeAsync().AsTask().GetAwaiter().GetResult();
             app.Services.GetRequiredService<AudioSpectrumService>().Dispose();

@@ -3,7 +3,7 @@
     --audio-muted: var(--hit-menu-muted, var(--hit-muted));
     --audio-accent: var(--hit-accent);
     --audio-surface: var(--hit-open-background);
-    --audio-scene-inset-top: 64px;
+    --audio-scene-inset-top: calc(var(--hit-menu-padding-top, 64px) - (var(--hit-menu-padding-top, 64px) - var(--hit-menu-idle-padding-top, 24px)) * var(--hit-focus-progress, 0));
     --audio-scene-inset-side: 24px;
     --audio-scene-inset-bottom: 44px;
     --audio-spectrum-opacity: 0.11;
@@ -177,9 +177,6 @@
 :where(.hit-menu-panel[data-hit-menu="HoldItTogether.Components.HitMenus.HitMenuAudio"]) .audio-size-disclosure input:focus-visible { outline: 1px solid var(--audio-accent); outline-offset: 4px; }
 
 /* Idle player shrinks; lyrics keep the window and reclaim the header for reading. */
-.dynamic-sphere[data-hit-controls-hidden="true"] :where(.hit-menu-panel[data-hit-menu="HoldItTogether.Components.HitMenus.HitMenuAudio"]) .audio-menu {
-    --audio-scene-inset-top: var(--hit-menu-idle-padding-top, 24px);
-}
 :where(.hit-menu-panel[data-hit-menu="HoldItTogether.Components.HitMenus.HitMenuAudio"]) [data-hit-view="lyrics"] {
     padding-top: calc((var(--hit-menu-padding-top, 64px) - var(--hit-menu-idle-padding-top, 24px)) * var(--hit-focus-progress, 0) / var(--hit-menu-scale-y, 1));
 }
@@ -188,3 +185,26 @@
 :where(.hit-menu-panel[data-hit-menu="HoldItTogether.Components.HitMenus.HitMenuAudio"]) .lyrics-provider:focus-visible {
     outline: 1px solid var(--audio-accent); outline-offset: 3px; border-radius: 3px;
 }
+:where(.hit-menu-panel[data-hit-menu="HoldItTogether.Components.HitMenus.HitMenuAudio"]) .audio-spectrum-layer {
+    position:absolute; z-index:0; pointer-events:none; overflow:hidden;
+    top:calc(-1 * var(--audio-scene-inset-top) / var(--hit-menu-scale-y,1));
+    left:calc(-1 * var(--audio-scene-inset-side) / var(--hit-menu-scale-x,1));
+    right:calc(-1 * var(--audio-scene-inset-side) / var(--hit-menu-scale-x,1));
+    bottom:calc(-1 * var(--audio-scene-inset-bottom) / var(--hit-menu-scale-y,1));
+}
+:where(.hit-menu-panel[data-hit-menu="HoldItTogether.Components.HitMenus.HitMenuAudio"]) .audio-menu[data-spectrum-style^="wave"] .audio-spectrum { inset:0; }
+:where(.hit-menu-panel[data-hit-menu="HoldItTogether.Components.HitMenus.HitMenuAudio"]) .audio-menu[data-spectrum-style] .audio-spectrum { opacity:var(--audio-visualizer-opacity,var(--audio-spectrum-opacity)); }
+:where(.hit-menu-panel[data-hit-menu="HoldItTogether.Components.HitMenus.HitMenuAudio"]) .audio-visualizer-flips { display:flex; gap:8px; }
+:where(.hit-menu-panel[data-hit-menu="HoldItTogether.Components.HitMenus.HitMenuAudio"]) .audio-visualizer-flips button[aria-pressed="true"] { color:var(--audio-accent); border-color:var(--audio-accent); }
+:where(.hit-menu-panel[data-hit-menu="HoldItTogether.Components.HitMenus.HitMenuAudio"]) [data-spectrum-blend="invert"] .audio-spectrum-layer,
+:where(.hit-menu-panel[data-hit-menu="HoldItTogether.Components.HitMenus.HitMenuAudio"]) [data-spectrum-blend="difference"] .audio-spectrum-layer { mix-blend-mode:difference; }
+:where(.hit-menu-panel[data-hit-menu="HoldItTogether.Components.HitMenus.HitMenuAudio"]) [data-spectrum-blend="invert"] .audio-spectrum canvas { filter:brightness(0) invert(1); }
+:where(.hit-menu-panel[data-hit-menu="HoldItTogether.Components.HitMenus.HitMenuAudio"]) [data-spectrum-blend="overlay"] .audio-spectrum-layer { mix-blend-mode:overlay; }
+:where(.hit-menu-panel[data-hit-menu="HoldItTogether.Components.HitMenus.HitMenuAudio"]) [data-spectrum-blend="screen"] .audio-spectrum-layer { mix-blend-mode:screen; }
+:where(.hit-menu-panel[data-hit-menu="HoldItTogether.Components.HitMenus.HitMenuAudio"]) [data-spectrum-blend="multiply"] .audio-spectrum-layer { mix-blend-mode:multiply; }
+:where(.hit-menu-panel[data-hit-menu="HoldItTogether.Components.HitMenus.HitMenuAudio"]) [data-spectrum-blend="exclusion"] .audio-spectrum-layer { mix-blend-mode:exclusion; }
+
+:where(.hit-menu-panel[data-hit-menu="HoldItTogether.Components.HitMenus.HitMenuAudio"]) .lyric-plain-line{margin:0 0 12px;font-size:15px;line-height:1.7;color:var(--audio-foreground,var(--hit-text));white-space:pre-wrap;overflow-wrap:anywhere;}
+
+:where(.hit-menu-panel) .audio-visualizer-flips{display:flex;flex:1;gap:8px;min-width:0;}
+:where(.hit-menu-panel) .audio-visualizer-flips>.hit-button{flex:1;min-width:0;width:0;white-space:nowrap;}

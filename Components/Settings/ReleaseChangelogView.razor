@@ -1,0 +1,16 @@
+@using HoldItTogether.Services.Diagnostics
+@implements IAsyncDisposable
+@inject HitUpdateService Updates
+<div class="settings-changelog">
+    <h2>@Text.Get("Changelog")</h2>
+    @if(_loading){<HitSpinner Label="@Text.Get("Loading release notes")" />}
+    else if(_notes is not null){<p class="hit-muted">@_notes.Version @(_notes.Name==_notes.Version?"":_notes.Name)</p><pre class="release-notes">@(string.IsNullOrWhiteSpace(_notes.Body)?Text.Get("This release has no notes."):_notes.Body)</pre>}
+    else {<p class="hit-muted" role="status">@Text.Get("Could not load release notes. Check your connection and try again.")</p><button type="button" class="hit-button" @onclick="Load">@Text.Get("Retry")</button>}
+</div>
+@code{
+    private readonly CancellationTokenSource _lifetime=new();private Task? _task;private HitReleaseNotes? _notes;private bool _loading=true,_disposed;
+    protected override Task OnInitializedAsync()=>Load();
+    private Task Load()=>_task=LoadCore();
+    private async Task LoadCore(){_loading=true;try{var notes=await Updates.ReadChangelogAsync(_lifetime.Token);if(!_disposed)_notes=notes;}catch(Exception e)when(e is HttpRequestException or IOException or System.Text.Json.JsonException or OperationCanceledException){ }finally{_loading=false;}}
+    public async ValueTask DisposeAsync(){_disposed=true;_lifetime.Cancel();if(_task is not null)await _task;_lifetime.Dispose();}
+}

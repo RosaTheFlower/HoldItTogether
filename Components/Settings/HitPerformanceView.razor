@@ -1,0 +1,65 @@
+@using HoldItTogether.Services.Diagnostics
+@using HoldItTogether.Services.HitMenus
+@implements IAsyncDisposable
+@inject HitPerformanceSampler Performance
+@inject HitDiagnosticLog Diagnostics
+@inject HitResourcePolicy Resources
+@inject HoldItTogether.Services.Audio.AudioSpectrumService Spectrum
+
+<section class="info-performance" data-hit-view="performance" aria-label="@Text.Get("Performance")">
+    <h2 class="info-heading">@Text.Get("Performance")</h2>
+    <div class="hit-setting-row"><span>@Text.Get("RAM usage")</span><output>@_memory</output></div>
+    <div class="hit-setting-row"><span>@Text.Get("WebView2 RAM")</span><output>@_webMemory</output></div>
+    <div class="hit-setting-row"><span>@Text.Get("Total RAM")</span><output>@_totalMemory</output></div>
+    <div class="hit-setting-row"><span>@Text.Get("CPU (HIT + WebView2)")</span><output>@_cpu</output></div>
+    <p class="hit-muted">@_measurement</p>
+    <button type="button" class="hit-button info-wide" title="@Text.Get("Save a local diagnostics report.")" @onclick="ExportDiagnostics">@Text.Get("Export diagnostics")</button>
+    @if (_exported is not null) { <p class="hit-muted" role="status">@Text.Format("Saved locally: {0}", _exported)</p> }
+    @if (_error is not null) { <p class="settings-error" role="alert">@_error</p> }
+</section>
+
+@code {
+    [CascadingParameter(Name = "HitMenu")] public HitMenuContext? MenuContext { get; set; }
+    private readonly CancellationTokenSource _lifetime = new();
+    private Task? _monitor;
+    private string _memory = "—", _webMemory = "—", _totalMemory = "—", _cpu = "—", _measurement = "";
+    private string? _exported, _error;
+    private bool _disposed;
+    protected override void OnInitialized() => _monitor = MonitorAsync(_lifetime.Token);
+    private async Task MonitorAsync(CancellationToken token)
+    {
+        using var timer = new PeriodicTimer(TimeSpan.FromSeconds(1));
+        try
+        {
+            do
+            {
+                if (MenuContext?.IsVisible ?? true)
+                {
+                    var sample = Performance.Sample();
+                    await InvokeAsync(() => {
+                        if (_disposed) return;
+                        string Mb(long bytes) => (bytes / (1024d * 1024)).ToString("N1", Text.Culture) + " MB";
+                        _memory = Mb(sample.HostBytes); _webMemory = Mb(sample.WebViewBytes); _totalMemory = Mb(sample.TotalBytes);
+                        _cpu = sample.CpuPercent is { } cpu ? cpu.ToString("N1", Text.Culture) + "%" : "—";
+                        _measurement = Text.Format("{0} processes", sample.Processes.Length) + " · " +
+                            Text.Get(sample.IsPrivateWorkingSet ? "Private resident memory" : "Working set sum (shared pages may repeat)") +
+                            (sample.Partial ? " · " + Text.Get("Partial sample") : "");
+                        StateHasChanged();
+                    });
+                }
+            } while (await timer.WaitForNextTickAsync(token));
+        }
+        catch (OperationCanceledException) { }
+    }
+    private void ExportDiagnostics()
+    {
+        try { _exported = Diagnostics.Export(Performance.Sample(), Resources.IsSleeping, Spectrum.ActiveCaptures); _error = null; }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException) { _error = Text.Get("Could not export diagnostics."); }
+    }
+    public async ValueTask DisposeAsync()
+    {
+        _disposed = true; _lifetime.Cancel();
+        if (_monitor is not null) await _monitor;
+        _lifetime.Dispose();
+    }
+}

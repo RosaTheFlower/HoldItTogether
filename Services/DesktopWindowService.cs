@@ -12,14 +12,17 @@ public sealed class DesktopWindowService
     private readonly HitSettingsService? _settings;
     private readonly WindowPositionStore _positions;
     private readonly HitApplicationService? _application;
+    private readonly HoldItTogether.Services.Diagnostics.HitDiagnosticLog? _diagnostics;
     private HitSettings _options;
     private bool _positionLoaded,_restoring;
     private Rectangle? _dragBounds;
     private Rectangle? _fullscreenArea;
     private PlacementMotion? _placementMotion;
     private bool _fullscreenPlacementPending;
-    public DesktopWindowService(HitSettingsService? settings = null,WindowPositionStore? positions=null,HitApplicationService? application=null)
-    { _settings=settings;_positions=positions??new();_options=settings?.Current??new();_application=application; }
+    private bool _startupPresented;
+    public DesktopWindowService(HitSettingsService? settings = null,WindowPositionStore? positions=null,HitApplicationService? application=null,
+        HoldItTogether.Services.Diagnostics.HitDiagnosticLog? diagnostics=null)
+    { _settings=settings;_positions=positions??new();_options=settings?.Current??new();_application=application;_diagnostics=diagnostics; }
 
     private PhotinoWindow? _window;
     private WindowsWindowBehavior? _windowsBehavior;
@@ -31,6 +34,10 @@ public sealed class DesktopWindowService
     public readonly record struct WindowOrigin(double X, double Y);
 
     public bool UsesNativePointerTracking => OperatingSystem.IsWindows();
+    public bool IsVisible=>_windowsBehavior?.IsVisible??true;
+    public bool IsCoveredByFullscreen => !_options.ForceAlwaysOnTop &&
+        Volatile.Read(ref _pointerBounds) is { } bounds &&
+        _windowsBehavior?.IsCoveredByFullscreen(new((float)bounds.Left,(float)bounds.Top,(float)bounds.Width,(float)bounds.Height)) == true;
     public void SetApplicationIcon(string png)
     {
         if(_window is not { } window||png.Length>350000)return;
@@ -57,6 +64,7 @@ public sealed class DesktopWindowService
             {
                 _windowsBehavior = new WindowsWindowBehavior(
                     window.WindowHandle, _settings?.Current.AlwaysOnTop ?? true,()=>_application?.RestartAsync().GetAwaiter().GetResult());
+                _windowsBehavior.Diagnostics=_diagnostics;
                 _windowsBehavior.TrackFullscreen(context=>FullscreenChanged(window,context?.Monitor));
             }
 
@@ -137,6 +145,11 @@ public sealed class DesktopWindowService
             }
 
             origin = new WindowOrigin(anchor.PivotX, anchor.PivotY);
+            if (!_startupPresented && _windowsBehavior is { } startup)
+            {
+                _startupPresented = true;
+                startup.BringToForegroundOnStartup();
+            }
         });
 
         return origin;
@@ -198,7 +211,7 @@ public sealed class DesktopWindowService
             _workArea = ResolveWorkArea(cursor);
             var frame=new RectangleF((float)visible.Left,(float)visible.Top,(float)visible.Width,(float)visible.Height);
             var placement=WindowPlacement.DragSurface(current,frame,cursor,new PointF((float)drag.OffsetX,(float)drag.OffsetY),_dragBounds??PaddedArea(_workArea),
-                _options.WindowMagnetize,PaddedArea(_workArea),12*visible.Scale);
+                _options.WindowMagnetize,PaddedArea(_workArea),12*visible.Scale,_options.WindowMagnetizeCenter);
             var surface=new RectangleF(frame.Left+placement.Left-current.Left,frame.Top+placement.Top-current.Top,frame.Width,frame.Height);
 
             var anchor = _anchor!.Value;
@@ -237,7 +250,7 @@ public sealed class DesktopWindowService
             _workArea = ResolveWorkArea(new Point((int)(bounds.Left + bounds.Width / 2), (int)(bounds.Top + bounds.Height / 2)));
         }
 
-        _anchor = WindowPlacement.SelectAnchor(bounds, _workArea);
+        _anchor = WindowPlacement.SelectAnchor(bounds, _workArea,_options.WindowMagnetize && _options.WindowMagnetizeCenter);
     }
     private Rectangle? PaddedArea(Rectangle? area)=>area is { } value?
         value==_fullscreenArea?value:WindowPlacement.InsetWorkArea(value,_options.WindowEdgeReachPercent):null;
@@ -339,7 +352,7 @@ public sealed class DesktopWindowService
         var current=WindowBounds(window);
         MoveBounds(window,current,new Rectangle(current.Left+(int)Math.Round(frame.Left-visible.Left),
             current.Top+(int)Math.Round(frame.Top-visible.Top),current.Width,current.Height));
-        _anchor=WindowPlacement.SelectAnchor(frame,_workArea);
+        _anchor=WindowPlacement.SelectAnchor(frame,_workArea,_options.WindowMagnetize && _options.WindowMagnetizeCenter);
     }
     public void SavePosition()
     {

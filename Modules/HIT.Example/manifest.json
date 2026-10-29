@@ -3,18 +3,22 @@
   "id": "dev.hit.example",
   "name": "HIT Notes Example",
   "author": "HIT",
-  "version": "1.0.0",
+  "version": "1.0.2",
   "hitContractVersion": "1",
   "entryAssembly": "Services/HIT.Example.dll",
   "entryType": "HIT.Example.Services.ExampleModule",
-  "capabilities": ["clock.control"],
+  "capabilities": [
+    "clock.control"
+  ],
   "menus": [
     {
       "id": "notes",
       "title": "Notes",
       "componentAssembly": "Services/HIT.Example.dll",
       "componentType": "HIT.Example.Layout.ExampleMenu",
-      "styles": ["Layout/css/notes.css"]
+      "styles": [
+        "Layout/css/notes.css"
+      ]
     }
   ]
 }

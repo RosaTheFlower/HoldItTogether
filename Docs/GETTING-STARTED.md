@@ -36,7 +36,7 @@ HIT restores its last position at startup. Settings -> Window placement controls
 and Edge padding (98% by default; 100% is flush, 85% leaves more space).
 Do not drag through sliders, text inputs or other controls.
 
-Scroll down/up to move to the next/previous menu, or click a pagination dot. Navigation does not wrap at the ends.
+Scroll down/up to move to the next/previous menu, or click a pagination dot. Navigation is bounded by default. Enable Infinite menu under Settings -> General to wrap in both directions.
 The initial order is Audio, Clock, Settings. Extensions can change the order; Settings is always last and cannot be disabled.
 
 Right-click (M2) a configurable title to open that menu's settings. Right-click inside an open configuration returns.
@@ -51,14 +51,17 @@ If the tray is disabled, hiding the native window is not offered by that tray.
 
 | Option | Default / behavior |
 | --- | --- |
+| Infinite menu | Off; wraps top-level navigation at both ends when enabled |
+| Images | File size limit (2 MB default or unlimited) and managed GIF permission |
+| Menu entrance animations | On; optional short menu/topic reveals, also suppressed by Remove animations |
 | Always on Top | On; keeps HIT above ordinary windows |
 | System Tray | Off; optional Windows notification-area icon |
 | Remove animations | Off; disables CSS animation, transitions and smooth scrolling |
 | Show tooltips | On; native hover descriptions, independent of accessible names |
 | Scroll speed | Sensitivity 1; cooldown enabled, 350 ms |
-| Info | RAM usage, version/counts, update checking, GitHub and confirmed data reset/deletion |
-| Extensions | Dedicated installation/order/enable/remove screen, immediately above Themes |
-| Themes | Final row; combobox for activation plus a management screen for list selection/import/delete |
+| Info | Version/counts, update checking, Changelog, GitHub, Performance (RAM/CPU/diagnostics) and confirmed data reset/deletion |
+| Extensions | Dedicated installation/order/enable/remove topic |
+| Themes | Dedicated topic; full-width combobox for activation plus list selection/import/delete |
 
 Scroll sensitivity accepts 0.25-3; cooldown accepts 0-2000 ms. Disable cooldown to pass several menus in one large wheel gesture.
 Theme management supports single/multiple selection, double-click activation and confirmed deletion of personal themes.
@@ -97,7 +100,12 @@ All user state lives below `%LOCALAPPDATA%\HoldItTogether`:
 | `window.json` | Last visible position, growth direction and monitor reference |
 | `window-fullscreen.json` | Separate fullscreen position memory for up to 16 monitor origins |
 | `Clock/state.json` | Timer/Pomodoro deadlines and pending notices |
+| `Diagnostics/` | User-exported local JSON diagnostics; no automatic upload |
+| `Diagnostics/Automatic/` | Approximately one automatic report per minute, at most 30 rotating JSON files |
 | `Themes/` | Personal theme CSS |
+| `Appearance/profiles.json` | Saved visual profiles (palette, shape and base-theme reference) |
+| `Appearance/Exports/` | User-exported appearance CSS, importable through Themes |
+| `Appearance/Images/` | Imported static backgrounds referenced by visual profiles |
 | `Modules/registry.json` | Extension versions, menu order and disabled IDs |
 | `Modules/Installed/` | Installed extension code and editable assets |
 | `Modules/State/` | Extension-owned persistent data |

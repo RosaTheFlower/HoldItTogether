@@ -13,7 +13,7 @@ namespace HoldItTogether.Services.Extensions;
 public sealed record LoadedMenu(string Id, string Name, Type ComponentType, ExtensionApi Api, string[] Styles);
 
 public sealed class ExtensionRuntime(ExtensionStore store, IHitMediaService media, HitClockService clock,
-    HitSettingsService settings, HitThemeService themes, IExternalLinkService links, ExtensionUi ui) : IAsyncDisposable
+    HitSettingsService settings, HitThemeService themes, IExternalLinkService links, ExtensionUi ui,HitExtensionHub? hub=null) : IAsyncDisposable
 {
     private readonly List<(ExtensionLoadContext Load, IHitModule Module, ServiceProvider Services, CancellationTokenSource Lifetime)> _modules = [];
     private readonly CancellationTokenSource _lifetime = new();
@@ -72,7 +72,7 @@ public sealed class ExtensionRuntime(ExtensionStore store, IHitMediaService medi
                 if (!typeof(IHitModule).IsAssignableFrom(moduleType) || moduleType.IsAbstract) throw new InvalidDataException("The entry type must implement IHitModule.");
                 module = (IHitModule)Activator.CreateInstance(moduleType)!;
                 var services = new ServiceCollection();
-                var api = new ExtensionApi(manifest, store, media, clock, settings, themes, links, ui, moduleLifetime.Token);
+                var api = new ExtensionApi(manifest, store, media, clock, settings, themes, links, ui, moduleLifetime.Token,hub);
                 module.ConfigureServices(services);
                 services.AddSingleton<IHitApi>(api);
                 provider = services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true });

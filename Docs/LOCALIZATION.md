@@ -39,3 +39,5 @@ locale, catalog version, message overrides and optional extension-owned namespac
 Validate total size, supported keys and placeholder compatibility; retain English fallback and notify views to rerender on change.
 No executable code, system API access or theme mutation belongs in a translation file.
 Define migration/versioning before shipping a format; do not present a proposed language ZIP as an installable `.hitmenu` feature.
+
+All built-in interface labels and explanations remain in English, including Infinite menu. Route them through the English source catalog; user requests written in another language do not imply translating interface labels. Changing the release label does not create translation-package support.

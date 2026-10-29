@@ -18,7 +18,7 @@ User state paths are in [Getting started](GETTING-STARTED.md); build commands ar
 | HIT falls behind ordinary windows | Enable Always on Top and test with FORCE off. Native events now repair a missing topmost flag without activating HIT. If it persists, record the build, transition, source app and monitor/DPI; the original intermittent trigger still needs live verification. Other topmost windows and exclusive fullscreen are separate cases. |
 | Game minimizes or HIT disappears in fullscreen | Fullscreen detection now uses non-activating mouse policy and pauses repeated FORCE ordering. Exclusive D3D detection is best-effort and ordinary desktop windows cannot guarantee drawing over an exclusive swap chain. Use borderless for a composited overlay and report the exact presentation mode if disruption persists. |
 | Compact Clock does not open on hover | Intended; use M1. Drag moves it; M2 opens settings |
-| RAM differs from Task Manager | Settings excludes WebView children and uses private resident HIT memory; compare the same definition/workload |
+| RAM differs from Task Manager | Info -> Performance separates HIT, descendant WebView2 and Total RAM. Check private resident versus working-set fallback and partial-sample labels; compare the same process group and workload. |
 
 ## Audio and lyrics
 
@@ -77,3 +77,5 @@ and ignores late callbacks; the host also clears settings references after an er
 Inbox files need to finish copying and be released for exclusive read. Success goes to Processed; invalid packages to Rejected.
 Package log files are under Modules/Logs if the extension calls Api.Log. Startup failures also appear in the manager.
 The package loader is not a sandbox or hard RAM limiter; disable/restart a faulty trusted package and inspect its lifecycle code.
+
+If navigation wraps unexpectedly, check General -> Infinite menu. Back/Forward page history and top-level menu cycling are separate policies. If a managed GIF disappears, check Images -> Allow GIF backgrounds; references are preserved. If a new release appears incorrectly ordered, confirm both HitReleaseGeneration and HitReleaseDate and the NvDDMM tag.

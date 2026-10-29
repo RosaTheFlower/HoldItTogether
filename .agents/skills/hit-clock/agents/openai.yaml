@@ -1,0 +1,4 @@
+interface:
+  display_name: "HIT Clock"
+  short_description: "World clocks, deadlines, timers and Pomodoro"
+  default_prompt: "Use $hit-clock to implement this HIT clock change while preserving deadline and recovery semantics."

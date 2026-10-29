@@ -5,7 +5,7 @@ Push-Location -LiteralPath $workspace
 try {
     & (Join-Path $PSScriptRoot 'Build-Installer.ps1') -ReleaseDirectory $ReleaseDirectory -Compiler $Compiler -TestBuild
     [xml]$project=Get-Content -LiteralPath 'HoldItTogether.csproj' -Raw
-    $version='v'+([datetime]::Parse([string]$project.Project.PropertyGroup.HitReleaseDate)).ToString('ddMM')
+    $version=[string]$project.Project.PropertyGroup.HitReleaseGeneration+'v'+([datetime]::Parse([string]$project.Project.PropertyGroup.HitReleaseDate)).ToString('ddMM')
     $setup=Join-Path $workspace ('obj/installer-tests/compiler/HIT-'+$version+'-win-x64-Setup.exe')
     foreach($profile in @('release','dev')) {
         foreach($chess in @(0,1)) {

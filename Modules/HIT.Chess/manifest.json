@@ -3,16 +3,20 @@
   "id": "dev.hit.chess",
   "name": "HIT Chess",
   "author": "HIT",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "hitContractVersion": "1",
   "entryAssembly": "Services/HIT.Chess.dll",
   "entryType": "HIT.Chess.Services.ChessModule",
   "capabilities": [],
-  "menus": [{
-    "id": "chess",
-    "title": "Chess",
-    "componentAssembly": "Services/HIT.Chess.dll",
-    "componentType": "HIT.Chess.Layout.ChessMenu",
-    "styles": ["Layout/css/chess.css"]
-  }]
+  "menus": [
+    {
+      "id": "chess",
+      "title": "Chess",
+      "componentAssembly": "Services/HIT.Chess.dll",
+      "componentType": "HIT.Chess.Layout.ChessMenu",
+      "styles": [
+        "Layout/css/chess.css"
+      ]
+    }
+  ]
 }

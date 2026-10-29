@@ -43,6 +43,7 @@ internal sealed class WindowsWindowBehavior
     internal readonly record struct TopmostRecovery(DateTimeOffset At, uint Trigger, int BeforeStyle,
         int AfterStyle, int Error);
     internal TopmostRecovery[] TopmostRecoveries => _topmostRecoveries.ToArray();
+    internal HoldItTogether.Services.Diagnostics.HitDiagnosticLog? Diagnostics {get;set;}
     private (int Left,int Top,int Right,int Bottom)? _contentRegion;
 
     public WindowsWindowBehavior(nint handle, bool alwaysOnTop = true,Action? restart=null)
@@ -97,6 +98,32 @@ internal sealed class WindowsWindowBehavior
         (style & ~(Layered | TransparentInput | NoActivate | AppWindow)) | ToolWindow;
 
     public bool IsVisible => IsWindowVisible(_handle);
+    public void BringToForegroundOnStartup()
+    {
+        if (_destroyed || _fullscreen is not null) return;
+        ShowWindow(_handle, 5);
+        BringWindowToTop(_handle);
+        SetForegroundWindow(_handle);
+    }
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool BringWindowToTop(nint window);
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool SetForegroundWindow(nint window);
+    public bool IsCoveredByFullscreen(RectangleF surface)
+    {
+        var context = _fullscreen;
+        if (context is null || !context.Monitor.Contains(Rectangle.Ceiling(surface)) ||
+            !IsWindowVisible(context.Window) || IsIconic(context.Window)) return false;
+        if (context.Exclusive) return true;
+        if (IsNativeTopmost && (GetWindowLong(context.Window, ExtendedStyle) & Topmost) == 0) return false;
+        // A fullscreen window behind HIT is not an occluder. Follow actual native Z-order.
+        var previous = GetWindow(_handle, 3);
+        for (var count = 0; previous != 0 && count < 512; count++, previous = GetWindow(previous, 3))
+            if (previous == context.Window) return true;
+        return false;
+    }
     public void TrackFullscreen(Action<FullscreenContext?> changed)
     {
         _fullscreenChanged = changed;
@@ -183,6 +210,7 @@ internal sealed class WindowsWindowBehavior
 
     private void RecordTopmostRecovery(uint trigger, int beforeStyle, int error)
     {
+        Diagnostics?.Record("window",error==0?"topmost.recovered":"topmost.failed",error);
         if (_topmostRecoveries.Count == 32) _topmostRecoveries.Dequeue();
         _topmostRecoveries.Enqueue(new(DateTimeOffset.UtcNow, trigger, beforeStyle,
             GetWindowLong(_handle, ExtendedStyle), error));
@@ -443,6 +471,8 @@ internal sealed class WindowsWindowBehavior
     private static extern bool KillTimer(nint window, nuint id);
     [DllImport("user32.dll")]
     private static extern nint GetForegroundWindow();
+    [DllImport("user32.dll")] private static extern bool IsIconic(nint window);
+    [DllImport("user32.dll")] private static extern nint GetWindow(nint window, uint command);
 
     [DllImport("user32.dll")]
     private static extern nint GetAncestor(nint window, uint flags);

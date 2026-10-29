@@ -9,9 +9,10 @@
     <Nullable>enable</Nullable>
     <!-- Published builds and tools are outputs, never source or application content. -->
     <DefaultItemExcludes>$(DefaultItemExcludes);artifacts/**;**/bin/**;**/obj/**</DefaultItemExcludes>
-    <HitReleaseDate>2026-10-27</HitReleaseDate>
+    <HitReleaseDate>2026-10-29</HitReleaseDate>
+    <HitReleaseGeneration>2</HitReleaseGeneration>
     <Version>$([System.DateTime]::Parse('$(HitReleaseDate)').ToString('yyyy.MM.dd'))</Version>
-    <InformationalVersion>v$([System.DateTime]::Parse('$(HitReleaseDate)').ToString('ddMM'))</InformationalVersion>
+    <InformationalVersion>$(HitReleaseGeneration)v$([System.DateTime]::Parse('$(HitReleaseDate)').ToString('ddMM'))</InformationalVersion>
     <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
     <AssemblyVersion>1.0.0.0</AssemblyVersion>
     <FileVersion>$(Version).0</FileVersion>
@@ -19,6 +20,7 @@
 
   <ItemGroup>
     <AssemblyMetadata Include="HitReleaseDate" Value="$(HitReleaseDate)" />
+    <AssemblyMetadata Include="HitReleaseGeneration" Value="$(HitReleaseGeneration)" />
     <InternalsVisibleTo Include="HIT.Example.Tests" />
     <Compile Remove="Modules/**;Tests/**;Sdk/**;Examples/**" />
     <Content Remove="Modules/**;Tests/**;Sdk/**;Examples/**" />

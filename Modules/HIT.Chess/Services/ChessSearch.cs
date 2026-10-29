@@ -8,6 +8,8 @@ public enum Difficulty { Easy, Medium, Hard }
 // No model, network, learned weights or external chess service is involved.
 public sealed class ChessSearch
 {
+    private readonly Random _random;
+    public ChessSearch(Random? random=null)=>_random=random??Random.Shared;
     private readonly Stopwatch _clock = new();
     private CancellationToken _token;
     private int _budget, _nodes;
@@ -15,6 +17,8 @@ public sealed class ChessSearch
 
     public Move? Choose(Position position, Difficulty difficulty, CancellationToken token)
     {
+        token.ThrowIfCancellationRequested();
+        if(ChessOpenings.Choose(position,_random) is { } opening)return opening;
         _token = token; _nodes = 0;
         _budget = difficulty switch { Difficulty.Easy => 180, Difficulty.Medium => 750, _ => 2200 };
         int depthLimit = difficulty switch { Difficulty.Easy => 1, Difficulty.Medium => 3, _ => 5 };
@@ -40,7 +44,7 @@ public sealed class ChessSearch
             if (difficulty == Difficulty.Easy)
             {
                 var candidates = scored.Where(s => s.Score >= scored[0].Score - 130).ToArray();
-                best = candidates[Random.Shared.Next(candidates.Length)].Move;
+                best = candidates[_random.Next(candidates.Length)].Move;
             }
             moves = scored.Select(s => s.Move).ToList();
         }

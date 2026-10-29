@@ -1,0 +1,4 @@
+interface:
+  display_name: "HIT Native Window"
+  short_description: "Topmost, focus, fullscreen, DPI and shell geometry"
+  default_prompt: "Use $hit-window to diagnose or implement this HIT native-window behavior without disrupting foreground apps."

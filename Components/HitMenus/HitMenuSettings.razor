@@ -1,65 +1,84 @@
 @using System.Globalization
 @using HoldItTogether.Services.Settings
 @using HoldItTogether.Services.HitMenus
+@using HoldItTogether.Components.Settings
 @implements IDisposable
 @implements IHitMenuSettings
+@implements HIT.Sdk.IHitMenuPages
 @inject HoldItTogether.Services.Extensions.ExtensionUi Extensions
 @inject HitSettingsService Settings
+<section class="settings-menu settings-workspace" data-hit-settings-workspace data-descriptions="@(Settings.Current.ShowSettingDescriptions?"true":"false")" data-hit-view="@_view.ToString().ToLowerInvariant()" data-no-drag @onclick:stopPropagation="true" @onkeydown="HandleKey" @onkeydown:stopPropagation="true">
+<nav class="settings-sidebar" aria-label="Settings topics"><button type="button" class="settings-topic " aria-label="Open General" aria-current="@(_view==SettingsView.Main?"page":null)" @onclick="()=>Open(SettingsView.Main)">@Text.Get("General")</button>
+<button type="button" class="settings-topic" aria-label="Open Appearance" aria-current="@(_view==SettingsView.Appearance?"page":null)" @onclick="()=>Open(SettingsView.Appearance)">@Text.Get("Appearance")</button>
+<button type="button" class="settings-topic " aria-label="Manage themes" aria-current="@(_view==SettingsView.Themes?"page":null)" @onclick="()=>Open(SettingsView.Themes)">@Text.Get("Themes")</button>
+<button type="button" class="settings-topic" aria-label="Open Personalization" aria-current="@(_view==SettingsView.Personalization?"page":null)" @onclick="()=>Open(SettingsView.Personalization)">@Text.Get("Personalization")</button>
+<button type="button" class="settings-topic" aria-label="@Text.Get("Open Images")" aria-current="@(_view==SettingsView.Images?"page":null)" @onclick="()=>Open(SettingsView.Images)">@Text.Get("Images")</button>
+<button type="button" class="settings-topic " aria-label="Open Extensions" aria-current="@(_view==SettingsView.Extensions?"page":null)" @onclick="()=>Open(SettingsView.Extensions)">@Text.Get("Extensions")</button>
+<button type="button" class="settings-topic " aria-label="Open Interaction" aria-current="@(_view==SettingsView.Interaction?"page":null)" @onclick="()=>Open(SettingsView.Interaction)">@Text.Get("Interaction")</button>
+<button type="button" class="settings-topic " aria-label="Open Scroll speed" aria-current="@(_view==SettingsView.Scroll?"page":null)" @onclick="()=>Open(SettingsView.Scroll)">@Text.Get("Scroll")</button>
+<button type="button" class="settings-topic " aria-label="Open Accessibility" aria-current="@(_view==SettingsView.Accessibility?"page":null)" @onclick="()=>Open(SettingsView.Accessibility)">@Text.Get("Accessibility")</button>
+<button type="button" class="settings-topic " aria-label="Open Window placement" aria-current="@(_view==SettingsView.Placement?"page":null)" @onclick="()=>Open(SettingsView.Placement)">@Text.Get("Window placement")</button>
+<button type="button" class="settings-topic settings-topic-info" aria-label="Open Info" aria-current="@(_view==SettingsView.Info?"page":null)" @onclick="()=>Open(SettingsView.Info)">@Text.Get("Info")</button></nav>
+<div class="settings-content" data-hit-scroll tabindex="0">
+@if(_view==SettingsView.Themes){<h2>@Text.Get("Themes")</h2><HitThemePicker /><HitThemePicker @ref="_themePicker" Detailed="true" ShowSections="false" ShowBack="false" BackRequested="CloseSettingsAsync" />}
+else if(_view==SettingsView.Appearance){<h2>@Text.Get("Appearance")</h2><TitlePresentationSettings />}
+else if(_view==SettingsView.Images){<ImageSettingsView />}
+else if(_view==SettingsView.Personalization){<AppearanceView ShowBack="false" BackRequested="CloseSettingsAsync" />}
+else if(_view==SettingsView.Extensions){<HoldItTogether.Components.Extensions.ExtensionsView ShowBack="false" BackRequested="CloseSettingsAsync" />}
+else if(_view==SettingsView.Info){<HitInfoView @ref="_infoView" ShowBack="false" Page="@_infoPage" PageChanged="p=>_infoPage=p" NavigationChanged="Refresh" BackRequested="CloseSettingsAsync" />}
+else if(_view==SettingsView.Placement){<WindowPlacementView Settings="Settings.Current" ShowBack="false" Changed="SavePlacement" BackRequested="CloseSettingsAsync" />}
+else if(_view==SettingsView.Interaction){
+<h2>@Text.Get("Interaction")</h2>
+<SettingToggle Label="Mouse side-button navigation" Description="Use the side mouse buttons to move back and forward through menus." Value="Settings.Current.MouseSideButtonsEnabled" Disabled="false" Changed="v=>Save(s=>s with {MouseSideButtonsEnabled=v})" />
+@foreach(var direction in new[]{"Back","Forward"})
+{
+    var back = direction == "Back";
+    <label class="hit-setting-row"><span>@Text.Get(back ? "Mouse Back button" : "Mouse Forward button")</span><select aria-label="@Text.Get(back ? "Mouse Back button" : "Mouse Forward button")" disabled="@(!Settings.Current.MouseSideButtonsEnabled)" value="@(back ? Settings.Current.MouseBackBehavior : Settings.Current.MouseForwardBehavior)" @onchange="args=>Save(s=>back?s with{MouseBackBehavior=args.Value?.ToString()??string.Empty}:s with{MouseForwardBehavior=args.Value?.ToString()??string.Empty})"><option value="pages">@Text.Get("Page history")</option><option value="menus">@Text.Get("HIT menus")</option><option value="legacy">@Text.Get("Parent page, then HIT menus")</option></select></label>
+}
 
-<section class="settings-menu" data-hit-view="@_view.ToString().ToLowerInvariant()" data-no-drag @onclick:stopPropagation="true" @onkeydown="HandleKey" @onkeydown:stopPropagation="true">
-@if (_view == SettingsView.Extensions)
-{
-    <HoldItTogether.Components.Extensions.ExtensionsView BackRequested="CloseSettingsAsync" />
+<SettingToggle Label="Hold title to configure" Description="Hold the left mouse button on a menu title to open its settings." Value="Settings.Current.TitleHoldEnabled" Disabled="false" Changed="v=>Save(s=>s with {TitleHoldEnabled=v})" />
+<SettingRange Label="Title hold duration" Description="How long to hold the title before its settings open." Value="Settings.Current.TitleHoldDelayMs" Min="300" Max="1500" Step="100" Unit="ms" Disabled="!Settings.Current.TitleHoldEnabled" Changed="v=>Save(s=>s with {TitleHoldDelayMs=(int)v})" />
+<SettingRange Label="Compact after" Description="Time after the pointer leaves HIT before supported pinned views compact." Value="Settings.Current.MenuCompactDelayMs" Min="0" Max="10000" Step="500" Unit="ms" Disabled="false" Changed="v=>Save(s=>s with {MenuCompactDelayMs=(int)v})" />
 }
-else if (_view == SettingsView.Themes)
-{
-    <HitThemePicker Detailed="true" BackRequested="CloseSettingsAsync" />
+else if(_view==SettingsView.Scroll){
+<h2>@Text.Get("Scroll")</h2>
+<SettingToggle Label="Enable scroll cooldown" Description="Wait between wheel gestures when changing menus." Value="Settings.Current.ScrollCooldownEnabled" Disabled="false" Changed="v=>Save(s=>s with {ScrollCooldownEnabled=v})" />
+<SettingRange Label="Scroll sensitivity" Description="Multiplier applied to wheel movements for menu navigation." Value="Settings.Current.ScrollSensitivity" Min="0.25" Max="3" Step="0.25" Unit="x" Disabled="false" Changed="v=>Save(s=>s with {ScrollSensitivity=v})" />
+<SettingRange Label="Cooldown duration" Description="Minimum interval between menu changes triggered by scrolling." Value="Settings.Current.ScrollCooldownMs" Min="0" Max="2000" Step="50" Unit="ms" Disabled="!Settings.Current.ScrollCooldownEnabled" Changed="v=>Save(s=>s with {ScrollCooldownMs=(int)v})" />
 }
-else if (_view == SettingsView.Info)
-{
-    <HoldItTogether.Components.Settings.HitInfoView BackRequested="CloseSettingsAsync" />
+else if(_view==SettingsView.Accessibility){
+<h2>@Text.Get("Accessibility")</h2>
+<SettingToggle Label="Show option descriptions" Description="Display explanatory text underneath every setting." Value="Settings.Current.ShowSettingDescriptions" Disabled="false" Changed="v=>Save(s=>s with {ShowSettingDescriptions=v})" />
+<SettingToggle Label="Show tooltips" Description="Show hints when hovering over controls; accessible names stay available." Value="Settings.Current.ShowTooltips" Disabled="false" Changed="v=>Save(s=>s with {ShowTooltips=v})" />
+<SettingToggle Label="Menu entrance animations" Description="Gently reveal menus and configuration pages when opened." Value="Settings.Current.MenuEntranceAnimations" Disabled="Settings.Current.RemoveAnimations" Changed="v=>Save(s=>s with{MenuEntranceAnimations=v})" />
+<SettingToggle Label="Remove animations" Description="Skip movement and decorative transitions throughout HIT." Value="Settings.Current.RemoveAnimations" Disabled="false" Changed="v=>Save(s=>s with {RemoveAnimations=v})" />
+<SettingToggle Label="Automatic transparency" Description="Reduce opacity after inactivity in the selected presentation states." Value="Settings.Current.IdleOpacityEnabled" Disabled="false" Changed="v=>Save(s=>s with {IdleOpacityEnabled=v})" />
+<SettingToggle Label="Fade collapsed sphere" Description="Apply automatic transparency while HIT is a collapsed sphere." Value="Settings.Current.IdleOpacitySphere" Disabled="!Settings.Current.IdleOpacityEnabled" Changed="v=>Save(s=>s with {IdleOpacitySphere=v})" />
+<SettingToggle Label="Fade compact menu" Description="Apply automatic transparency to a visible compact menu." Value="Settings.Current.IdleOpacityCompact" Disabled="!Settings.Current.IdleOpacityEnabled" Changed="v=>Save(s=>s with {IdleOpacityCompact=v})" />
+<SettingToggle Label="Fade inactive open panel" Description="Apply automatic transparency to an open panel after the pointer leaves." Value="Settings.Current.IdleOpacityOpen" Disabled="!Settings.Current.IdleOpacityEnabled" Changed="v=>Save(s=>s with {IdleOpacityOpen=v})" />
+<SettingRange Label="Transparency delay" Description="Idle time before transparency starts." Value="Settings.Current.IdleOpacityDelayMs" Min="0" Max="60000" Step="500" Unit="ms" Disabled="!Settings.Current.IdleOpacityEnabled" Changed="v=>Save(s=>s with {IdleOpacityDelayMs=(int)v})" />
+<SettingRange Label="Idle opacity" Description="Opacity while inactive; interacting restores full opacity." Value="Settings.Current.IdleOpacityPercent" Min="10" Max="90" Step="1" Unit="%" Disabled="!Settings.Current.IdleOpacityEnabled" Changed="v=>Save(s=>s with {IdleOpacityPercent=(int)v})" />
+<SettingRange Label="Transparency fade duration" Description="Duration of the fade into the inactive opacity." Value="Settings.Current.IdleOpacityTransitionMs" Min="0" Max="3000" Step="50" Unit="ms" Disabled="!Settings.Current.IdleOpacityEnabled" Changed="v=>Save(s=>s with {IdleOpacityTransitionMs=(int)v})" />
 }
-else if (_view == SettingsView.Placement)
-{
-    <HoldItTogether.Components.Settings.WindowPlacementView Settings="Settings.Current" Changed="SavePlacement" BackRequested="CloseSettingsAsync" />
+else {
+<h2>@Text.Get("General")</h2>
+<SettingToggle Label="Infinite menu" Description="Wrap from the last HIT menu to the first, and from the first to the last, when navigating." Value="Settings.Current.InfiniteMenu" Changed="v=>Save(s=>s with{InfiniteMenu=v})" />
+<SettingToggle Label="Always on Top" Description="Keep HIT above ordinary desktop windows." Value="Settings.Current.AlwaysOnTop" Disabled="false" Changed="v=>Save(s=>s with {AlwaysOnTop=v})" />
+<SettingToggle Label="Force Always on Top" Description="Experimental repeated topmost recovery; exclusive fullscreen may remain unsupported." Value="Settings.Current.ForceAlwaysOnTop" Disabled="!Settings.Current.AlwaysOnTop || !OperatingSystem.IsWindows()" Changed="v=>Save(s=>s with {ForceAlwaysOnTop=v})" />
+<SettingToggle Label="System Tray" Description="Keep a HIT icon in the Windows notification area with application actions." Value="Settings.Current.SystemTray" Disabled="!OperatingSystem.IsWindows()" Changed="v=>Save(s=>s with {SystemTray=v})" />
+<SettingToggle Label="Start with Windows" Description="Launch HIT when the current Windows user signs in." Value="Settings.Current.StartWithWindows" Disabled="!OperatingSystem.IsWindows()" Changed="v=>Save(s=>s with {StartWithWindows=v})" />
+<SettingToggle Label="Automatic resource saving" Description="Pause presentation work in the resting sphere or when fully covered without FORCE." Value="Settings.Current.AutomaticResourceSaving" Disabled="false" Changed="v=>Save(s=>s with {AutomaticResourceSaving=v})" />
+
 }
-else if (_view == SettingsView.Scroll)
-{
-    <button type="button" class="hit-back" @onclick="CloseSettingsAsync"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m11 5-5 5 5 5M6 10h10" /></svg>Settings</button>
-    <label class="setting-row"><strong>Cooldown</strong><input class="hit-switch" type="checkbox" role="switch" aria-label="Enable scroll cooldown" @bind:get="Settings.Current.ScrollCooldownEnabled" @bind:set="SetCooldown" /></label>
-    <label class="range-row" @onwheel:stopPropagation="true"><span>Sensitivity</span>
-        <input type="range" min="0.25" max="3" step="0.25" aria-label="Scroll sensitivity" value="@Sensitivity.ToString(CultureInfo.InvariantCulture)" @oninput="PreviewSensitivity" @onchange="ChangeSensitivity" /><output>@Sensitivity.ToString("0.##", CultureInfo.InvariantCulture)×</output></label>
-    <label class="range-row" @onwheel:stopPropagation="true"><span>Pause</span>
-        <input type="range" min="0" max="2000" step="50" aria-label="Cooldown duration" disabled="@(!Settings.Current.ScrollCooldownEnabled)" value="@Cooldown" @oninput="PreviewCooldown" @onchange="ChangeCooldown" /><output>@(Settings.Current.ScrollCooldownEnabled ? $"{Cooldown} ms" : "No cooldown")</output></label>
-}
-else
-{
-    <label class="setting-row"><strong>Always on Top</strong><input class="switch" type="checkbox" role="switch" aria-label="Always on Top" @bind:get="Settings.Current.AlwaysOnTop" @bind:set="SetAlwaysOnTop" /></label>
-    @if (Settings.Current.AlwaysOnTop)
-    {
-        <label class="setting-row setting-suboption">
-            <span class="setting-experimental" title="Experimental. Use at your own risk!"><span class="setting-danger-icon" title="Experimental. Use at your own risk!" aria-hidden="true"><svg viewBox="0 0 20 20"><path d="m10 2 8 15H2Z" /><path d="M10 7v4m0 3v.1" /></svg></span><strong>Force Always on Top</strong></span>
-            <input class="switch" type="checkbox" role="switch" aria-label="Force Always on Top" aria-description="Experimental. Use at your own risk!" disabled="@(!OperatingSystem.IsWindows())" @bind:get="Settings.Current.ForceAlwaysOnTop" @bind:set="SetForceAlwaysOnTop" />
-        </label>
-    }
-    <label class="setting-row"><strong>System Tray</strong><input class="switch" type="checkbox" role="switch" aria-label="System Tray" disabled="@(!OperatingSystem.IsWindows())" @bind:get="Settings.Current.SystemTray" @bind:set="SetSystemTray" /></label>
-    <label class="setting-row"><strong>Start with Windows</strong><input class="switch" type="checkbox" role="switch" aria-label="Start with Windows" disabled="@(!OperatingSystem.IsWindows())" @bind:get="Settings.Current.StartWithWindows" @bind:set="SetStartWithWindows" /></label>
-    <label class="setting-row"><strong>Remove animations</strong><input class="switch" type="checkbox" role="switch" aria-label="Remove animations" @bind:get="Settings.Current.RemoveAnimations" @bind:set="SetRemoveAnimations" /></label>
-    <label class="setting-row"><strong>Show tooltips</strong><input class="switch" type="checkbox" role="switch" aria-label="Show tooltips" @bind:get="Settings.Current.ShowTooltips" @bind:set="SetShowTooltips" /></label>
-    <label class="setting-row range-row setting-compact-delay" @onwheel:stopPropagation="true"><span><strong>Compact after</strong><small>After the pointer leaves HIT</small></span>
-        <input type="range" min="0" max="10000" step="500" aria-label="Menu compact delay" value="@Settings.Current.MenuCompactDelayMs" @onchange="SetCompactDelay" /><output>@(Settings.Current.MenuCompactDelayMs == 0 ? "Immediately" : $"{Settings.Current.MenuCompactDelayMs / 1000d:0.#} s")</output></label>
-    <button type="button" class="hit-link-row" aria-label="Open Window placement" @onclick="() => Open(SettingsView.Placement)"><span>Window placement</span><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m8 5 5 5-5 5" /></svg></button>
-    <button type="button" class="hit-link-row" aria-label="Open Scroll speed" @onclick="() => Open(SettingsView.Scroll)"><span>Scroll speed</span><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m8 5 5 5-5 5" /></svg></button>
-    <button type="button" class="hit-link-row" aria-label="Open Info" @onclick="() => Open(SettingsView.Info)"><span>Info</span><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m8 5 5 5-5 5" /></svg></button>
-    <button type="button" class="hit-link-row settings-extensions-link" aria-label="Open Extensions" @onclick="OpenExtensions"><span>Extensions</span><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m8 5 5 5-5 5" /></svg></button>
-    <div class="settings-theme-row"><button type="button" class="hit-link-row" aria-label="Manage themes" @onclick="() => Open(SettingsView.Themes)"><span>Themes</span><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m8 5 5 5-5 5" /></svg></button><HitThemePicker /></div>
-}
-@if ((_error ?? Settings.RuntimeError) is { } error) { <p class="settings-error" role="alert">@error</p> }
-</section>
+@if((_error??Settings.RuntimeError) is {} error){<p class="settings-error" role="alert">@error</p>}
+</div></section>
 
 @code {
+    private void SetTitleMode(int mode)=>Save(s=>s with {TitleDisplayMode=mode});
     [CascadingParameter(Name = "HitMenu")] public HitMenuContext? MenuContext { get; set; }
-    private enum SettingsView { Main, Scroll, Info, Extensions, Themes, Placement }
+    private enum SettingsView { Main, Scroll, Info, Extensions, Themes, Placement, Interaction, Accessibility, Appearance, Personalization, Images }
+    private HitThemePicker? _themePicker;
+    private HitInfoView? _infoView;
     private SettingsView _view;
     private double? _sensitivityPreview;
     private int? _cooldownPreview;
@@ -67,10 +86,20 @@ else
     private bool _disposed;
     private double Sensitivity => _sensitivityPreview ?? Settings.Current.ScrollSensitivity;
     private int Cooldown => _cooldownPreview ?? Settings.Current.ScrollCooldownMs;
-    public bool IsSettingsOpen => _view != SettingsView.Main;
+    public bool IsSettingsOpen => true;
+    private string _infoPage = "Info";
+    public bool CanGoBack => (_view == SettingsView.Info && _infoPage != "Info") || (_view == SettingsView.Themes && _themePicker?.IsPersonalizing == true);
+    public bool CanReturnToParent => CanGoBack;
+    public string CurrentPage => _view == SettingsView.Info ? "Info/" + _infoPage : _view.ToString();
+    public Task NavigateToPageAsync(string page) => InvokeAsync(() => {
+        var parts = page.Split('/');
+        if (!Enum.TryParse<SettingsView>(parts[0],out var view) || !Enum.IsDefined(view)) return;
+        Open(view); _infoPage = view == SettingsView.Info && parts.Length == 2 ? parts[1] : "Info";
+        StateHasChanged();
+    });
     public Task OpenSettingsAsync() => Task.CompletedTask;
-    public Task CloseSettingsAsync() => InvokeAsync(() => { _view = SettingsView.Main; Extensions.ShowThemes = Extensions.ShowExtensions = false; StateHasChanged(); });
-    private void Open(SettingsView view) { _view = view; Extensions.ShowExtensions = view == SettingsView.Extensions; Extensions.ShowThemes = view == SettingsView.Themes; }
+    public Task CloseSettingsAsync() => InvokeAsync(async () => { if(_view==SettingsView.Info&&_infoView?.IsDetailOpen==true){await _infoView.CloseDetailAsync();return;} if(_view==SettingsView.Themes&&_themePicker?.IsPersonalizing==true){await _themePicker.ClosePersonalizationAsync();return;} _view = SettingsView.Main; Extensions.ShowThemes = Extensions.ShowExtensions = false; StateHasChanged(); });
+    private void Open(SettingsView view) { _infoPage = "Info"; _view = view; Extensions.ShowExtensions = view == SettingsView.Extensions; Extensions.ShowThemes = view == SettingsView.Themes; }
     private void OpenExtensions() => Open(SettingsView.Extensions);
     private void Requested() { if (!_disposed) _ = InvokeAsync(() => { Open(Extensions.ShowThemes ? SettingsView.Themes : SettingsView.Extensions); StateHasChanged(); }); }
     protected override void OnInitialized() { Settings.Changed += Refresh; Extensions.OpenRequested += Requested; _view = Extensions.ShowThemes ? SettingsView.Themes : Extensions.ShowExtensions ? SettingsView.Extensions : SettingsView.Main; }
@@ -78,7 +107,13 @@ else
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (MenuContext?.IsActive != true) { _title = null; return; }
-        var title = _view switch { SettingsView.Placement=>"Window placement",SettingsView.Scroll => "Scroll speed", SettingsView.Info => "Info", SettingsView.Themes => "Themes", SettingsView.Extensions => "Extensions", _ => "Settings" };
+        var title = Text.Get(_view switch {
+            SettingsView.Placement => "Window placement", SettingsView.Scroll => "Scroll",
+            SettingsView.Info => _infoView?.CurrentTitle ?? "Info", SettingsView.Themes => "Themes",
+            SettingsView.Extensions => "Extensions", SettingsView.Appearance => "Appearance",
+            SettingsView.Images => "Images", SettingsView.Personalization => "Personalization", SettingsView.Interaction => "Interaction",
+            SettingsView.Accessibility => "Accessibility", _ => "Settings"
+        });
         if (_title != title) { _title = title; await MenuContext.TitleRequested.InvokeAsync(title); }
     }
     private void Save(Func<HitSettings, HitSettings> update)
@@ -88,9 +123,14 @@ else
         catch (Exception error) when (error is IOException or UnauthorizedAccessException or InvalidOperationException or System.ComponentModel.Win32Exception) { _error = "Could not apply this change. Please try again."; }
     }
     private void SetAlwaysOnTop(bool enabled) => Save(value => value with { AlwaysOnTop = enabled });
+    private void SaveIdleOpacity(HitSettings changed)=>Save(value=>value with{IdleOpacityEnabled=changed.IdleOpacityEnabled,IdleOpacitySphere=changed.IdleOpacitySphere,IdleOpacityCompact=changed.IdleOpacityCompact,IdleOpacityOpen=changed.IdleOpacityOpen,IdleOpacityDelayMs=changed.IdleOpacityDelayMs,IdleOpacityPercent=changed.IdleOpacityPercent,IdleOpacityTransitionMs=changed.IdleOpacityTransitionMs});
+    private void SetSideButtons(bool enabled)=>Save(value=>value with{MouseSideButtonsEnabled=enabled});
+    private void SetTitleHold(bool enabled)=>Save(value=>value with{TitleHoldEnabled=enabled});
+    private void SetTitleHoldDelay(ChangeEventArgs args){if(int.TryParse(args.Value?.ToString(),out var delay))Save(value=>value with{TitleHoldDelayMs=delay});}
+    private void SetResourceSaving(bool enabled) => Save(value => value with { AutomaticResourceSaving = enabled });
     private void SetForceAlwaysOnTop(bool enabled) => Save(value => value with { ForceAlwaysOnTop = enabled });
     private void SetCompactDelay(ChangeEventArgs args) { if (int.TryParse(args.Value?.ToString(),out var number)) Save(value => value with { MenuCompactDelayMs = number }); }
-    private void SavePlacement(HitSettings updated)=>Save(value=>value with {WindowMagnetize=updated.WindowMagnetize,WindowAllowOtherMonitors=updated.WindowAllowOtherMonitors,WindowEdgeReachPercent=updated.WindowEdgeReachPercent});
+    private void SavePlacement(HitSettings updated)=>Save(value=>value with {WindowMagnetize=updated.WindowMagnetize,WindowMagnetizeCenter=updated.WindowMagnetizeCenter,WindowAllowOtherMonitors=updated.WindowAllowOtherMonitors,WindowEdgeReachPercent=updated.WindowEdgeReachPercent});
     private void SetSystemTray(bool enabled) => Save(value => value with { SystemTray = enabled });
     private void SetStartWithWindows(bool enabled) => Save(value => value with { StartWithWindows = enabled });
     private void SetShowTooltips(bool enabled) => Save(value => value with { ShowTooltips = enabled });

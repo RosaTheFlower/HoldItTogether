@@ -8,6 +8,22 @@ internal static class PlacementChecks
     private static void Check(bool value,string message){if(!value)throw new Exception(message);}
     public static void Run()
     {
+        var centerArea=new Rectangle(0,0,1000,600);
+        var centered=WindowPlacement.DragSurface(new Rectangle(0,0,100,100),new RectangleF(0,0,100,100),new Point(498,298),new PointF(50,50),centerArea,true,centerArea,12,true);
+        Check(centered.Location==new Point(450,250),"Optional center magnetism snaps both visible axes");
+        var stronger=WindowPlacement.DragSurface(new Rectangle(0,0,100,100),new RectangleF(0,0,100,100),new Point(520,320),new PointF(50,50),centerArea,true,centerArea,12,true);
+        Check(stronger.Location==new Point(450,250),"Center magnetism has a stronger capture range than edge magnetism");
+        var centerAnchor=WindowPlacement.SelectAnchor(new RectangleF(450,250,100,100),centerArea,true);
+        var sphere=WindowPlacement.PlaceSurface(centerAnchor,104,104,new RectangleF(24,24,56,56),centerArea);
+        Check(sphere.Left+24+28==500&&sphere.Top+24+28==300,"Collapsing a snapped menu leaves its sphere exactly at monitor center");
+        var horizontalAnchor=WindowPlacement.SelectAnchor(new RectangleF(450,20,100,100),centerArea,true);
+        var horizontalSphere=WindowPlacement.PlaceSurface(horizontalAnchor,104,104,new RectangleF(24,24,56,56),centerArea);
+        Check(horizontalSphere.Left+24+28==500&&horizontalSphere.Top+24==20,"A horizontally centered menu keeps its sphere on the center axis while retaining the top edge anchor");
+        var verticalAnchor=WindowPlacement.SelectAnchor(new RectangleF(20,250,100,100),centerArea,true);
+        var verticalSphere=WindowPlacement.PlaceSurface(verticalAnchor,104,104,new RectangleF(24,24,56,56),centerArea);
+        Check(verticalSphere.Top+24+28==300&&verticalSphere.Left+24==20,"A vertically centered menu keeps its sphere on the center axis while retaining the left edge anchor");
+        var free=WindowPlacement.DragSurface(new Rectangle(0,0,100,100),new RectangleF(0,0,100,100),new Point(498,298),new PointF(50,50),centerArea,false,centerArea,12,true);
+        Check(free.Location==new Point(448,248),"Center preference does not enable magnetism when its parent is off");
         foreach(var work in new[]{new Rectangle(0,0,1920,1040),new Rectangle(-1920,0,1920,1040),new Rectangle(1920,-200,1920,1040)})
         foreach(var scale in new[]{1d,1.25,1.5,2})
         foreach(var pivot in new (double X,double Y)[]{(0d,0d),(1d,0d),(0d,1d),(1d,1d),(.5,.5)})
@@ -53,7 +69,11 @@ internal static class PlacementChecks
         File.WriteAllText(positionPath,"{broken");Check(positions.Load() is null,"Corrupt saved positions safely fall back to default placement.");
         Check(new HitSettings().WindowEdgeReachPercent==98&&(new HitSettings {WindowEdgeReachPercent=20}).Normalize().WindowEdgeReachPercent==85,"Placement defaults and bounds");
 
-        Check(HitUpdateService.VersionLabel=="v"+HitUpdateService.ReleaseDate.ToString("ddMM"),"Public version is vDDMM from build release metadata.");
+        Check(HitUpdateService.VersionLabel==HitUpdateService.ReleaseGeneration+"v"+HitUpdateService.ReleaseDate.ToString("ddMM"),"Public version includes generation and date from build release metadata.");
+        Check(HitUpdateService.VersionLabel=="2v2910","The requested release label is 2v2910.");
+        Check(!HitUpdateService.IsNewerRelease("v0111",null,new(2026,10,29),2),"A later generation-one date cannot downgrade generation two.");
+        Check(HitUpdateService.IsNewerRelease("2v3010",null,new(2026,10,29),2)&&HitUpdateService.IsNewerRelease("3v0110",null,new(2026,10,29),2),"Generations precede release-date ordering.");
+        Check(!HitUpdateService.IsNewerRelease("2v2910",null,new(2026,10,29),2)&&!HitUpdateService.IsNewerRelease("2v3102",null,new(2026,10,29),2),"Same release and malformed generation-date tags do not offer updates.");
         var date=new DateOnly(2026,10,27);
         Check(HitUpdateService.IsNewerRelease("v0111",null,date),"Date versions are compared by month/day, never lexicographically.");
         Check(!HitUpdateService.IsNewerRelease("v2610",null,date)&&!HitUpdateService.IsNewerRelease("v2710",null,date),"Older/same date releases do not offer updates.");

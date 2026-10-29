@@ -1,6 +1,7 @@
+import { consumesWheel } from './hit-wheel-routing.js';
 let mutation, resize, frame = 0;
 const regions = new Map();
-const selector = '[data-hit-scroll],.extensions-list,.clock-world-list,.hit-scroll-region';
+const selector = '[data-hit-scroll],.extensions-list,.clock-world-list,.hit-scroll-region,.settings-sidebar,.chess-settings';
 function update(element) {
     if (!element.isConnected) return;
     const top = element.scrollTop > 1 ? '18px' : '0px';
@@ -14,7 +15,7 @@ function scan() {
     for (const element of document.querySelectorAll(selector)) {
         if (!regions.has(element)) {
             element.classList.add('hit-scroll-hint');
-            const onScroll = () => update(element), onWheel = event => event.stopPropagation();
+            const onScroll = () => update(element), onWheel = event => { if (consumesWheel(element,event)) event.stopPropagation(); };
             element.addEventListener('scroll', onScroll, { passive: true });
             element.addEventListener('wheel', onWheel, { passive: true });
             resize.observe(element);

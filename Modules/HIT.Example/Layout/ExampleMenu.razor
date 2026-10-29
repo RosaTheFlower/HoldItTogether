@@ -6,21 +6,29 @@
 @using Microsoft.Extensions.DependencyInjection
 @inherits HitMenuComponent
 @implements IHitMenuSettings
+@implements IHitMenuPages
 
-<section class="example-notes" data-no-drag @onclick:stopPropagation="true">
+<section class="example-notes" data-no-drag @onclick:stopPropagation="true" @onkeydown="HandleKey" @onkeydown:stopPropagation="IsSettingsOpen">
     @if (IsSettingsOpen)
     {
-        <button type="button" @onclick="CloseSettingsAsync">Back to notes</button>
-        <p>This menu uses HIT storage and the shared timer API.</p>
-        <p>Its CSS is editable in the installed extension folder.</p>
+        <div class="settings-workspace" data-hit-settings-workspace data-hit-view="@_settingsTopic.ToLowerInvariant()">
+            <nav class="settings-sidebar" aria-label="Notes settings topics">
+                @foreach(var topic in new[]{"General","Storage"}){<button type="button" class="settings-topic" aria-label="@($"Open {topic}")" aria-current="@(_settingsTopic==topic?"page":null)" @onclick="()=>SelectSettingsTopicAsync(topic)">@topic</button>}
+            </nav>
+            <div class="settings-content" data-hit-scroll tabindex="0">
+                <h2>@_settingsTopic</h2>
+                @if(_settingsTopic=="Storage") { <p>This menu saves notes in its isolated HIT storage.</p><p>Its CSS is editable in the installed extension folder.</p> }
+                else { <p>This menu uses HIT storage and the shared timer API.</p><button type="button" class="hit-button" title="Start the shared HIT countdown with a five-minute duration." @onclick="StartTimer">Start a 5-minute HIT timer</button> }
+            </div>
+        </div>
     }
     else
     {
         <label for="example-note">What are you working on?</label>
         <textarea id="example-note" maxlength="2000" rows="4" value="@_notes?.Text" @onchange="SaveNote" placeholder="Write a short note…"></textarea>
         <div class="example-actions">
-            <button type="button" @onclick="StartTimer">Start a 5-minute HIT timer</button>
-            <button type="button" data-hit-menu-trigger="settings" @oncontextmenu="OpenSettingsAsync" @oncontextmenu:preventDefault="true" @oncontextmenu:stopPropagation="true" @onclick="OpenSettingsAsync">Settings</button>
+            <button type="button" class="hit-button" @onclick="StartTimer">Start a 5-minute HIT timer</button>
+            <button type="button" class="hit-button" data-hit-menu-trigger="settings" @oncontextmenu="OpenSettingsAsync" @oncontextmenu:preventDefault="true" @oncontextmenu:stopPropagation="true" @onclick="OpenSettingsAsync">Settings</button>
         </div>
         <p role="status">@_status</p>
     }
@@ -29,6 +37,16 @@
 @code {
     private NotesService? _notes;
     private string _status = "";
+    private string _settingsTopic = "General";
+    private async Task SelectSettingsTopicAsync(string topic) { if(topic is not ("General" or "Storage"))return; _settingsTopic=topic; await Context.SetTitleAsync(topic=="General"?"Notes settings":topic); }
+    private Task HandleKey(KeyboardEventArgs args) => args.Key=="Escape"&&IsSettingsOpen?CloseSettingsAsync():Task.CompletedTask;
+    public string CurrentPage => IsSettingsOpen ? "Settings/"+_settingsTopic : "Notes";
+    public bool CanReturnToParent => IsSettingsOpen;
+    public Task NavigateToPageAsync(string page) => InvokeAsync(async () => {
+        if (page.StartsWith("Settings/",StringComparison.Ordinal) && page[9..] is "General" or "Storage") { IsSettingsOpen = true; await SelectSettingsTopicAsync(page[9..]); }
+        else if(page == "Notes") { IsSettingsOpen = false; await Context.SetTitleAsync("Notes"); }
+        StateHasChanged();
+    });
     public bool IsSettingsOpen { get; private set; }
     protected override async Task OnInitializedAsync()
     {
@@ -42,6 +60,6 @@
         _status = "Saved on this device.";
     }
     private void StartTimer() { Api.Clock.StartTimer(TimeSpan.FromMinutes(5)); _status = "The HIT timer is running."; }
-    public async Task OpenSettingsAsync() { IsSettingsOpen = true; await Context.SetTitleAsync("Notes settings"); await InvokeAsync(StateHasChanged); }
-    public async Task CloseSettingsAsync() { IsSettingsOpen = false; await Context.SetTitleAsync("Notes"); await InvokeAsync(StateHasChanged); }
+    public async Task OpenSettingsAsync() { IsSettingsOpen = true; _settingsTopic="General"; await Context.SetTitleAsync("Notes settings"); await InvokeAsync(StateHasChanged); }
+    public async Task CloseSettingsAsync() { if(_settingsTopic!="General"){await SelectSettingsTopicAsync("General");}else{IsSettingsOpen=false;await Context.SetTitleAsync("Notes");} await InvokeAsync(StateHasChanged); }
 }

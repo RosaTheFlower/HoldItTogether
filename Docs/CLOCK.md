@@ -10,8 +10,14 @@ There is no Reminders feature in 1.0.
 - **Timer:** hours/minutes/seconds, start, pause/resume and reset; durations from one second through 24 hours.
 - **Pomodoro:** focus, short/long breaks, pause/resume, restart and skip.
 
-M2 on the title opens general settings. M2 on the system readout (full or compact) opens World clocks.
-Both settings views block wheel-based menu switching and support M2 return without unpinning.
+M2 or the optional held-title gesture opens the shared settings workspace. Its visible sidebar has
+General, Pomodoro and World clocks; M1 reaches every page. M2 on the system readout (full or compact)
+remains a shortcut to World clocks. The right options pane scrolls locally, while wheel input outside
+it can navigate menus. The header chevron, M2, side Back and Escape return a subtopic to General,
+then General to the main readout without unpinning.
+Pomodoro exposes all duration sliders and automatic continuation together, without a hidden group.
+These controls keep the documented normalization and immediate persistence; they do not replace
+the service's independent deadline engine.
 
 While pinned, a click on the full readout or the shared pointer-departure delay requests Compact.
 The default is five seconds; Settings -> Compact after configures immediately through ten seconds.
@@ -31,7 +37,8 @@ Only the first/second are displayed; additional entries are retained for rearran
 Each row is a collapsed disclosure containing name/time/position and a chevron.
 Only one edit/add form is open. Expensive zone option lists mount only on expansion.
 After reorder, the editing state follows its item. Successful addition closes/clears its form; failed persistence preserves the draft.
-The list is a bounded local scroll region rather than page/window scroll.
+The shared right pane owns bounded scrolling; the embedded list does not create an unbounded
+nested scroll trap. Per-item editors remain lazy so zone lists mount only when explicitly expanded.
 
 TimeZoneInfo provides actual Windows zone rules, including daylight saving at the displayed instant.
 `local` follows the computer's zone; other entries use a zone ID, not a fixed UTC offset.
@@ -85,3 +92,7 @@ or expose world-clock editing/Pomodoro preference editing. See [API](API.md).
 Clock uses time-zone conversion, not computer-clock mutation. CSS cannot change a zone or countdown duration.
 Public selectors, digit sizing, compact padding and dual-clock details are in [Clock themes](CLOCK-THEMES.md).
 General compact/drag/M2/Alt contracts are in [Menus](MENUS.md).
+
+Clock configuration uses the shared small inline slider row and optional menu/topic entrance. These presentation effects never restart countdowns or alter persisted deadlines. Native wheel ownership releases empty directional boundaries to top-level navigation; Infinite menu applies there, independently of per-menu Back/Forward history.
+
+Clock configuration identifies the built-in feature as version 1.2.0. It is shipped and updated with HIT, not installed or updated as a separate extension.

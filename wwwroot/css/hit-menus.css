@@ -89,7 +89,7 @@
     color: #9298aa;
     font-size: 12px;
 }
-.hit-menu-loading { width: 360px; min-height: 220px; }
+.hit-menu-loading { display:grid;place-items:center;width:360px;min-height:220px; }
 
 @media (prefers-reduced-motion: reduce) {
     .hit-menu-dot span { transition: none; }

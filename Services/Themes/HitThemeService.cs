@@ -48,9 +48,9 @@ public sealed class HitThemeService
     }
 
     public HitThemeSnapshot ReadBase() => ReadDefault();
-    public HitThemeSnapshot ReadCurrent()
+    public HitThemeSnapshot ReadCurrent(string? selection=null)
     {
-        var id = _settings.Current.Theme;
+        var id = selection??_settings.Current.Theme;
         if (id == "default")
         {
             lock (_cacheSync) _selectedCss = null;

@@ -10,25 +10,27 @@
 @inject ExtensionActivationService Activation
 @inject IJSRuntime JS
 
-<section @ref="_root" class="extensions-view" data-no-drag @onclick:stopPropagation="true" @onwheel:stopPropagation="true"
+<section @ref="_root" class="extensions-view" data-no-drag @onclick:stopPropagation="true"
          @oncontextmenu="Back" @oncontextmenu:preventDefault="true" @oncontextmenu:stopPropagation="true"
          @onkeydown="HandleKey" @onkeydown:stopPropagation="true">
     <div class="extensions-toolbar">
-        <button type="button" class="extension-back" @onclick="Back" title="@Text.Get("Back to Settings (right-click)")" aria-label="@Text.Get("Back to Settings")">
+        <h2>@Text.Get("Extensions")</h2>
+        @if (ShowBack) { <button type="button" class="extension-back" @onclick="Back" title="@Text.Get("Back to Settings (right-click)")" aria-label="@Text.Get("Back to Settings")">
             <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m11 5-5 5 5 5M6 10h10" /></svg><span>@Text.Get("Settings")</span>
-        </button>
-        <label class="extension-install @(_busy ? "is-busy" : "")">
-            <span>@(_busy ? "Installing…" : Text.Get("Install .hitmenu"))</span>
+        </button> }
+        <label class="extension-install hit-busy-action @(_busy ? "is-busy" : "")" aria-busy="@(_busy ? "true" : "false")">
+            <span class="hit-busy-label">@Text.Get("Install .hitmenu")</span>
+            @if(_busy){<span class="hit-busy-indicator"><HitSpinner /></span>}
             <InputFile accept=".hitmenu" OnChange="Import" disabled="@_busy" aria-label="@Text.Get("Install extension")" />
         </label>
     </div>
     <p class="extensions-hint">@Text.Get("Drag menus to reorder. Drop a .hitmenu anywhere on HIT to install.")</p>
     @if (Ui.Message is { } message)
     {
-        <p class="extension-message @(Ui.IsError ? "is-error" : "")" role="status">@message</p>
+        <p class="extension-message @(Ui.IsError ? "is-error" : "")" role="status">@if(Ui.IsBusy){<HitSpinner Label="@message" />}else{@message}</p>
     }
     @if (Store.Error is { } error) { <p class="extension-message is-error" role="alert">@error</p> }
-    <div class="extensions-list" role="list" aria-label="@Text.Get("Menu order")" @onwheel:stopPropagation="true">
+    <div class="extensions-list" role="list" aria-label="@Text.Get("Menu order")">
         @foreach (var menu in Catalog.All)
         {
             var item = menu;
@@ -81,6 +83,7 @@
 
 @code {
     [Parameter] public EventCallback BackRequested { get; set; }
+    [Parameter] public bool ShowBack { get; set; } = true;
     private readonly CancellationTokenSource _lifetime = new();
     private bool _busy, _disposed, _dialogOpen;
     private InstalledExtension? _pending;

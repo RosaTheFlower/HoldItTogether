@@ -1,0 +1,11 @@
+<label class="setting-row settings-option">
+    <span><strong>@Text.Get(Label)</strong><small class="setting-description">@Text.Get(Description)</small></span>
+    <input type="checkbox" class="hit-switch" role="switch" aria-label="@Text.Get(Label)" disabled="@Disabled" checked="@Value" @onchange="e=>Changed.InvokeAsync(e.Value is true)" />
+</label>
+@code {
+    [Parameter] public string Label {get;set;}="";
+    [Parameter] public string Description {get;set;}="";
+    [Parameter] public bool Value {get;set;}
+    [Parameter] public bool Disabled {get;set;}
+    [Parameter] public EventCallback<bool> Changed {get;set;}
+}

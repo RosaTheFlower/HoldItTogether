@@ -5,10 +5,10 @@
   #error OutputFolder must point to the installer output directory
 #endif
 #ifndef HitVersion
-  #define HitVersion "v2710"
+  #define HitVersion "2v2910"
 #endif
 #ifndef NumericVersion
-  #define NumericVersion "2026.10.27"
+  #define NumericVersion "2026.10.29"
 #endif
 
 [Setup]

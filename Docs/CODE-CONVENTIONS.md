@@ -96,3 +96,5 @@ Build/publish relevant projects and check the distributed assets/docs. Run the d
 Keep code comments about intent/constraints, not a narration of obvious statements.
 Document changed API signatures, capability names, bounds, data paths and selectors before release.
 Commit source and supporting resources, not generated bin/obj/artifacts, profiles, logs or local preferences.
+
+Release labels derive from HitReleaseGeneration and HitReleaseDate; retain numeric Windows file versions and assembly/package identities independently. Top-level navigation is bounded by default; optional InfiniteMenu wrapping belongs in HitMenuNavigator, while page history remains a separate stable-ID concern. Use shared configuration rows instead of feature-specific copies of slider/input logic.
