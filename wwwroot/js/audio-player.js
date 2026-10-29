@@ -16,6 +16,28 @@ export function renderAudioFrame(root, element, values) {
     renderAudioEffects(root?.closest('.dynamic-sphere'), values);
 }
 const scrolling = new WeakSet();
+const audioKeys = new WeakMap();
+export function connectAudioKeys(root, reference) {
+    if (!root || audioKeys.has(root)) return;
+    const keydown = event => {
+        if (event.code !== 'Space' && event.key !== ' ') return;
+        if (event.defaultPrevented || event.ctrlKey || event.altKey || event.metaKey || event.shiftKey || event.isComposing) return;
+        const sphere = root.closest('.dynamic-sphere');
+        if (!root.isConnected || !root.getClientRects().length || !sphere?.classList.contains('is-open') ||
+            root.dataset.audioCanToggle !== 'true' || root.closest('[hidden],[inert],[data-hit-resource-sleep="true"]') ||
+            sphere.querySelector('dialog[open]') || document.querySelector('[data-hit-select-open="true"]')) return;
+        if (event.target instanceof Element && event.target.closest('input,textarea,select,button,a[href],[contenteditable]:not([contenteditable="false"]),[role="textbox"],[role="combobox"],[role="slider"],[role="radio"],[role="button"],[role="listbox"]')) return;
+        event.preventDefault();
+        if (!event.repeat) reference.invokeMethodAsync('TogglePlaybackFromKeyboard').catch(error => console.error('HIT playback shortcut failed.', error));
+    };
+    document.addEventListener('keydown', keydown, true);
+    audioKeys.set(root, keydown);
+}
+export function disconnectAudioKeys(root) {
+    const keydown = audioKeys.get(root);
+    if (keydown) document.removeEventListener('keydown', keydown, true);
+    audioKeys.delete(root);
+}
 export function enableLocalScroll(element) {
     if (!element || scrolling.has(element)) return;
     // Native scrolling stays inside the bounded view, outside Blazor's menu wheel handler.
@@ -24,12 +46,18 @@ export function enableLocalScroll(element) {
 }
 
 const lyricViews = new WeakMap();
-export function followLyrics(element, index, instant = false) {
+export function followLyrics(element, index, instant = false, playback = null) {
     if (!element?.isConnected) return;
     let view = lyricViews.get(element);
     if (!view) {
-        view = {index, lastManual:0, timer:0, observer:null};
-        view.wheel = () => {
+        view = {index, lastManual:0, timer:0, observer:null, animations:[], position:0, playing:false, sampledAt:performance.now()};
+        view.wheel = event => {
+            if (consumesWheel(element,event)) event.stopPropagation();
+            if (element.dataset.lyricsLayout === 'left' || element.dataset.lyricsLayout === 'right') {
+                event.stopPropagation();
+                event.preventDefault();
+                element.scrollLeft += event.deltaX || event.deltaY;
+            }
             view.lastManual = performance.now();
             clearTimeout(view.timer);
             view.timer = setTimeout(() => center(false), 1800);
@@ -37,14 +65,20 @@ export function followLyrics(element, index, instant = false) {
         const center = (force) => {
             const size = element.clientHeight + 'px';
             if (element.style.getPropertyValue('--lyrics-viewport-size') !== size) element.style.setProperty('--lyrics-viewport-size',size);
+            const width = element.clientWidth + 'px';
+            if (element.style.getPropertyValue('--lyrics-viewport-width') !== width) element.style.setProperty('--lyrics-viewport-width',width);
             if (!element.isConnected || (!force && performance.now() - view.lastManual < 1600)) return;
             const target = element.querySelector('[data-line-index="' + Math.max(0, view.index) + '"]');
-            if (!target) return;
+            if (!target || !target.offsetHeight) return;
             const scaleY = element.getBoundingClientRect().height / element.offsetHeight || 1;
             const top = (target.getBoundingClientRect().top - element.getBoundingClientRect().top) / scaleY +
                 element.scrollTop - element.clientHeight * 0.42 + target.offsetHeight / 2;
             const reduced = document.documentElement.dataset.hitMotion === "off" || matchMedia("(prefers-reduced-motion: reduce)").matches;
-            element.scrollTo({top:Math.max(0,top), behavior:force || reduced ? "auto" : "smooth"});
+            const horizontal = element.dataset.lyricsLayout === 'left' || element.dataset.lyricsLayout === 'right';
+            const scaleX = element.getBoundingClientRect().width / element.offsetWidth || 1;
+            const left = (target.getBoundingClientRect().left - element.getBoundingClientRect().left) / scaleX +
+                element.scrollLeft - element.clientWidth / 2 + target.offsetWidth / 2;
+            element.scrollTo({top:horizontal ? 0 : Math.max(0,top), left:horizontal ? Math.max(0,left) : 0, behavior:force || reduced ? "auto" : "smooth"});
         };
         view.center = center;
         view.observer = new ResizeObserver(() => {
@@ -52,12 +86,69 @@ export function followLyrics(element, index, instant = false) {
             view.resizeFrame = requestAnimationFrame(() => center(true));
         });
         view.observer.observe(element);
-        element.addEventListener("wheel", view.wheel, {passive:true});
-        enableLocalScroll(element);
+        element.addEventListener("wheel", view.wheel, {passive:false});
+        view.motion = matchMedia('(prefers-reduced-motion: reduce)');
+        view.environment = () => {
+            const position = view.position + (view.playing ? (performance.now()-view.sampledAt)/1000 : 0);
+            syncLyricsPlayback(element, position, view.playing);
+            if (document.documentElement.dataset.hitMotion === 'off' || view.motion.matches) view.center(true);
+        };
+        view.motion.addEventListener('change', view.environment);
+        document.addEventListener('visibilitychange', view.environment);
+        view.environmentObserver = new MutationObserver(view.environment);
+        view.environmentObserver.observe(document.documentElement, {attributes:true, attributeFilter:['data-hit-motion']});
+        const area = element.closest('.sphere-area');
+        if (area) view.environmentObserver.observe(area, {attributes:true, attributeFilter:['data-hit-resource-sleep']});
         lyricViews.set(element, view);
     }
     view.index = index;
+    if (instant) {
+        view.animations.forEach(animation => animation.cancel());
+        view.animations = [];
+        view.wordLine = null;
+    }
     view.center(instant);
+    if (playback) syncLyricsPlayback(element, playback.position, playback.playing);
+}
+
+export function syncLyricsPlayback(element, position, playing) {
+    const view = lyricViews.get(element);
+    if (!view) return;
+    view.position = Number.isFinite(position) ? position : 0;
+    view.playing = !!playing;
+    view.sampledAt = performance.now();
+    const reduced = document.documentElement.dataset.hitMotion === 'off' || view.motion.matches;
+    const line = element.dataset.lyricsLayout === 'wordrise' && !reduced ? element.querySelector('.lyric-line.is-current') : null;
+    if (line !== view.wordLine) {
+        view.animations.forEach(animation => animation.cancel());
+        view.animations = [];
+        view.wordLine = line;
+        const budget = line ? (Number(line.dataset.lineEnd)-Number(line.dataset.lineStart))*1000*2/3 : 0;
+        if (budget > 0 && Number.isFinite(budget)) {
+            const words = [...line.querySelectorAll('.lyric-word')];
+            // Normalize the latest ending word, including long words followed by shorter ones.
+            let startWeight = 0, overlappingWeight = 0;
+            for (const word of words) {
+                overlappingWeight = Math.max(overlappingWeight, startWeight + word.textContent.length);
+                startWeight += word.textContent.length / 2;
+            }
+            let delay = 0;
+            view.animations = words.map(word => {
+                const duration = budget * word.textContent.length / overlappingWeight;
+                const animation = word.animate([{transform:'translateY(.4em)',opacity:.25},{transform:'translateY(0)',opacity:1}],
+                    {duration,delay,fill:'both',easing:'cubic-bezier(.45,0,.55,1)'});
+                animation.pause(); delay += duration / 2;
+                return animation;
+            });
+        }
+    }
+    const elapsed = Math.max(0, (view.position - Number(line?.dataset.lineStart || 0))*1000);
+    const active = playing && !document.hidden && !element.closest('[data-hit-resource-sleep="true"]') && element.isConnected;
+    for (const animation of view.animations) {
+        if (Math.abs((animation.currentTime ?? -1000)-elapsed)>100 || !active) animation.currentTime = elapsed;
+        const timing = animation.effect.getTiming();
+        if (active && elapsed < timing.delay + timing.duration) animation.play(); else animation.pause();
+    }
 }
 export function disconnectLyrics(element) {
     const view = lyricViews.get(element);
@@ -65,6 +156,10 @@ export function disconnectLyrics(element) {
     clearTimeout(view.timer);
     cancelAnimationFrame(view.resizeFrame);
     view.observer.disconnect();
+    view.animations.forEach(animation => animation.cancel());
+    view.environmentObserver.disconnect();
+    view.motion.removeEventListener('change', view.environment);
+    document.removeEventListener('visibilitychange', view.environment);
     element.removeEventListener("wheel",view.wheel);
     lyricViews.delete(element);
 }

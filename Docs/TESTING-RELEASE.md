@@ -74,6 +74,7 @@ The native harness also checks live activation, settings subviews, selection/act
 
 ```powershell
 node Tests/browser/menus.mjs
+node Tests/browser/lyrics-layouts.mjs
 node Tests/browser/settings-design.mjs
 node Tests/browser/shared-settings.mjs
 node Tests/browser/navigation.mjs
@@ -182,6 +183,10 @@ Its Chrome path is Windows-specific. Synthetic browser drop does not replace che
 Other audio/clock/theme behaviors have the acceptance matrix below; temporary historical obj harnesses are not part of a clean checkout.
 
 ## Documentation checks
+
+`lyrics-layouts.mjs` consumes the host harness fixtures and checks all six layouts in three themes, current-line centering/direction, native preview-radio keyboard behavior, local horizontal wheel ownership, two-thirds proportional word timing, pause/seek progress, keyed track replacement, reduced motion, resource sleep and animation cleanup. The C# harness checks actual layout radio events, persistence and invalid-value fallback. Live media timing remains an interactive acceptance check.
+
+The same browser fixture verifies the Audio Space shortcut across reading/configuration pages, held-key suppression, modifiers/composition, editable/focused controls, unavailable playback, hidden/resource-sleep states, dialogs/pickers, idempotent connection and disposal. Real playback remains owned by the existing capability-checked media command path.
 
 Settings design checks use `node Tests/browser/settings-design.mjs` after the host harness emits
 `obj/menu-tests/` fixtures. They cover the topic sidebar, bottom Info, centered wheel selection and

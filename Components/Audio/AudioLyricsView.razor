@@ -25,7 +25,7 @@
     @if (Lyrics is { } lyrics)
     {
         var current = lyrics.CurrentIndex(Position);
-        <div @ref="_viewport" class="lyrics-viewport" data-hit-scroll tabindex="0" aria-label="@Text.Get("Song lyrics")">
+        <div @ref="_viewport" class="lyrics-viewport" data-lyrics-layout="@(lyrics.IsSynced ? Layout.ToString().ToLowerInvariant() : "down")" data-hit-scroll tabindex="0" aria-label="@Text.Get("Song lyrics")">
             <div class="lyrics-lines">
                 @if (!lyrics.IsSynced)
                 {
@@ -41,12 +41,21 @@
                     var line = lyrics.Lines[index];
                     <button @key="index" type="button"
                             class="lyric-line @(index == current ? "is-current" : index < current ? "is-past" : "is-future")"
-                            data-line-index="@index" style="@($"--lyric-distance:{Math.Min(4, Math.Abs(index - current))}")"
+                            data-line-index="@index" data-line-start="@line.Time.ToString(System.Globalization.CultureInfo.InvariantCulture)"
+                            data-line-end="@((index + 1 < lyrics.Lines.Count ? lyrics.Lines[index + 1].Time : Duration).ToString(System.Globalization.CultureInfo.InvariantCulture))"
+                            style="@($"--lyric-distance:{Math.Min(4, Math.Abs(index - current))}")"
                             aria-current="@(index == current ? "true" : null)"
                             aria-label="@($"Seek to {FormatTime(line.Time)}: {line.Text}")"
                             title="@(CanSeek ? "Play from this line" : "This app does not support seeking from lyrics")"
                             disabled="@(!CanSeek || Busy)" @onclick="() => SeekRequested.InvokeAsync(new LyricSeekRequest(generation, lyrics.Lines[lineIndex].Time))">
-                        @(string.IsNullOrWhiteSpace(line.Text) ? "♪" : line.Text)
+                        @if (Layout == AudioLyricsLayout.WordRise && index == current && !string.IsNullOrWhiteSpace(line.Text))
+                        {
+                            @foreach (var word in line.Text.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries))
+                            {
+                                <span class="lyric-word">@word</span>@(" ")
+                            }
+                        }
+                        else { @(string.IsNullOrWhiteSpace(line.Text) ? "♪" : line.Text) }
                     </button>
                 }
                 }
@@ -66,6 +75,9 @@
     [Parameter] public bool ShowSource { get; set; } = true;
     [Parameter] public long Generation { get; set; }
     [Parameter] public double Position { get; set; }
+    [Parameter] public double Duration { get; set; }
+    [Parameter] public bool Playing { get; set; }
+    [Parameter] public AudioLyricsLayout Layout { get; set; }
     [Parameter] public bool CanSeek { get; set; }
     [Parameter] public bool Busy { get; set; }
     [Parameter] public bool Loading { get; set; }
@@ -75,14 +87,24 @@
     private IJSObjectReference? _module;
     private Task<IJSObjectReference>? _moduleLoad;
     private RenderState? _rendered;
-    private readonly record struct RenderState(SyncedLyrics? Lyrics, long Generation, int Index, bool CanSeek, bool Busy, bool Loading, string? Error, string Title, bool ShowTitle, bool ShowSource);
-    private RenderState CurrentRender => new(Lyrics, Generation, Lyrics?.CurrentIndex(Position) ?? -1, CanSeek, Busy, Loading, _sourceError, Title, ShowTitle, ShowSource);
+    private readonly record struct RenderState(SyncedLyrics? Lyrics, long Generation, int Index, bool CanSeek, bool Busy, bool Loading, string? Error, string Title, bool ShowTitle, bool ShowSource, AudioLyricsLayout Layout, double Duration);
+    private RenderState CurrentRender => new(Lyrics, Generation, Lyrics?.CurrentIndex(Position) ?? -1, CanSeek, Busy, Loading, _sourceError, Title, ShowTitle, ShowSource, Layout, Duration);
     protected override bool ShouldRender() => _rendered != CurrentRender;
     private SyncedLyrics? _lastLyrics;
     private int _lastIndex = int.MinValue;
+    private AudioLyricsLayout _lastLayout;
+    private double _lastDuration;
+    private long _lastGeneration;
     private bool _disposed;
     private string? _sourceError;
     private bool HasSourceLink => HoldItTogether.Services.ExternalLinkService.IsWebAddress(Lyrics?.SourceUrl);
+    protected override async Task OnParametersSetAsync()
+    {
+        // Playback correction does not rebuild the lyric DOM on every media-position tick.
+        if (!_disposed && Layout == AudioLyricsLayout.WordRise && _module is not null && Lyrics?.IsSynced == true && ReferenceEquals(Lyrics, _lastLyrics) &&
+            Lyrics.CurrentIndex(Position) == _lastIndex && Layout == _lastLayout && Duration == _lastDuration && Generation == _lastGeneration)
+            await _module.InvokeVoidAsync("syncLyricsPlayback", _viewport, Position, Playing);
+    }
     private void OpenSource(MouseEventArgs args)
     {
         if (!args.CtrlKey || args.Button != 0 || !HasSourceLink) return;
@@ -105,14 +127,17 @@
             if (_module is not null) await _module.InvokeVoidAsync("disconnectLyrics", _viewport);
             _lastLyrics = Lyrics; _lastIndex = -1; return;
         }
-        var changed = !ReferenceEquals(Lyrics, _lastLyrics);
+        var changed = !ReferenceEquals(Lyrics, _lastLyrics) || Layout != _lastLayout || Duration != _lastDuration || Generation != _lastGeneration;
         if (!changed && index == _lastIndex) return;
         _moduleLoad ??= JS.InvokeAsync<IJSObjectReference>("import", "./js/audio-player.js").AsTask();
         _module = await _moduleLoad;
         if (_disposed) return;
         _lastLyrics = Lyrics;
         _lastIndex = index;
-        await _module.InvokeVoidAsync("followLyrics", _viewport, index, changed);
+        _lastLayout = Layout;
+        _lastDuration = Duration;
+        _lastGeneration = Generation;
+        await _module.InvokeVoidAsync("followLyrics", _viewport, index, changed, new { position = Position, playing = Playing });
     }
 
     private static string FormatTime(double seconds)

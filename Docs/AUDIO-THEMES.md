@@ -143,6 +143,12 @@ Do not neutralize global music variables with fixed theme colors. When music mod
 
 ## Lyrics, idle focus and interaction hints
 
+The viewport exposes `data-lyrics-layout` values `down`, `up`, `left`, `right`, `spotlight` and `wordrise`. `.lyrics-lines` retains chronological DOM order; reverse modes change flex order only. `.lyric-line.is-current/is-past/is-future` and original seek timestamps remain available. Horizontal modes use `--lyrics-viewport-width`; vertical modes keep `--lyrics-viewport-size`, both measured in unscaled layout coordinates. Preserve the bounded viewport, edge mask and current-line centering when styling these modes.
+
+Only the active Word rise line contains `.lyric-word` spans. JavaScript owns their temporary transform/opacity animations, using `data-line-start` and `data-line-end`; do not override timing or insert simulated lyric content. `.lyrics-layout-picker`, `.lyrics-layout-options`, `.lyrics-layout-card` and `.lyrics-layout-preview` style the settings radio previews. SVG paths inherit the current theme/accent and use no raster assets or background animation.
+
+The preview picker uses three equal columns and two rows of outlined 12px-radius cards, with an accent border/fill and `.lyrics-layout-selected` checkmark for the selected choice. The native radios retain keyboard/focus semantics; the checkmark is decorative. Hover is subtle and selection does not change card dimensions. There is one outer card boundary rather than an additional frame around each SVG.
+
 The current verse follows real timestamps and is highlighted/scrolled by JS. Click-to-seek depends on CanSeek.
 Keep `.lyrics-viewport` bounded/local-scroll and its text/button focus legible.
 Do not use pseudo-elements to replace real song/verse text, fake timing or create extra controls.

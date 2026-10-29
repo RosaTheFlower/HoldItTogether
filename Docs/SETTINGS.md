@@ -6,6 +6,8 @@ Source: `Components/HitMenus/HitMenuSettings.razor`. Controls follow [Design](DE
 
 ## Screens
 
+Audio settings -> Lyrics includes a preview-based radio picker for Down, Up, Left, Right, Spotlight and Word rise. It applies and saves immediately; existing profiles default to Down. See [Audio presentation preferences](AUDIO.md#lyrics-presentation-preferences) for ordering, timing and untimed-lyrics behavior.
+
 The compact workspace has a persistent left sidebar: General, Appearance, Themes, Personalization,
 Extensions, Interaction, Scroll, Accessibility, Window placement and bottom-pinned Info. A bounded
 right pane scrolls the selected topic. Themes and Personalization are separate topics. Themes has a

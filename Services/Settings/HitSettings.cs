@@ -48,6 +48,7 @@ public sealed record HitSettings
     public bool AudioLyricsNeutralBackground { get; init; }
     public bool AudioLyricsShowTitle { get; init; } = true;
     public bool AudioLyricsShowSource { get; init; } = true;
+    public AudioLyricsLayout AudioLyricsLayout { get; init; } = AudioLyricsLayout.Down;
     public int AudioArtworkZoom { get; init; } = 100;
     public int AudioArtworkDistortion { get; init; }
     public int AudioArtworkSaturation { get; init; } = 80;
@@ -132,6 +133,7 @@ public sealed record HitSettings
         AudioArtworkGrayscale = Math.Clamp(AudioArtworkGrayscale, 0, 100),
         AudioArtworkBeatStrength = Math.Clamp(AudioArtworkBeatStrength, 0, 200),
         AudioLyricsTimelineThickness = Math.Clamp(AudioLyricsTimelineThickness, 1, 6),
+        AudioLyricsLayout = Enum.IsDefined(AudioLyricsLayout) ? AudioLyricsLayout : AudioLyricsLayout.Down,
         ScrollCooldownMs = Math.Clamp(ScrollCooldownMs, 0, 2000),
         ScrollSensitivity = double.IsFinite(ScrollSensitivity)
             ? Math.Clamp(ScrollSensitivity, 0.25, 3)

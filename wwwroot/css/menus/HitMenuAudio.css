@@ -206,5 +206,36 @@
 
 :where(.hit-menu-panel[data-hit-menu="HoldItTogether.Components.HitMenus.HitMenuAudio"]) .lyric-plain-line{margin:0 0 12px;font-size:15px;line-height:1.7;color:var(--audio-foreground,var(--hit-text));white-space:pre-wrap;overflow-wrap:anywhere;}
 
+/* Lyrics presentations share the same bounded reading surface and timestamp controls. */
+:where(.hit-menu-panel[data-hit-menu="HoldItTogether.Components.HitMenus.HitMenuAudio"]) [data-lyrics-layout="up"] .lyrics-lines { flex-direction:column-reverse; }
+:where(.hit-menu-panel[data-hit-menu="HoldItTogether.Components.HitMenus.HitMenuAudio"]) .lyrics-viewport:is([data-lyrics-layout="left"],[data-lyrics-layout="right"]) { overflow-x:auto; overflow-y:hidden; mask-image:linear-gradient(to right,transparent,#000 10%,#000 90%,transparent); }
+:where(.hit-menu-panel[data-hit-menu="HoldItTogether.Components.HitMenus.HitMenuAudio"]) :is([data-lyrics-layout="left"],[data-lyrics-layout="right"]) .lyrics-lines { flex-direction:row; align-items:center; width:max-content; min-height:100%; box-sizing:border-box; padding:0 calc(var(--lyrics-viewport-width,360px) * .5); }
+:where(.hit-menu-panel[data-hit-menu="HoldItTogether.Components.HitMenus.HitMenuAudio"]) [data-lyrics-layout="right"] .lyrics-lines { flex-direction:row-reverse; }
+:where(.hit-menu-panel[data-hit-menu="HoldItTogether.Components.HitMenus.HitMenuAudio"]) :is([data-lyrics-layout="left"],[data-lyrics-layout="right"]) .lyric-line { width:calc(var(--lyrics-viewport-width,360px) * .8); }
+:where(.hit-menu-panel[data-hit-menu="HoldItTogether.Components.HitMenus.HitMenuAudio"]) [data-lyrics-layout="spotlight"] .lyrics-lines { height:100%; box-sizing:border-box; justify-content:center; padding:0 2px; }
+:where(.hit-menu-panel[data-hit-menu="HoldItTogether.Components.HitMenus.HitMenuAudio"]) [data-lyrics-layout="spotlight"] .lyric-line:not(.is-current) { display:none; }
+:where(.hit-menu-panel[data-hit-menu="HoldItTogether.Components.HitMenus.HitMenuAudio"]) .lyric-word { display:inline-block; }
+
+/* Native radio semantics with the same quiet selection treatment as title examples. */
+:where(.hit-menu-panel[data-hit-menu="HoldItTogether.Components.HitMenus.HitMenuAudio"]) .lyrics-layout-picker { min-width:0; margin:0 0 14px; padding:0; border:0; }
+:where(.hit-menu-panel[data-hit-menu="HoldItTogether.Components.HitMenus.HitMenuAudio"]) .lyrics-layout-picker legend { font-size:12px; font-weight:600; padding:0; }
+:where(.hit-menu-panel[data-hit-menu="HoldItTogether.Components.HitMenus.HitMenuAudio"]) .lyrics-layout-picker .setting-description { margin:6px 0 12px; font-size:11px; line-height:1.5; color:var(--hit-menu-muted,var(--hit-muted)); }
+:where(.hit-menu-panel[data-hit-menu="HoldItTogether.Components.HitMenus.HitMenuAudio"]) .lyrics-layout-options { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; }
+:where(.hit-menu-panel[data-hit-menu="HoldItTogether.Components.HitMenus.HitMenuAudio"]) .lyrics-layout-choice { position:relative; min-width:0; cursor:pointer; }
+:where(.hit-menu-panel[data-hit-menu="HoldItTogether.Components.HitMenus.HitMenuAudio"]) .lyrics-layout-choice input { position:absolute; width:1px; height:1px; opacity:0; clip-path:inset(50%); }
+:where(.hit-menu-panel[data-hit-menu="HoldItTogether.Components.HitMenus.HitMenuAudio"]) .lyrics-layout-card { display:flex; flex-direction:column; gap:8px; height:100%; box-sizing:border-box; padding:10px; border:1px solid color-mix(in srgb,var(--hit-menu-muted,var(--hit-muted)) 20%,transparent); border-radius:12px; color:var(--hit-menu-muted,var(--hit-muted)); font-size:11px; transition:background-color 180ms,color 180ms,border-color 180ms; }
+:where(.hit-menu-panel[data-hit-menu="HoldItTogether.Components.HitMenus.HitMenuAudio"]) .lyrics-layout-choice:hover .lyrics-layout-card { background:color-mix(in srgb,var(--hit-accent) 5%,transparent); border-color:color-mix(in srgb,var(--hit-accent) 45%,transparent); color:var(--hit-menu-text,var(--hit-text)); }
+:where(.hit-menu-panel[data-hit-menu="HoldItTogether.Components.HitMenus.HitMenuAudio"]) .lyrics-layout-choice input:checked + .lyrics-layout-card { background:color-mix(in srgb,var(--hit-accent) 12%,transparent); border-color:var(--hit-accent); color:var(--hit-menu-text,var(--hit-text)); }
+:where(.hit-menu-panel[data-hit-menu="HoldItTogether.Components.HitMenus.HitMenuAudio"]) .lyrics-layout-choice input:focus-visible + .lyrics-layout-card { outline:2px solid var(--hit-accent); outline-offset:2px; }
+:where(.hit-menu-panel[data-hit-menu="HoldItTogether.Components.HitMenus.HitMenuAudio"]) .lyrics-layout-caption { display:flex; align-items:center; justify-content:space-between; gap:4px; width:100%; font-weight:500; }
+:where(.hit-menu-panel[data-hit-menu="HoldItTogether.Components.HitMenus.HitMenuAudio"]) .lyrics-layout-selected { width:14px; height:14px; flex:0 0 auto; fill:none; stroke:var(--hit-accent); stroke-width:2; stroke-linecap:round; stroke-linejoin:round; visibility:hidden; }
+:where(.hit-menu-panel[data-hit-menu="HoldItTogether.Components.HitMenus.HitMenuAudio"]) .lyrics-layout-choice input:checked + .lyrics-layout-card .lyrics-layout-selected { visibility:visible; }
+:where(.hit-menu-panel[data-hit-menu="HoldItTogether.Components.HitMenus.HitMenuAudio"]) .lyrics-layout-preview { width:100%; height:auto; fill:none; stroke:currentColor; stroke-linecap:round; stroke-linejoin:round; stroke-width:3; }
+:where(.hit-menu-panel[data-hit-menu="HoldItTogether.Components.HitMenus.HitMenuAudio"]) .lyrics-preview-frame { stroke:none; }
+:where(.hit-menu-panel[data-hit-menu="HoldItTogether.Components.HitMenus.HitMenuAudio"]) .lyrics-preview-muted { opacity:.3; }
+:where(.hit-menu-panel[data-hit-menu="HoldItTogether.Components.HitMenus.HitMenuAudio"]) .lyrics-preview-current { stroke:var(--hit-accent); }
+:where(.hit-menu-panel[data-hit-menu="HoldItTogether.Components.HitMenus.HitMenuAudio"]) .lyrics-preview-arrow { stroke-width:1.5; }
+@media (prefers-reduced-motion:reduce) { :where(.hit-menu-panel[data-hit-menu="HoldItTogether.Components.HitMenus.HitMenuAudio"]) .lyrics-layout-card { transition:none; } }
+
 :where(.hit-menu-panel) .audio-visualizer-flips{display:flex;flex:1;gap:8px;min-width:0;}
 :where(.hit-menu-panel) .audio-visualizer-flips>.hit-button{flex:1;min-width:0;width:0;white-space:nowrap;}

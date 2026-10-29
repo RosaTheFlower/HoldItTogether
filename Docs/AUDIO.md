@@ -16,6 +16,7 @@ The timeline extrapolates from the Windows position/update time. Dragging only p
 Unsupported controls are disabled. Rejection/native errors remain local and polling retries without global keyboard shortcuts.
 
 Ctrl+click the title or Ctrl+Enter activates an existing matching media app window.
+Space toggles playback while Audio is the visible open menu, including its Player, Lyrics and configuration pages. It uses the current session's play/pause capability and ignores held-key repeats, modifiers, text composition, editable fields, focused interactive controls, open pickers/dialogs and resource sleep. It is local to the HIT window, not a system-wide media shortcut.
 MediaSourceWindow matches window/process AppUserModelID or known desktop process identity, rather than arbitrary title substrings.
 The song title only prioritizes windows already identified as that app. Activation restores a minimized window and requests foreground;
 Windows can refuse it. HIT does not launch another app to simulate this action.
@@ -40,6 +41,16 @@ The dedicated Lyrics view keeps the player's current dimensions. Current/past/fu
 Click a verse to seek when supported. M2, Escape or Back returns to Audio without unpinning.
 Ctrl+click the source opens the real result URL through the validated default-browser service.
 LRCLIB uses a result API ID when known; SyncLRC uses its actual query URL; NetEase uses the found track page.
+
+### Lyrics presentation preferences
+
+Audio settings -> Lyrics provides six native radio choices with theme-derived SVG previews. Selection applies immediately and persists as `audioLyricsLayout`: Down=0 (default), Up=1, Left=2, Right=3, Spotlight=4, WordRise=5. Invalid values normalize to Down. These choices preserve attribution and click-to-seek timestamps.
+
+Down keeps previous lines above and upcoming lines below the current line. Up reverses their visual order. Left places previous lines to the left and upcoming lines to the right; Right reverses that order. Horizontal modes center the active line along X, keep left-aligned text and convert wheel input to local horizontal scrolling. Manual browsing delays automatic following by the existing 1.8-second interval. Spotlight displays only the active line, centered vertically and aligned left. Untimed lyrics always retain the plain reading list without fabricated timing or seek targets.
+
+Word rise retains the default vertical context and raises words in sequence within the current line. The sequence occupies the first two thirds of the interval to the next lyric timestamp, or the track duration for the last line. Individual durations are weighted by word length; each word starts halfway through its predecessor's animation. Durations are normalized so the overlapping sequence still finishes at two thirds. A short 0.4em rise and symmetric ease-in/out soften the movement. This is an estimated presentation based on line timestamps, not provider-supplied word or vocal alignment. Missing/nonpositive intervals leave readable static text. Pause freezes progress; seeking, reopening and track changes restore progress from the media position rather than restarting at zero.
+
+Only the current line allocates word spans/animation handles. Position corrections do not rebuild the lyric tree; there is no additional media polling or perpetual JavaScript animation loop. Remove animations/system reduced motion shows static words; resource sleep pauses the effects. Hidden views dispose animations, observers, timers and listeners. Timing accuracy still depends on the media application and lyrics provider.
 
 ## Visualizer
 

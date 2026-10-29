@@ -19,6 +19,9 @@ internal static class MenuChecks
     public static async Task RunAsync(IServiceProvider services, string root, string repo)
     {
         var settings = services.GetRequiredService<HitSettingsService>();
+        Check(new HitSettings().AudioLyricsLayout == AudioLyricsLayout.Down &&
+            (new HitSettings { AudioLyricsLayout = (AudioLyricsLayout)999 }).Normalize().AudioLyricsLayout == AudioLyricsLayout.Down,
+            "Existing and invalid lyric preferences retain the original layout");
         Check(new HitSettings() is { AudioVisualizerStyle: AudioVisualizerStyle.Bars, AudioVisualizerHeightPercent: 100 }, "Legacy preferences retain the original bars and full height");
         Check((new HitSettings { AudioVisualizerStyle = (AudioVisualizerStyle)999, AudioVisualizerHeightPercent = -1 }).Normalize()
             is { AudioVisualizerStyle: AudioVisualizerStyle.Bars, AudioVisualizerHeightPercent: 10 }, "Invalid visualizer preferences fall back and clamp");
@@ -208,6 +211,13 @@ internal static class MenuChecks
                 await audio.CloseSettingsAsync();
                 await audio.OpenSettingsAsync();
                 await interactive.DispatchEventAsync(interactive.Event(audioId,"button","aria-label","Open Lyrics","onclick"),null,new MouseEventArgs());
+                foreach (var layout in Enum.GetValues<AudioLyricsLayout>())
+                {
+                    var label = layout == AudioLyricsLayout.WordRise ? "Word rise" : layout.ToString();
+                    await interactive.DispatchEventAsync(interactive.Event(audioId,"input","aria-label",label,"onchange"),null,new ChangeEventArgs { Value = layout.ToString() });
+                    Check(new HitSettingsService(Path.Combine(root,"settings.json")).Current.AudioLyricsLayout == layout, "Lyrics layout radio applies and persists immediately");
+                }
+                settings.Update(value => value with { AudioLyricsLayout = AudioLyricsLayout.Down });
                 await interactive.DispatchEventAsync(interactive.Event(audioId,"input","aria-label","Show song title in lyrics","onchange"),null,new ChangeEventArgs {Value=false});
                 Check(!settings.Current.AudioLyricsShowTitle && settings.Current.AudioLyricsShowSource, "Audio Config must change lyrics title without hiding source");
                 await interactive.DispatchEventAsync(interactive.Event(audioId,"input","aria-label","Show lyrics source","onchange"),null,new ChangeEventArgs {Value=false});
@@ -311,6 +321,11 @@ internal static class MenuChecks
                 await ClockPlacementPreview.Instance!.CompactAsync();
                 await File.WriteAllTextAsync(Path.Combine(preview,"clock-compact.html"),clockPreview.ToHtmlString());
                 await Save<AudioLyricsView>("lyrics",new(){["Title"]="A sample track",["Lyrics"]=new SyncedLyrics(Enumerable.Range(0,30).Select(index=>new LyricLine(index*5,"Lyric line "+index)).ToArray()),["Position"]=75d,["CanSeek"]=true});
+                foreach (var layout in Enum.GetValues<AudioLyricsLayout>())
+                {
+                    var sample = new SyncedLyrics(Enumerable.Range(0,12).Select(index => new LyricLine(index*6,"Every word finds its own way " + index)).ToArray());
+                    await Save<AudioLyricsView>("lyrics-layout-"+layout.ToString().ToLowerInvariant(),new(){["Title"]="A sample track",["Lyrics"]=sample,["Position"]=30d,["Duration"]=72d,["Layout"]=layout,["CanSeek"]=true});
+                }
                 await Save<AudioLyricsView>("lyrics-plain",new(){["Title"]="A sample track",["Lyrics"]=new SyncedLyrics(Enumerable.Range(0,35).Select(index=>new LyricLine(0,"Plain verse "+index)).ToArray(),"Lyrics.ovh","https://api.lyrics.ovh/v1/Artist/Song",false),["Position"]=75d,["CanSeek"]=true});
                 foreach (var (name, title, source) in new[] { ("lyrics-title",true,false), ("lyrics-source",false,true), ("lyrics-hidden",false,false) })
                 {

@@ -51,4 +51,6 @@ real media-provider/device acceptance. Update Audio/API/theme guides for any cha
 
 ## Current contract checkpoints
 
+Lyrics layout choices preserve line timestamps, seek capability and untimed fallback. Word rise estimates presentation timing from the first two thirds of a line interval; never describe it as true word-level vocal alignment. Animate only current-line word spans, synchronize pause/seek without rebuilding the tree, and release handles/listeners on hide/disposal. Use lyrics-layouts.mjs after generating host fixtures for direction, preview radios, reduced motion and lifecycle coverage.
+
 Preserve the separate artwork/background blend switch and 0-100% cover opacity. Exclusive mode suppresses the personal layer without disposing it; cover removal restores it during the fade. Lyrics may be timed or explicitly untimed; only timed results permit seeking/following. YouTube matching uses normalized metadata, not fingerprinting; do not advertise a private Spotify lyrics endpoint as implemented.

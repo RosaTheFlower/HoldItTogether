@@ -9,6 +9,7 @@
 }
 else if (Topic == "Lyrics")
 {
+    <LyricsLayoutPicker Value="Settings.AudioLyricsLayout" Changed="LyricsLayoutChanged" />
     <SettingToggle Label="Show song title in lyrics" Description="Display the track name above the lyrics." Value="Settings.AudioLyricsShowTitle" Changed="LyricsTitleChanged" />
     <SettingToggle Label="Show lyrics source" Description="Display the lyrics provider and its source link." Value="Settings.AudioLyricsShowSource" Changed="LyricsSourceChanged" />
     <SettingToggle Label="Show timeline in lyrics" Description="Show the seekable playback timeline along the edge of the lyrics." Value="Settings.AudioLyricsTimeline" Changed="TimelineChanged" />
@@ -29,5 +30,6 @@ else
     [Parameter] public EventCallback<bool> TimelineChanged { get; set; }
     [Parameter] public EventCallback<bool> LyricsTitleChanged { get; set; }
     [Parameter] public EventCallback<bool> LyricsSourceChanged { get; set; }
+    [Parameter] public EventCallback<HoldItTogether.Services.Audio.AudioLyricsLayout> LyricsLayoutChanged { get; set; }
     [Parameter] public EventCallback<int> TimelineThicknessChanged { get; set; }
 }

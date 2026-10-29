@@ -1,0 +1,61 @@
+@using HoldItTogether.Services.Audio
+
+<fieldset class="lyrics-layout-picker">
+    <legend>@Text.Get("Lyrics layout")</legend>
+    <p class="setting-description">@Text.Get("Choose how synchronized lyrics move. Untimed lyrics remain a readable list.")</p>
+    <div class="lyrics-layout-options">
+        @foreach (var layout in Enum.GetValues<AudioLyricsLayout>())
+        {
+            var choice = layout;
+            <label class="lyrics-layout-choice" title="@Text.Get(Description(choice))">
+                <input type="radio" name="lyrics-layout" value="@choice" checked="@(Value == choice)" aria-label="@Text.Get(Label(choice))" @onchange="() => Changed.InvokeAsync(choice)" />
+                <span class="lyrics-layout-card">
+                    <svg viewBox="0 0 120 66" aria-hidden="true" focusable="false" class="lyrics-layout-preview" data-preview="@choice.ToString().ToLowerInvariant()">
+                        <rect class="lyrics-preview-frame" x="1" y="1" width="118" height="64" rx="8" />
+                        @if (choice is AudioLyricsLayout.Left or AudioLyricsLayout.Right)
+                        {
+                            <path class="lyrics-preview-muted" d="M8 28h15M8 35h20M92 28h20M92 35h15" />
+                            <path class="lyrics-preview-current" d="M37 28h43M37 35h35" />
+                            <path class="lyrics-preview-arrow" d="@(choice == AudioLyricsLayout.Left ? "M47 52h26m-5-4 5 4-5 4" : "M73 52H47m5-4-5 4 5 4")" />
+                        }
+                        else if (choice == AudioLyricsLayout.Spotlight)
+                        {
+                            <path class="lyrics-preview-current" d="M22 28h76M22 37h54" />
+                        }
+                        else if (choice == AudioLyricsLayout.WordRise)
+                        {
+                            <path class="lyrics-preview-muted" d="M22 13h60M22 55h70" />
+                            <path class="lyrics-preview-current" d="M22 31h18M46 34h18M70 40h23" />
+                            <path class="lyrics-preview-arrow" d="M80 32v-9m-4 4 4-4 4 4" />
+                        }
+                        else
+                        {
+                            <path class="lyrics-preview-muted" d="M18 14h54M18 51h62" />
+                            <path class="lyrics-preview-current" d="M18 31h65M18 37h46" />
+                            <path class="lyrics-preview-arrow" d="@(choice == AudioLyricsLayout.Down ? "M102 23v20m-4-4 4 4 4-4" : "M102 43V23m-4 4 4-4 4 4")" />
+                        }
+                    </svg>
+                    <span class="lyrics-layout-caption">
+                        <span>@Text.Get(Label(choice))</span>
+                        <svg class="lyrics-layout-selected" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="m3 8 3 3 7-7" /></svg>
+                    </span>
+                </span>
+            </label>
+        }
+    </div>
+</fieldset>
+
+@code {
+    [Parameter] public AudioLyricsLayout Value { get; set; }
+    [Parameter] public EventCallback<AudioLyricsLayout> Changed { get; set; }
+    private static string Label(AudioLyricsLayout layout) => layout == AudioLyricsLayout.WordRise ? "Word rise" : layout.ToString();
+    private static string Description(AudioLyricsLayout layout) => layout switch
+    {
+        AudioLyricsLayout.Down => "Previous lines above, upcoming lines below the current line.",
+        AudioLyricsLayout.Up => "Previous lines below, upcoming lines above the current line.",
+        AudioLyricsLayout.Left => "Previous lines on the left, upcoming lines on the right.",
+        AudioLyricsLayout.Right => "Previous lines on the right, upcoming lines on the left.",
+        AudioLyricsLayout.Spotlight => "Only the current line, centered vertically and aligned left.",
+        _ => "Words rise in sequence during the first two thirds of each line. Timing is estimated from line timestamps."
+    };
+}
