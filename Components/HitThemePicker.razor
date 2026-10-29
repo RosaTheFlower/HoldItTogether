@@ -47,7 +47,7 @@
 }
 else
 {
-    <select @ref="_themeSelect" aria-label="HIT theme" value="@Settings.Current.Theme" @onchange="SelectTheme">
+    <select @ref="_themeSelect" aria-label="HIT theme" value="@Settings.Current.Theme" data-hit-select-value="@Settings.Current.Theme" @onchange="SelectTheme">
         @foreach (var theme in _themes) { <option value="@theme.Id">@theme.Name</option> }
     </select>
 }

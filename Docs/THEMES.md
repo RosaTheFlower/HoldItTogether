@@ -40,6 +40,7 @@ precedence. Disabling the override restores the existing theme rather than rewri
 
 Open the Settings -> Themes topic for management, or use its full-width combobox for immediate activation.
 The list separates selection from activation: click selects, Ctrl+click selects several, double-click or Enter activates.
+Activating a list item also refreshes the quick combobox label and its next opening selection. The native select publishes `data-hit-select-value` with the active theme so the shared DOM adapter observes programmatic Blazor value changes without polling or dispatching another change event.
 Open folder and Delete selected sit above the final Import CSS action. CSS may also be dropped anywhere on HIT.
 An imported `.css` file is copied into `%LOCALAPPDATA%\HoldItTogether\Themes`; edit that installed copy.
 The maximum file size is 1 MiB. The filename is sanitized and collisions receive suffixes.

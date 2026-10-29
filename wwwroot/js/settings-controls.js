@@ -156,7 +156,7 @@ export function connect(root){
         });
     };
     const schedule=()=>{if(!frame)frame=requestAnimationFrame(scan);};
-    const observer=new MutationObserver(schedule);observer.observe(root,{subtree:true,childList:true,attributes:true,attributeFilter:['disabled','value','selected','aria-current']});
+    const observer=new MutationObserver(schedule);observer.observe(root,{subtree:true,childList:true,attributes:true,attributeFilter:['disabled','value','selected','aria-current','data-hit-select-value']});
     const visibility=new MutationObserver(()=>{if(root.closest('[hidden],[inert]'))close(false,false,false);});
     const panel=root.closest('.hit-menu-panel');if(panel)visibility.observe(panel,{attributes:true,attributeFilter:['hidden','inert']});
     document.addEventListener('pointerdown',e=>{if(popup&&!popup.contains(e.target)&&!e.target.closest('.settings-combobox'))close();},{signal:abort.signal});

@@ -148,6 +148,7 @@ internal static class MenuChecks
                 await interactive.DispatchEventAsync(interactive.Event(id,"button","data-theme-id",second,"onclick"),null,new MouseEventArgs {CtrlKey=true});
                 await interactive.DispatchEventAsync(interactive.Event(id,"button","data-theme-id",first,"ondblclick"),null,new MouseEventArgs());
                 Check(settings.Current.Theme == first, "Double click must activate");
+                Check(interactive.Graph(id).Any(frame => frame.FrameType == RenderTreeFrameType.Attribute && frame.AttributeName == "data-hit-select-value" && Equals(frame.AttributeValue,first)), "Theme activation must publish the quick picker synchronization value");
                 await Click("Delete selected themes");
                 Check(themes.GetThemes().Any(theme=>theme.Id==first), "First deletion action must not remove files");
                 await Click("Confirm theme deletion");

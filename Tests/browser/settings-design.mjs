@@ -16,6 +16,15 @@ controls.connect(root);window.ready=true;</script></body></html>`);
 const browser=await openBrowser(root),{evaluate,command}=browser;
 try{
     await wait(150);
+    await evaluate(`window.themeChanges=0;const row=document.createElement('div');row.id='theme-sync-regression';row.innerHTML='<select aria-label="Theme sync regression" data-hit-select-value="default"><option value="default">Default theme</option><option value="custom:test">Custom theme</option></select><button type="button">Activate custom</button>';root.querySelector('.settings-content').append(row);const select=row.querySelector('select');select.addEventListener('change',()=>themeChanges++);row.querySelector('button').ondblclick=()=>{select.value='custom:test';select.dataset.hitSelectValue='custom:test'};`);
+    await wait(60);
+    await evaluate("document.querySelector('#theme-sync-regression > button:last-child').dispatchEvent(new MouseEvent('dblclick',{bubbles:true}))");await wait(60);
+    assert.equal(await evaluate("document.querySelector('#theme-sync-regression .settings-combobox').textContent"),'Custom theme','List activation refreshes the quick picker without a native change event');
+    assert.equal(await evaluate('themeChanges'),0,'Programmatic synchronization never reapplies the theme');
+    await evaluate("document.querySelector('#theme-sync-regression .settings-combobox').click()");
+    assert.equal(await evaluate("document.querySelector('.settings-select-popup [aria-selected=true]').textContent"),'Custom theme','Reopened picker centers the activated theme');
+    await command('Input.dispatchKeyEvent',{type:'keyDown',key:'Enter'});
+    await evaluate("document.getElementById('theme-sync-regression').remove()");await wait(220);
     assert.equal(await evaluate("document.querySelectorAll('.settings-topic').length"),11);
     await evaluate("document.querySelector('.settings-topic[aria-current]').removeAttribute('aria-current');document.querySelector('.settings-topic-info').setAttribute('aria-current','page')");await wait(80);
     assert.ok(await evaluate("(()=>{const h=document.querySelector('.settings-topic-highlight');const y=new DOMMatrixReadOnly(getComputedStyle(h).transform).m42;return y>0&&y<document.querySelector('.settings-topic-info').offsetTop})()"),'Sidebar highlight travels through intermediate positions');
