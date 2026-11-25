@@ -5,6 +5,7 @@ import { connectReadingBackground } from "./hit-reading-background.js";
 import { connectCompactMotion } from "./hit-compact-motion.js";
 import { connectNavigation } from "./hit-navigation.js";
 import { connectIdleOpacity } from "./hit-idle-opacity.js";
+import { connectPersonalizationPreview } from "./hit-personalization.js";
 
 const observers = new WeakMap();
 
@@ -19,6 +20,7 @@ export async function observe(element, dotnet) {
     const compactMotion=connectCompactMotion(sphere);
     const disconnectNavigation=connectNavigation(sphere,dotnet);
     const disconnectIdleOpacity=connectIdleOpacity(element,sphere);
+    const disconnectPersonalization=connectPersonalizationPreview(sphere);
     let hostSignature='';
     function publishHost(){const open=sphere.classList.contains('is-open'),compact=sphere.classList.contains('is-menu-compact')||sphere.dataset.hitControlsHidden==='true',pinned=sphere.classList.contains('is-pinned');const next=[open,compact,pinned,document.hidden].join(':');if(next!==hostSignature){hostSignature=next;dotnet.invokeMethodAsync('PublishHostState',open,compact,pinned).catch(()=>{});document.dispatchEvent(new CustomEvent('hit-appearance-changed'));}}
     const hostObserver=new MutationObserver(publishHost);hostObserver.observe(sphere,{attributes:true,attributeFilter:['class','data-hit-controls-hidden']});document.addEventListener('visibilitychange',publishHost);publishHost();
@@ -226,6 +228,7 @@ export async function observe(element, dotnet) {
     if (menuMeasure) observer.observe(menuMeasure);
     // Apply size/readiness changes in the mutation microtask before the next paint.
     const layoutObserver = new MutationObserver(records=>{
+        if(records.some(record=>record.target===sphere&&record.attributeName==='class'))updateThemePointerPreference();
         if(records.some(record=>record.target===sphere&&record.attributeName==='data-hit-placement'))void refreshPlacement();
         else measure();
     });
@@ -245,6 +248,7 @@ export async function observe(element, dotnet) {
         disconnectDragging();
         disconnectNavigation();
         disconnectIdleOpacity();
+        disconnectPersonalization();
         hostObserver.disconnect();document.removeEventListener('visibilitychange',publishHost);
         disconnectMenuChrome();
         disconnectModifiers();

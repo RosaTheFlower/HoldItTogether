@@ -54,4 +54,4 @@ description only when requested, without staging unrelated/local planning materi
 
 ## Current contract checkpoints
 
-Build labels from HitReleaseGeneration and HitReleaseDate (current application 2v2910), keeping numeric Windows versions and SDK/package identities separate. Update ordering must compare generation before date and accept old vDDMM tags as generation one. Review tracked and untracked source plus git diff --check; clean only resolved generated paths, preserve running outputs and IDE/user profiles, and keep the local roadmap ignored. Never imply that a clean diff means installers/live native scenarios were validated.
+Build labels from HitReleaseGeneration and HitReleaseDate (current application 3v2511), keeping numeric Windows versions and SDK/package identities separate. Update ordering must compare generation before date and accept old vDDMM tags as generation one. Review tracked and untracked source plus git diff --check; clean only resolved generated paths, preserve running outputs and IDE/user profiles, and keep the local roadmap ignored. Never imply that a clean diff means installers/live native scenarios were validated.

@@ -11,6 +11,7 @@ use English, matching the interface. Commands run from the repository root unles
 | --- | --- |
 | Install, run, navigate and configure HIT | [Getting started](GETTING-STARTED.md) |
 | Build and distribute the Release/Dev installation wizard | [Windows installer](INSTALLER.md) |
+| Read current-build release notes | [Changelog](CHANGELOG.md) |
 | Understand release versions, implemented features and limits | [Release scope](VERSION-1.0.md) |
 | Understand components, services, persistence and startup | [Architecture](ARCHITECTURE.md) |
 | Follow the shared interaction/layout contract | [Menus](MENUS.md) |
@@ -28,7 +29,7 @@ use English, matching the interface. Commands run from the repository root unles
 | Build, install and play the independent chess menu | [Chess extension](CHESS.md) |
 | Style full/compact/world clocks | [Clock theme reference](CLOCK-THEMES.md) |
 | Respect memory budgets and interpret measurements | [Performance](PERFORMANCE.md) |
-| Add English messages and prepare translation support | [Localization](LOCALIZATION.md) |
+| Select/import languages and maintain source messages | [Localization](LOCALIZATION.md) |
 | Build, test, package, publish and prepare a commit | [Testing and release](TESTING-RELEASE.md) |
 | Diagnose installation, media, CSS and startup problems | [Troubleshooting](TROUBLESHOOTING.md) |
 
@@ -49,7 +50,7 @@ Built-in menu source remains the reference for integration details, while the SD
 
 | Item | Version |
 | --- | --- |
-| Application release | 2v2910 (29 October) |
+| Application release | 3v2511 (25 November) |
 | Built-in Audio / Clock | 1.2.0 / 1.2.0 (bundled with HIT) |
 | Optional Chess package | 1.1.1 |
 | Public SDK package | 1.2.0 |

@@ -51,3 +51,22 @@ with disposable state. Update the relevant selector/token table or settings cont
 ## Current contract checkpoints
 
 Treat the Images topic as the managed-image policy surface: configurable finite/unlimited import size and a global GIF permission apply independently of visual profiles. Keep gallery removal two-stage, preserve assets referenced by Undo/profiles, and distinguish exclusive artwork from opt-in blending and its independent opacity. Do not flatten functional color swatches, selected highlights or game-board states when making fields transparent.
+
+Personalization retains the standard workspace size and comfortable row spacing. Restore page
+headings throughout configuration; remove only duplicate internal headings in Personalization.
+Keep the overview title at the left and Undo, Restore theme defaults and its master switch grouped at the right, in that order. Never place the master switch beside the shell menu title. Apply CSS overrides only for edited properties so wallpaper can coexist with the active theme.
+Keep category descriptions hidden and omit the former all-options action. Keep
+its draft/Undo across category switches, use SettingColor for RGBA and keep Hide UI transient
+and editor-local. Mixed backgrounds include muted local MP4/WebM with posters. Preserve legacy
+image IDs and require explicit fixed-frame confirmation for video CSS exports.
+
+HIT Sphere centralizes sphere behavior, shape/size, eyes, collapsed background, placement and idle
+transparency inside Settings. Preserve legacy page redirects and keep its default restoration scoped
+to those preferences. Personalization reset actions have visible labels. The compact RGB picker
+uses shared range semantics with full-spectrum Hue and checkerboard opacity tracks and narrow
+rectangular markers; keep its neutral surface readable while editing palette/background colors.
+
+Closed sphere appearance has separate Collapsed sphere and Inactive sphere snapshots/pages.
+Preserve legacy choices and per-state inheritance/reset, and exclude all open menu forms from
+these styles. Closed media playback is opt-in per state and remains subordinate to resource
+sleep, hidden presentation and reduced motion. Keep open-menu shape/shadow in Personalization.

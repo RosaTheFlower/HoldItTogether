@@ -54,7 +54,7 @@ do not fork the layout or build another select popup for each feature.
 - Use transparent fields, subtle permitted borders, full-width/equally shared action rows, darker slider thumbs and the moving sidebar highlight from Design. Use full-row switch labels, explanatory text controlled by the description preference, tooltip
   help for actions and compact inline slider rows (small label, track, editable value, unit) with no separate heading or spinner arrows. Use SettingRange for built-in sliders and tooltip help instead of stacked slider descriptions. Preserve
   service validation, immediate application and existing save/reset/confirmation boundaries.
-- Use the shared rounded wheel combobox: three visible rows, active choice centered, wheel/keyboard
+- Use the shared rounded wheel combobox: up to 3.5 visible rows with clipped/gradient scroll hints, active choice centered, wheel/keyboard
   selection, no empty end padding, and menu-wheel blocking while open. Preserve Escape restoration,
   reduced-motion behavior, opening/closing cleanup and teardown. Use Clock-style equal-width
   highlighted segments for short mutually exclusive choices; retain native keyboard semantics.
@@ -83,3 +83,22 @@ Update the canonical interaction/settings guide and report any remaining interac
 ## Current contract checkpoints
 
 Use the current shared inline slider row (small label, track, editable value, unit), thin outlines on typed fields except slider values, and full/equally shared action rows. Infinite menu wraps top-level navigation only; preserve independent page-history modes and the 50-visit session bound. Honor the independent menu-entry toggle, global Remove animations and reduced motion.
+
+Personalization retains the standard workspace size and comfortable row spacing. Restore page
+headings throughout configuration; remove only duplicate internal headings in Personalization.
+Keep the overview title at the left and Undo, Restore theme defaults and its master switch grouped at the right, in that order. Never place the master switch beside the shell menu title. Apply CSS overrides only for edited properties so wallpaper can coexist with the active theme.
+Keep category descriptions hidden and omit the former all-options action. Keep
+its draft/Undo across category switches, use SettingColor for RGBA and keep Hide UI transient
+and editor-local. Mixed backgrounds include muted local MP4/WebM with posters. Preserve legacy
+image IDs and require explicit fixed-frame confirmation for video CSS exports.
+
+HIT Sphere centralizes sphere behavior, shape/size, eyes, collapsed background, placement and idle
+transparency inside Settings. Preserve legacy page redirects and keep its default restoration scoped
+to those preferences. Personalization reset actions have visible labels. The compact RGB picker
+uses shared range semantics with full-spectrum Hue and checkerboard opacity tracks and narrow
+rectangular markers; keep its neutral surface readable while editing palette/background colors.
+
+Closed sphere appearance has separate Collapsed sphere and Inactive sphere snapshots/pages.
+Preserve legacy choices and per-state inheritance/reset, and exclude all open menu forms from
+these styles. Closed media playback is opt-in per state and remains subordinate to resource
+sleep, hidden presentation and reduced motion. Keep open-menu shape/shadow in Personalization.

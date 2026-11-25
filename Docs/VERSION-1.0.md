@@ -1,12 +1,14 @@
 # HIT release contract
 
-The public application version is `2v2910`: generation 2, followed by `v` and the two-digit day/month.
-`HitReleaseGeneration` (2) and `HitReleaseDate` (2026-10-29) in HoldItTogether.csproj generate the informational label and the release/installer paths. Windows file/package metadata retains the numeric date 2026.10.29.0 / 2026.10.29; assembly identity remains 1.0.0.0.
-Update checks compare generation first, then calendar date using the publication year. Older `vDDMM` tags remain readable as generation 1 and cannot supersede a generation-2 release. Invalid dates and semantic-version tags are rejected. This guide retains its historical filename so existing links continue working.
+The public application version is `3v2511`: generation 3, followed by `v` and the two-digit day/month.
+`HitReleaseGeneration` (3) and `HitReleaseDate` (2026-11-25) in HoldItTogether.csproj generate the informational label and the release/installer paths. Windows file/package metadata retains the numeric date 2026.11.25.0 / 2026.11.25; assembly identity remains 1.0.0.0.
+Update checks compare generation first, then calendar date using the publication year. Older `vDDMM` tags remain readable as generation 1 and cannot supersede a generation-3 release. Invalid dates and semantic-version tags are rejected. This guide retains its historical filename so existing links continue working.
 
 The SDK package is `1.2.0`; its assembly identity remains `1.0.0.0`.
 The external manifest uses `formatVersion: 1` and `hitContractVersion: "1"`.
 Do not change these values together automatically: each protects a different compatibility boundary.
+
+Release notes: [3v2511 changelog](CHANGELOG.md).
 
 ## Included features
 
@@ -18,7 +20,7 @@ Do not change these values together automatically: each protects a different com
 - Three bundled protected themes, personal CSS import/delete/live edits and reduced-motion preference.
 - `.hitmenu` installation by picker, file drop or Inbox; versioned updates, explicit rollback and deferred deletion.
 - Independent SDK, local NuGet package generation, menu template, Notes example and extension integration/browser tests.
-- English interface and a source-message catalog for future localization.
+- English default, embedded Brazilian Portuguese and validated JSON language imports; see [Localization](LOCALIZATION.md).
 - Bounded lyrics cache, metadata-cached CSS, visibility-aware work and reusable visualizer buffers.
 - Shared configurable current-menu compaction after pointer departure, experimental Force Always on Top and obsolete extension-version cleanup.
 - Native input regions restricted to the surface's outer bounds while preserving CSS corner antialiasing, blocked browser-zoom shortcuts and 100% zoom reset on opening.
@@ -48,7 +50,7 @@ Building the solution also builds the module projects for development. Publishin
 | Extension execution | Trusted .NET/JS in the HIT process; API capabilities are not OS sandboxing |
 | Per-extension RAM quota | Not enforced; resource ownership/cancellation is contractual |
 | SDK distribution | Can be packed locally; no public package feed is published by this repository workflow |
-| Translation packages | Planned; English catalog exists, runtime language import/selection does not |
+| Translation packages | Version-1 JSON imports and restart-based selection; English fallback, no SDK localization API |
 | Loose Razor/source import | Not compiled by the installer; authors build their package |
 | Media features | Limited by the selected app's Windows media session capabilities |
 | Lyrics | Real synchronized lyrics plus explicitly unsynchronized fallback; online provider availability/matching can fail |

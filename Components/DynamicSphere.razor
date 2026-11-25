@@ -11,6 +11,7 @@
 <div @ref="_area" class="sphere-area" data-hit-geometry-pending="true" data-hit-resource-sleep="@(Resources.IsSleeping ? "true" : "false")"
      data-hit-opacity="@System.Text.Json.JsonSerializer.Serialize(new{enabled=Settings.Current.IdleOpacityEnabled,sphere=Settings.Current.IdleOpacitySphere,compact=Settings.Current.IdleOpacityCompact,open=Settings.Current.IdleOpacityOpen,delay=Settings.Current.IdleOpacityDelayMs,opacity=Settings.Current.IdleOpacityPercent,duration=Settings.Current.IdleOpacityTransitionMs})">
     <div class="dynamic-sphere @StateClass" data-hit-compact-delay="@Settings.Current.MenuCompactDelayMs"
+         data-hit-personalization-hidden="@(PreviewHidden?"true":"false")"
          data-hit-side-buttons="@(Settings.Current.MouseSideButtonsEnabled ? "true" : "false")"
          data-hit-entry-animation="@(Settings.Current.MenuEntranceAnimations && !Settings.Current.RemoveAnimations ? "true" : "false")"
          data-hit-setting-descriptions="@(Settings.Current.ShowSettingDescriptions ? "true" : "false")"
@@ -27,7 +28,7 @@
          @onfocusin="HandleFocusIn"
          @onfocusout="HandleFocusOut"
          @onkeydown="HandleKeyDown">
-        <HoldItTogether.Components.Settings.CustomBackground Active="@(_state == SphereState.Open)" />
+        <HoldItTogether.Components.Settings.CustomBackground Active="@(_state == SphereState.Open)" Inactive="@(_state == SphereState.Idle)" />
         <div class="sphere-audio-backdrop" aria-hidden="true"></div>
         <div class="sphere-content" inert="@(_state != SphereState.Open)">
             <header class="sphere-header" hidden="@_compactMenu" inert="@_compactMenu">
@@ -53,6 +54,10 @@
                  @onclick:stopPropagation="true"
                  @onkeydown="HandleActionKeyDown"
                  @onkeydown:stopPropagation="true">
+                @if(_menuHost?.PersonalizationMenu is not null)
+                {
+                    <button type="button" class="sphere-action sphere-action-preview" data-no-drag aria-label="@Text.Get(PreviewHidden?"Restore UI":"Hide UI")" title="@Text.Get(PreviewHidden?"Restore UI":"Hide UI")" aria-pressed="@(PreviewHidden?"true":"false")" @onclick="TogglePreviewAsync"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12Z" /><circle cx="12" cy="12" r="3" /></svg></button>
+                }
                 <button type="button" class="sphere-action sphere-action-reading-cover" data-hit-reading-cover data-no-drag hidden
                         aria-label="Hide artwork for this screen" aria-pressed="true" title="Hide artwork for this screen">
                     <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
@@ -87,8 +92,10 @@
                          OnSettingsAvailableChanged="UpdateSettingsAvailable" OnBackAvailableChanged="UpdateBackAvailable" OnLayoutChanged="UpdateLayout"
                          OnPinRequested="SetPinned"
                          IsPinned="@_pinnedOpen" IsVisible="@(_state == SphereState.Open && !Resources.IsSleeping)" />
-            <HoldItTogether.Components.Clock.ClockNotifications />
-            <HoldItTogether.Components.Extensions.ExtensionNotification />
+            <div class="sphere-notifications" inert="@PreviewHidden">
+                <HoldItTogether.Components.Clock.ClockNotifications />
+                <HoldItTogether.Components.Extensions.ExtensionNotification />
+            </div>
         </div>
     </div>
 </div>
@@ -113,11 +120,13 @@
     private bool _compactMenu;
     private void UpdateLayout(HoldItTogether.Services.HitMenus.HitMenuLayout layout) =>
         _compactMenu = layout == HoldItTogether.Services.HitMenus.HitMenuLayout.Compact;
-    private string? TitleIcon => (_menuTitle??"").ToLowerInvariant() switch {"audio"=>"M5 9v6m5-11v16m5-13v10m5-7v4", "lyrics"=>"M9 18V5l12-2v13M9 9l12-2M9 18a3 3 0 1 1-3-3c2 0 3 1 3 3m12-2a3 3 0 1 1-3-3c2 0 3 1 3 3", "clock"=>"M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18m0 4v5l4 2", "chess"=>"M5 21h14v-3H7c0-4 4-5 7-8l-4 1-3 3-3-3 2-5 4-3 1-2 3 2c6 0 7 6 5 11l-1 4M12 7h.01", _=>null};
+    private string? TitleIcon => HoldItTogether.Services.HitMenus.HitTitleIcons.ForTitle(_menuTitle);
     private void UpdateTitle(string title) => _menuTitle = title;
     private void UpdateSettingsAvailable(bool available) => _hasMenuSettings = available;
     private void UpdateBackAvailable(bool available) => _canGoBack = available;
     private Task GoBackAsync() => _menuHost?.GoBackAsync() ?? Task.CompletedTask;
+    private bool PreviewHidden=>_menuHost?.PersonalizationMenu?.IsPreviewHidden==true;
+    private async Task TogglePreviewAsync(){if(_menuHost?.PersonalizationMenu is {} menu){await menu.TogglePreviewAsync();await InvokeAsync(StateHasChanged);}}
     private Task OpenMenuSettingsAsync() => _hasMenuSettings && _menuHost is not null
         ? _menuHost.OpenCurrentSettingsAsync() : Task.CompletedTask;
     private Task HandleTitleKeyAsync(KeyboardEventArgs args)
@@ -153,13 +162,26 @@
 
     protected override void OnInitialized()
     {
+        _shrinkPolicy=(Settings.Current.ShrinkInactiveSphere,Settings.Current.SphereShrinkDelayMs);
         Extensions.OpenRequested += ShowExtensions;
         Settings.Changed += SettingsChanged;
         Resources.Changed += ResourceStateChanged;
-        Schedule(SphereState.Idle, TimeSpan.FromSeconds(10));
+        if(Settings.Current.ShrinkInactiveSphere)Schedule(SphereState.Idle, TimeSpan.FromMilliseconds(Settings.Current.SphereShrinkDelayMs));
         if (Extensions.ShowExtensions || Extensions.ShowThemes) PinOpen();
     }
-    private void SettingsChanged() { if (!_disposed) _ = InvokeAsync(() => { if (!Settings.Current.AutomaticResourceSaving) Resources.Wake(); StateHasChanged(); }); }
+    private (bool Enabled,int Delay)? _shrinkPolicy;
+    private void SettingsChanged() { if (!_disposed) _ = InvokeAsync(() => {
+        if(_disposed)return;
+        if (!Settings.Current.AutomaticResourceSaving) Resources.Wake();
+        var policy=(Settings.Current.ShrinkInactiveSphere,Settings.Current.SphereShrinkDelayMs);
+        if(_shrinkPolicy!=policy)
+        {
+            _shrinkPolicy=policy;
+            if(!policy.Item1&&_state==SphereState.Idle){CancelTransition();_state=SphereState.Away;}
+            else if(_state==SphereState.Away){CancelTransition();if(policy.Item1)Schedule(SphereState.Idle,TimeSpan.FromMilliseconds(policy.Item2));}
+        }
+        StateHasChanged();
+    }); }
     private void ResourceStateChanged() { if (!_disposed) _ = InvokeAsync(StateHasChanged); }
     private void SetPinned(bool pinned) { if (pinned) PinOpen(); else _pinnedOpen = false; }
     private void ShowExtensions()
@@ -256,7 +278,7 @@
 
             if (_state is SphereState.Idle or SphereState.Away)
             {
-                Schedule(SphereState.Idle, TimeSpan.FromSeconds(10));
+                if(Settings.Current.ShrinkInactiveSphere)Schedule(SphereState.Idle, TimeSpan.FromMilliseconds(Settings.Current.SphereShrinkDelayMs));
             }
             else if (_state == SphereState.Hovered && _pointerInside)
             {
@@ -308,12 +330,13 @@
 
     private void CloseSphere()
     {
+        _menuHost?.PersonalizationMenu?.ResetPreview();
         _pinnedOpen = false;
         _focused = false;
         _suppressHoverUntilExit = true;
         CancelTransition();
         _state = SphereState.Away;
-        Schedule(SphereState.Idle, TimeSpan.FromSeconds(10));
+        if(Settings.Current.ShrinkInactiveSphere)Schedule(SphereState.Idle, TimeSpan.FromMilliseconds(Settings.Current.SphereShrinkDelayMs));
     }
 
     private void HandleActionKeyDown(KeyboardEventArgs args)
@@ -321,7 +344,7 @@
         // Enter/Space activate the native button; they must not reach PinOpen.
         if (args.Key == "Escape")
         {
-            CloseSphere();
+            if(PreviewHidden)_menuHost?.PersonalizationMenu?.ResetPreview();else CloseSphere();
         }
     }
 
@@ -433,7 +456,7 @@
     {
         if (args.Key == "Escape")
         {
-            CloseSphere();
+            if(PreviewHidden)_menuHost?.PersonalizationMenu?.ResetPreview();else CloseSphere();
         }
         else if (args.Key is "Enter" or " ")
         {
@@ -488,12 +511,13 @@
                     return;
                 }
 
+                if(nextState==SphereState.Idle&&!Settings.Current.ShrinkInactiveSphere)return;
                 _state = nextState;
                 StateHasChanged();
 
-                if (nextState == SphereState.Away)
+                if (nextState == SphereState.Away && Settings.Current.ShrinkInactiveSphere)
                 {
-                    Schedule(SphereState.Idle, TimeSpan.FromSeconds(10));
+                    Schedule(SphereState.Idle, TimeSpan.FromMilliseconds(Settings.Current.SphereShrinkDelayMs));
                 }
             });
         }

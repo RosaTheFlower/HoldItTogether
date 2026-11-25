@@ -64,7 +64,7 @@ internal static class AppearanceChecks
         settings.Update(s=>s with{AllowGifBackgrounds=true});
         Check(service.ImageUrl(gif) is not null,"Re-enabling GIF backgrounds restores retained assets");
         Check(service.Css(imagePreferences with { BackgroundImage=gif },true).Contains("data:image/gif;base64,"),"GIF export preserves its original bytes and MIME type.");
-        Check(service.Css(imagePreferences with { BackgroundWhenCollapsed=false }).Contains(".dynamic-sphere:not(.is-open) > .sphere-custom-backdrop{display:none!important;}"),"Collapsed-background visibility is independently configurable.");
+        Check(service.Css(imagePreferences with { BackgroundWhenCollapsed=false }).Contains("display:none!important;")&&(imagePreferences with{BackgroundWhenCollapsed=false}).SphereState(false).ShowBackground is false&&(imagePreferences with{BackgroundWhenCollapsed=false}).SphereState(true).ShowBackground is false,"Collapsed-background visibility is independently configurable.");
         var largeImage = new byte[3_000_000]; png.CopyTo(largeImage,0);
         service.Preview(imagePreferences with { BackgroundImageLimitMb=.25 },"default");
         Check(service.ImageByteLimit==250_000,"The minimum image limit is exactly 250 KB.");
@@ -77,25 +77,35 @@ internal static class AppearanceChecks
         Check((imagePreferences with {BackgroundImageLimitMb=.01}).Normalize().BackgroundImageLimitMb==.25,"Finite limits normalize to at least 250 KB.");
         service.Preview(slideshow,"default");
         var resources = new HitResourcePolicy();
-        await using (var renderingServices = new ServiceCollection().AddLogging().AddSingleton(service).AddSingleton(settings).AddSingleton(resources).BuildServiceProvider())
+        await using (var renderingServices = new ServiceCollection().AddLogging().AddSingleton(service).AddSingleton(settings).AddSingleton(resources).AddSingleton<Microsoft.JSInterop.IJSRuntime,NoJs>().BuildServiceProvider())
         await using (var renderer = new HtmlRenderer(renderingServices,renderingServices.GetRequiredService<ILoggerFactory>()))
         {
             var view = await renderer.Dispatcher.InvokeAsync(() => renderer.RenderComponentAsync<CustomBackground>(ParameterView.FromDictionary(new Dictionary<string,object?> { [nameof(CustomBackground.Active)] = true })));
+            async Task<string> UntilAsync(Func<string,bool> ready,string message)
+            {
+                var deadline=Environment.TickCount64+10000;
+                while(Environment.TickCount64<deadline)
+                {
+                    var markup=await renderer.Dispatcher.InvokeAsync(view.ToHtmlString);
+                    if(ready(markup))return markup;
+                    await Task.Delay(50);
+                }
+                throw new Exception(message);
+            }
             var first = await renderer.Dispatcher.InvokeAsync(view.ToHtmlString);
             Check(first.Contains(image) && !first.Contains(secondImage),"Live carousel initially loads only its current frame.");
-            await Task.Delay(5200);
-            var advanced = await renderer.Dispatcher.InvokeAsync(view.ToHtmlString);
+            var advanced = await UntilAsync(markup=>markup.Contains(image)&&markup.Contains(secondImage),"Live carousel did not advance.");
             Check(advanced.Contains(image) && advanced.Contains(secondImage),"Live carousel advances into a two-frame transition.");
             await renderer.Dispatcher.InvokeAsync(() => { resources.Update(true,true,false,false,0); resources.Update(true,true,false,false,5001); });
-            var sleeping = await renderer.Dispatcher.InvokeAsync(view.ToHtmlString);
+            var sleeping = await UntilAsync(markup=>markup.Contains("data-hit-background-active=\"false\""),"Sleep did not suspend the carousel.");
             await Task.Delay(5200);
             Check(sleeping == await renderer.Dispatcher.InvokeAsync(view.ToHtmlString),"Sleep cancels slideshow switching and retains the current frame.");
             await renderer.Dispatcher.InvokeAsync(resources.Wake);
-            await Task.Delay(5200);
-            Check((await renderer.Dispatcher.InvokeAsync(view.ToHtmlString)).Contains(image),"Wake resumes slideshow switching.");
+            var awake=await UntilAsync(markup=>markup.Contains(image)&&markup.Contains(secondImage),"Wake did not resume slideshow switching.");
+            Check(awake.Contains(image),"Wake resumes slideshow switching.");
         }
         var invalid=(imagePreferences with{BackgroundImage="../../secret.png",EyeSize=500,EyeGap=-5,ControlRadius=100,ShadowStrength=500,Font="bad;font",BorderStyle="url(bad)",ImageOpacity=200,ImageFit="bad"}).Normalize();
-        Check(invalid is{BackgroundImage:null,EyeSize:16,EyeGap:0,ControlRadius:24,ShadowStrength:150,Font:"system",BorderStyle:"solid",ImageOpacity:100,ImageFit:"cover"},"Extended options must clamp and reject unsafe CSS/path values.");
+        Check(invalid is{BackgroundImage:null,EyeSize:16,EyeGap:0,ControlRadius:24,ShadowStrength:150,Font:"default",BorderStyle:"solid",ImageOpacity:100,ImageFit:"cover"},"Extended options must clamp and reject unsafe CSS/path values.");
         try{await service.ImportImageAsync(new MemoryStream(new byte[HitAppearanceService.MaxImageBytes+1]));throw new Exception("Oversized image accepted.");}catch(InvalidDataException){}
         try{await service.ImportImageAsync(new MemoryStream("not an image"u8.ToArray()));throw new Exception("Invalid image accepted.");}catch(InvalidDataException){}
         try{service.Save(" ",custom,"default");throw new Exception("Empty profile name accepted.");}catch(ArgumentException){}

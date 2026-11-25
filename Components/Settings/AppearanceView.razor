@@ -1,122 +1,269 @@
 @using HoldItTogether.Services.Settings
 @using HoldItTogether.Services.Themes
+@using HoldItTogether.Components.Settings
 @using Microsoft.AspNetCore.Components.Forms
 @using Microsoft.JSInterop
 @implements IAsyncDisposable
 @inject IJSRuntime JS
 @inject HitSettingsService Settings
 @inject HitAppearanceService Appearance
-<section class="appearance-editor" data-no-drag data-hit-scroll tabindex="0" aria-label="Personalization">
-    @if (ShowBack) { <button type="button" class="hit-back" @onclick="BackRequested"><svg viewBox="0 0 20 20"><path d="m11 5-5 5 5 5M6 10h10" /></svg>@BackLabel</button> }
-    <h2>Personalization</h2>
-    <TitlePresentationSettings />
-    <p class="hit-muted">Changes apply and save automatically.</p>
-    <label class="hit-setting-row"><span>Use custom appearance</span><input class="hit-switch" type="checkbox" role="switch" aria-label="Use custom appearance" checked="@_draft.Enabled" @onchange="args=>Preview(_draft with{Enabled=args.Value is true},true)" /></label>
-    @foreach(var field in new[]{"Background","Idle background","Accent","Text","Muted text","Eyes","Border"})
-    {
-        <label class="hit-setting-row"><span>@field</span><input type="color" aria-label="@($"Custom {field.ToLowerInvariant()}")" value="@Color(field)" @oninput="args=>SetColor(field,args.Value?.ToString())" /></label>
-    }
-    <SettingRange Label="Custom corner radius" Description="Round the corners of the HIT window." Value="_draft.Radius" Min="0" Max="48" Unit="px" Changed="v=>Preview(_draft with{Radius=(int)v})" />
-    <SettingRange Label="Custom border width" Description="Set the thickness of the window outline." Value="_draft.BorderWidth" Min="0" Max="4" Unit="px" Changed="v=>Preview(_draft with{BorderWidth=(int)v})" />
-    @foreach(var option in new[]{("Eye size",3,16,_draft.EyeSize),("Eye gap",0,20,_draft.EyeGap),("Control radius",0,24,_draft.ControlRadius),("Shadow strength",0,150,_draft.ShadowStrength)})
-    {
-        <SettingRange Label="@option.Item1" Description="@Text.Format("Adjust {0}.",Text.Get(option.Item1))" Value="option.Item4" Min="option.Item2" Max="option.Item3" Unit="@(option.Item1=="Shadow strength"?"%":"px")" Changed="v=>SetExtra(option.Item1,new ChangeEventArgs{Value=((int)v).ToString()})" />
-    }
-    <label class="hit-setting-row"><span>Border style</span><select aria-label="Custom border style" value="@_draft.BorderStyle" @onchange="@(args=>Preview(_draft with{BorderStyle=args.Value?.ToString()??"solid"}))"><option value="solid">Solid</option><option value="dashed">Dashed</option><option value="dotted">Dotted</option></select></label>
-    <label class="hit-setting-row"><span>Font</span><select aria-label="Custom font" value="@_draft.Font" @onchange="@(args=>Preview(_draft with{Font=args.Value?.ToString()??"system"}))"><option value="system">System</option><option value="arial">Arial</option><option value="mono">Monospace</option></select></label>
-    <label class="hit-setting-row"><span>Eyes follow pointer</span><input class="hit-switch" type="checkbox" aria-label="Eyes follow pointer" checked="@_draft.TrackPointer" @onchange="args=>Preview(_draft with{TrackPointer=args.Value is true})" /></label>
-    <div class="appearance-section-heading"><h3>@Text.Get("Background image")</h3>
-        <div class="appearance-background-actions"><select aria-label="@Text.Get("Background style")" value="@_draft.BackgroundMode" @onchange="@(args=>Preview(_draft with{BackgroundMode=args.Value?.ToString()??"single"}))"><option value="single">@Text.Get("Single image")</option><option value="carousel">@Text.Get("Carousel")</option><option value="smooth">@Text.Get("Smooth transition")</option></select><button class="hit-button" type="button" disabled="@(_importing || _draft.ImageIds.Length==0)" title="@Text.Get("Remove all images")" @onclick="AskRemoveAllAsync">@Text.Get("Remove all images")</button></div>
+
+@if(SphereMode)
+{
+    <section class="appearance-editor" data-no-drag data-hit-option-descriptions="false" aria-label="@Text.Get("HIT Sphere")">
+        <SphereSettingsView Page="@Page" PageChanged="PageChanged" Value="_draft" Changed="v=>Preview(v,true,restore:true)" BehaviorChanged="SaveBehavior" ResetRequested="ResetSphere" BeginEdit="BeginSelectEdit" CancelEdit="CancelSelectEdit" />
+        <div class="appearance-feedback" role="status">@if(_saving){<HitSpinner Label="@Text.Get("Saving appearance")" />}else if(_message is not null){<span>@_message</span>}</div>
+        @if(_error is not null){<p class="settings-error" role="alert">@_error</p>}
+    </section>
+}
+else
+{
+<section class="appearance-editor" data-hit-option-descriptions="false" data-no-drag aria-label="@Text.Get("Personalization")">
+    @if(ShowBack){<button type="button" class="hit-back" @onclick="BackRequested">@Text.Get(BackLabel)</button>}
+    <div class="appearance-heading">
+        <h2>@Text.Get(Page.Length==0?"Personalization":Page)</h2>
+        @if(Page.Length==0)
+        {
+            <div class="appearance-heading-actions">
+                <button class="hit-button" type="button" aria-label="@Text.Get("Undo appearance changes")" title="@Text.Get("Undo this session")" @onclick="Undo"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m7 4-4 4 4 4M3 8h8a5 5 0 0 1 0 10" /></svg><span>@Text.Get("Undo")</span></button>
+                <button class="hit-button" type="button" aria-label="@Text.Get("Restore theme defaults")" title="@Text.Get("Restore theme defaults")" @onclick="Reset"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 8a6 6 0 1 1 0 5M4 3v5h5" /></svg><span>@Text.Get("Restore theme defaults")</span></button>
+                <input type="checkbox" class="hit-switch" role="switch" aria-label="@Text.Get("Use custom appearance")" title="@Text.Get("Use custom appearance")" checked="@_draft.Enabled" @onchange="e=>SetEnabledAsync(e.Value is true)" />
+            </div>
+        }
     </div>
-    <p class="hit-muted">@Text.Get(Appearance.GifBackgroundsAllowed ? "PNG, JPEG, GIF or WebP. Animated images are supported. Maximum dimensions: 4096 x 4096." : "PNG, JPEG or WebP. GIF backgrounds are disabled in Settings > Images. Maximum dimensions: 4096 x 4096.")</p>
-    <label class="hit-button hit-busy-action appearance-image-picker" aria-busy="@(_importing ? "true" : "false")"><span class="hit-busy-label">@Text.Get("Choose image")</span>@if(_importing){<span class="hit-busy-indicator"><HitSpinner Label="@Text.Get("Importing image")" /></span>}<InputFile disabled="@_importing" accept="@(Appearance.GifBackgroundsAllowed?"image/png,image/jpeg,image/webp,image/gif":"image/png,image/jpeg,image/webp")" multiple="@(_draft.BackgroundMode != "single")" OnChange="ImportImage" aria-label="Choose background image" /></label>
-    <p class="hit-muted">@Text.Format("{0} image(s) selected. Up to 8 images.", _draft.ImageIds.Length)</p>
-    <BackgroundImageGallery @ref="_gallery" Images="_draft.ImageIds" Disabled="_importing" RemoveRequested="RemoveBackgroundImage" RemoveAllRequested="RemoveAllBackgroundImages" />
-    <SettingToggle Label="Show background when collapsed" Description="Keep the selected image visible on the collapsed sphere, including native GIF and WebP animation. The carousel stays paused." Value="_draft.BackgroundWhenCollapsed" Changed="v=>Preview(_draft with{BackgroundWhenCollapsed=v})" />
-    <SettingRange Label="Image opacity" Description="Set the visibility of your background images." Value="_draft.ImageOpacity" Min="0" Max="100" Unit="%" Changed="v=>Preview(_draft with{ImageOpacity=(int)v})" />
-    <SettingRange Label="Image interval" Description="Time between background changes. Applies to carousel and smooth transition modes." Value="_draft.BackgroundIntervalSeconds" Min="5" Max="3600" Unit="s" Disabled="@(_draft.BackgroundMode == "single")" Changed="v=>Preview(_draft with{BackgroundIntervalSeconds=(int)v})" />
-    <SettingRange Label="Transition duration" Description="How long the incoming image takes to appear." Value="_draft.BackgroundTransitionMs" Min="100" Max="4000" Step="100" Unit="ms" Disabled="@(_draft.BackgroundMode != "smooth")" Changed="v=>Preview(_draft with{BackgroundTransitionMs=(int)v})" />
-    <label class="hit-setting-row"><span>@Text.Get("Transition effect")</span><select aria-label="@Text.Get("Transition effect")" disabled="@(_draft.BackgroundMode != "smooth")" value="@_draft.BackgroundTransition" @onchange="@(args=>Preview(_draft with{BackgroundTransition=args.Value?.ToString()??"fade"}))"><option value="fade">@Text.Get("Fade")</option><option value="slide">@Text.Get("Slide")</option><option value="zoom">@Text.Get("Zoom")</option></select></label>
-    <label class="hit-setting-row"><span>Image fit</span><select aria-label="Background image fit" value="@_draft.ImageFit" @onchange="@(args=>Preview(_draft with{ImageFit=args.Value?.ToString()??"cover"}))"><option value="cover">Fill</option><option value="contain">Fit</option><option value="stretch">Stretch</option></select></label>
-    <label class="hit-setting-row"><span>Allow artwork colors<small>Music colors take priority when artwork coloring is enabled.</small></span><input class="hit-switch" type="checkbox" role="switch" aria-label="Allow artwork colors" checked="@_draft.AllowArtworkColors" @onchange="args=>Preview(_draft with{AllowArtworkColors=args.Value is true})" /></label>
-    <div class="appearance-actions"><button class="hit-button" type="button" aria-label="Undo appearance changes" @onclick="Undo">Undo this session</button><button class="hit-button" type="button" aria-label="Restore theme defaults" @onclick="Reset">Restore theme defaults</button></div>
-    <h3>Visual profiles</h3>
-    <label class="hit-setting-row"><span>Profile</span><select aria-label="Visual profile" @bind="_selected"><option value="">Choose a profile</option>@foreach(var profile in _profiles){<option value="@profile.Id">@profile.Name</option>}</select></label>
-    <div class="appearance-actions"><button class="hit-button" type="button" disabled="@(_selected.Length==0)" @onclick="Load">Use profile</button><button class="hit-button" type="button" disabled="@(_selected.Length==0)" @onclick="Duplicate">Duplicate profile</button></div>
-    <label class="hit-setting-row"><span>Profile name</span><input type="text" maxlength="64" aria-label="Visual profile name" @bind="_name" /></label>
-    <div class="appearance-actions"><button class="hit-button" type="button" @onclick="Save">Save new profile</button><button class="hit-button" type="button" @onclick="Export">Export CSS</button></div>
-    @if(_saving){<p class="hit-muted"><HitSpinner Label="@Text.Get("Saving appearance")" /></p>}
-    else if(_message is not null){<p class="hit-muted" role="status">@_message</p>}
-    @if(_error is not null){<p class="settings-error" role="alert">@_error</p>}
-</section>
-@code{
-    [Parameter]public EventCallback BackRequested{get;set;}
-    [Parameter] public bool ShowBack { get; set; } = true;
-    [Parameter]public string BackLabel{get;set;}="Themes";
-    private BackgroundImageGallery? _gallery;
-    private Task AskRemoveAllAsync() => _gallery?.AskRemoveAllAsync() ?? Task.CompletedTask;
-    private void RemoveBackgroundImage(string id) {
-        var images=_draft.ImageIds.Where(value=>value!=id).ToArray();
-        Preview(_draft with{BackgroundImage=images.FirstOrDefault(),BackgroundImages=string.Join(",",images.Skip(1))});
+    @if(Page.Length==0)
+    {
+        <nav class="appearance-categories" aria-label="@Text.Get("Personalization categories")">
+            @foreach(var topic in Categories){<button type="button" class="hit-link-row" @onclick="()=>PageChanged.InvokeAsync(topic)"><span>@Text.Get(topic)</span><span aria-hidden="true">›</span></button>}
+        </nav>
     }
-    private void RemoveAllBackgroundImages() => Preview(_draft with{BackgroundImage=null,BackgroundImages=""});
-    private HitAppearancePreferences _draft=new();
-    private string _theme="default",_name="My profile",_selected="";
+    @if(Show("General"))
+    {
+        <section class="appearance-category">
+            <TitlePresentationSettings />
+            <SettingToggle Label="Allow artwork colors" Description="Music colors take priority when artwork coloring is enabled." Value="_draft.AllowArtworkColors" Changed="v=>Preview(_draft with{AllowArtworkColors=v},editedProperty:nameof(HitAppearancePreferences.AllowArtworkColors))" />
+        </section>
+    }
+    @if(Show("Colors"))
+    {
+        <section class="appearance-category">
+            @foreach(var field in new[]{"Background","Accent","Text","Muted text","Border","Shadow color"})
+            {<SettingColor @key="field" Label="@field" Value="@Color(field)" Changed="v=>SetColor(field,v)" />}
+        </section>
+    }
+    @if(Show("Shape and typography"))
+    {
+        <section class="appearance-category">
+            <SettingRange Label="Custom corner radius" Value="_draft.Radius" Min="0" Max="48" Unit="px" Changed="v=>Preview(_draft with{Radius=(int)v},editedProperty:nameof(HitAppearancePreferences.Radius))" />
+            <SettingRange Label="Custom border width" Value="_draft.BorderWidth" Min="0" Max="4" Unit="px" Changed="v=>Preview(_draft with{BorderWidth=(int)v},editedProperty:nameof(HitAppearancePreferences.BorderWidth))" />
+            <SettingRange Label="Shadow strength" Value="_draft.ShadowStrength" Min="0" Max="150" Unit="%" Changed="v=>Preview(_draft with{ShadowStrength=(int)v},editedProperty:nameof(HitAppearancePreferences.ShadowStrength))" />
+            <SettingRange Label="Shadow blur" Value="_draft.ShadowBlur" Min="0" Max="60" Unit="px" Changed="v=>Preview(_draft with{ShadowBlur=(int)v},editedProperty:nameof(HitAppearancePreferences.ShadowBlur))" />
+            <SettingRange Label="Shadow offset" Value="_draft.ShadowOffset" Min="0" Max="30" Unit="px" Changed="v=>Preview(_draft with{ShadowOffset=(int)v},editedProperty:nameof(HitAppearancePreferences.ShadowOffset))" />
+            <label class="hit-setting-row"><span>@Text.Get("Border style")</span><select aria-label="@Text.Get("Custom border style")" @onhitselectstart="()=>BeginSelectEdit(nameof(HitAppearancePreferences.BorderStyle))" @onhitselectcancel="()=>CancelSelectEdit(nameof(HitAppearancePreferences.BorderStyle))" value="@_draft.BorderStyle" @onchange="@(e=>Preview(_draft with{BorderStyle=e.Value?.ToString()??"solid"},editedProperty:nameof(HitAppearancePreferences.BorderStyle)))"><option value="solid">@Text.Get("Solid")</option><option value="dashed">@Text.Get("Dashed")</option><option value="dotted">@Text.Get("Dotted")</option></select></label>
+            <SettingRange Label="Control radius" Description="Round the corners of interactive controls." Value="_draft.ControlRadius" Min="0" Max="24" Unit="px" Changed="v=>Preview(_draft with{ControlRadius=(int)v},editedProperty:nameof(HitAppearancePreferences.ControlRadius))" />
+            <SettingRange Label="Title size" Value="_draft.TitleSize" Min="10" Max="24" Unit="px" Changed="v=>Preview(_draft with{TitleSize=(int)v},editedProperty:nameof(HitAppearancePreferences.TitleSize))" />
+            <SettingRange Label="Title weight" Value="_draft.TitleWeight" Min="300" Max="800" Step="100" Changed="v=>Preview(_draft with{TitleWeight=(int)v},editedProperty:nameof(HitAppearancePreferences.TitleWeight))" />
+            <SettingRange Label="Title letter spacing" Value="_draft.TitleLetterSpacing" Min="0" Max="4" Step="0.1" Unit="px" Changed="v=>Preview(_draft with{TitleLetterSpacing=v},editedProperty:nameof(HitAppearancePreferences.TitleLetterSpacing))" />
+            <label class="hit-setting-row"><span>@Text.Get("Font")</span><select aria-label="@Text.Get("Font family")" @onhitselectstart="()=>BeginSelectEdit(nameof(HitAppearancePreferences.Font))" @onhitselectcancel="()=>CancelSelectEdit(nameof(HitAppearancePreferences.Font))" value="@_draft.Font" @onchange="FontChanged" @oninput="FontCommitted">
+                <option value="default">@Text.Get("Keep theme default")</option>
+                <option value="system">@Text.Get("System")</option>
+                <option value="arial">@Text.Get("Arial")</option>
+                <option value="calibri">@Text.Get("Calibri")</option>
+                <option value="cambria">@Text.Get("Cambria")</option>
+                <option value="georgia">@Text.Get("Georgia")</option>
+                <option value="times">@Text.Get("Times New Roman")</option>
+                <option value="verdana">@Text.Get("Verdana")</option>
+                <option value="tahoma">@Text.Get("Tahoma")</option>
+                <option value="trebuchet">@Text.Get("Trebuchet MS")</option>
+                <option value="mono">@Text.Get("Monospace")</option>
+                <option value="custom" data-hit-select-action="true">@Text.Get("Custom font")</option>
+            </select></label>
+            <SettingRange Label="Interface text size" Value="@(_draft.TextSize??12)" Min="10" Max="20" Unit="px" Changed="v=>Preview(_draft with{TextSize=(int)v},editedProperty:nameof(HitAppearancePreferences.TextSize))" />
+            <SettingRange Label="Text line height" Value="@(_draft.TextLineHeight??1.5)" Min="1" Max="2.5" Step="0.1" Unit="x" Changed="v=>Preview(_draft with{TextLineHeight=v},editedProperty:nameof(HitAppearancePreferences.TextLineHeight))" />
+        </section>
+    }
+    @if(Show("Custom font")){<InstalledFontPicker Selected="@(_draft.Font=="custom"?_draft.CustomFont:null)" Changed="CustomFontChanged" />}
+
+
+    @if(Show("Background"))
+    {
+        <section class="appearance-category"><div class="appearance-section-heading">
+            <div class="appearance-background-actions"><select aria-label="@Text.Get("Background style")" @onhitselectstart="()=>BeginSelectEdit(nameof(HitAppearancePreferences.BackgroundMode))" @onhitselectcancel="()=>CancelSelectEdit(nameof(HitAppearancePreferences.BackgroundMode))" value="@_draft.BackgroundMode" @onchange="@(e=>Preview(_draft with{BackgroundMode=e.Value?.ToString()??"single"},editedProperty:nameof(HitAppearancePreferences.BackgroundMode)))"><option value="single">@Text.Get("Single media")</option><option value="carousel">@Text.Get("Carousel")</option><option value="smooth">@Text.Get("Smooth transition")</option></select><button class="hit-button" type="button" disabled="@(_importing||_draft.MediaIds.Length==0)" title="@Text.Get("Remove all media")" @onclick="AskRemoveAllAsync">@Text.Get("Remove all media")</button></div>
+        </div>
+        <label class="hit-button hit-busy-action appearance-image-picker" aria-busy="@(_importing?"true":"false")"><span class="hit-busy-label">@Text.Get("Choose background media")</span>@if(_importing){<span class="hit-busy-indicator"><HitSpinner Label="@Text.Get("Importing media")" /></span>}<InputFile disabled="@_importing" accept="@(Appearance.GifBackgroundsAllowed?"image/png,image/jpeg,image/webp,image/gif,video/mp4,video/webm":"image/png,image/jpeg,image/webp,video/mp4,video/webm")" multiple="@(_draft.BackgroundMode!="single")" OnChange="ImportMedia" aria-label="@Text.Get("Choose background media")" /></label>
+        <BackgroundImageGallery @ref="_gallery" Images="_draft.MediaIds" Disabled="_importing" RemoveRequested="RemoveMedia" RemoveAllRequested="RemoveAllMedia" />
+        <SettingRange Label="Image opacity" Description="Set the visibility of background images and videos." Value="_draft.ImageOpacity" Min="0" Max="100" Unit="%" Changed="v=>Preview(_draft with{ImageOpacity=(int)v},editedProperty:nameof(HitAppearancePreferences.ImageOpacity))" />
+        <SettingRange Label="Background horizontal position" Value="_draft.BackgroundPositionX" Min="0" Max="100" Unit="%" Changed="v=>Preview(_draft with{BackgroundPositionX=(int)v},editedProperty:nameof(HitAppearancePreferences.BackgroundPositionX))" />
+        <SettingRange Label="Background vertical position" Value="_draft.BackgroundPositionY" Min="0" Max="100" Unit="%" Changed="v=>Preview(_draft with{BackgroundPositionY=(int)v},editedProperty:nameof(HitAppearancePreferences.BackgroundPositionY))" />
+        <SettingRange Label="Background blur" Value="_draft.BackgroundBlur" Min="0" Max="30" Unit="px" Changed="v=>Preview(_draft with{BackgroundBlur=(int)v},editedProperty:nameof(HitAppearancePreferences.BackgroundBlur))" />
+        <SettingRange Label="Background saturation" Value="_draft.BackgroundSaturation" Min="0" Max="200" Unit="%" Changed="v=>Preview(_draft with{BackgroundSaturation=(int)v},editedProperty:nameof(HitAppearancePreferences.BackgroundSaturation))" />
+        <SettingRange Label="Background brightness" Value="_draft.BackgroundBrightness" Min="0" Max="200" Unit="%" Changed="v=>Preview(_draft with{BackgroundBrightness=(int)v},editedProperty:nameof(HitAppearancePreferences.BackgroundBrightness))" />
+        <SettingRange Label="Background contrast" Value="_draft.BackgroundContrast" Min="0" Max="200" Unit="%" Changed="v=>Preview(_draft with{BackgroundContrast=(int)v},editedProperty:nameof(HitAppearancePreferences.BackgroundContrast))" />
+        <SettingRange Label="Background grayscale" Value="_draft.BackgroundGrayscale" Min="0" Max="100" Unit="%" Changed="v=>Preview(_draft with{BackgroundGrayscale=(int)v},editedProperty:nameof(HitAppearancePreferences.BackgroundGrayscale))" />
+        <SettingRange Label="Background zoom" Value="_draft.BackgroundZoom" Min="100" Max="200" Unit="%" Changed="v=>Preview(_draft with{BackgroundZoom=(int)v},editedProperty:nameof(HitAppearancePreferences.BackgroundZoom))" />
+        <SettingRange Label="Background rotation" Value="_draft.BackgroundRotation" Min="-180" Max="180" Unit="°" Changed="v=>Preview(_draft with{BackgroundRotation=(int)v},editedProperty:nameof(HitAppearancePreferences.BackgroundRotation))" />
+        <SettingRange Label="Image interval" Description="Time between media changes in carousel and smooth transition modes." Value="_draft.BackgroundIntervalSeconds" Min="5" Max="3600" Unit="s" Disabled="@(_draft.BackgroundMode=="single")" Changed="v=>Preview(_draft with{BackgroundIntervalSeconds=(int)v},editedProperty:nameof(HitAppearancePreferences.BackgroundIntervalSeconds))" />
+        <SettingRange Label="Transition duration" Description="How long the incoming background takes to appear." Value="_draft.BackgroundTransitionMs" Min="100" Max="4000" Step="100" Unit="ms" Disabled="@(_draft.BackgroundMode!="smooth")" Changed="v=>Preview(_draft with{BackgroundTransitionMs=(int)v},editedProperty:nameof(HitAppearancePreferences.BackgroundTransitionMs))" />
+        <label class="hit-setting-row"><span>@Text.Get("Transition effect")</span><select aria-label="@Text.Get("Transition effect")" @onhitselectstart="()=>BeginSelectEdit(nameof(HitAppearancePreferences.BackgroundTransition))" @onhitselectcancel="()=>CancelSelectEdit(nameof(HitAppearancePreferences.BackgroundTransition))" disabled="@(_draft.BackgroundMode!="smooth")" value="@_draft.BackgroundTransition" @onchange="@(e=>Preview(_draft with{BackgroundTransition=e.Value?.ToString()??"fade"},editedProperty:nameof(HitAppearancePreferences.BackgroundTransition)))"><option value="fade">@Text.Get("Fade")</option><option value="slide">@Text.Get("Slide")</option><option value="zoom">@Text.Get("Zoom")</option></select></label>
+        <label class="hit-setting-row"><span>@Text.Get("Image fit")</span><select aria-label="@Text.Get("Background image fit")" @onhitselectstart="()=>BeginSelectEdit(nameof(HitAppearancePreferences.ImageFit))" @onhitselectcancel="()=>CancelSelectEdit(nameof(HitAppearancePreferences.ImageFit))" value="@_draft.ImageFit" @onchange="@(e=>Preview(_draft with{ImageFit=e.Value?.ToString()??"cover"},editedProperty:nameof(HitAppearancePreferences.ImageFit)))"><option value="cover">@Text.Get("Fill")</option><option value="contain">@Text.Get("Fit")</option><option value="stretch">@Text.Get("Stretch")</option></select></label>
+        </section>
+    }
+    @if(Show("Visual profiles"))
+    {
+        <section class="appearance-category">
+        <label class="hit-setting-row"><span>@Text.Get("Profile")</span><select aria-label="@Text.Get("Visual profile")" @bind="_selected"><option value="">@Text.Get("Choose a profile")</option>@foreach(var profile in _profiles){<option value="@profile.Id">@profile.Name</option>}</select></label>
+        <div class="appearance-actions"><button class="hit-button" type="button" disabled="@(_selected.Length==0)" @onclick="Load">@Text.Get("Use profile")</button><button class="hit-button" type="button" disabled="@(_selected.Length==0)" @onclick="Duplicate">@Text.Get("Duplicate profile")</button></div>
+        <label class="hit-setting-row"><span>@Text.Get("Profile name")</span><input type="text" maxlength="64" aria-label="@Text.Get("Visual profile name")" @bind="_name" /></label>
+        <div class="appearance-actions"><button class="hit-button" type="button" @onclick="Save">@Text.Get("Save new profile")</button><button class="hit-button" type="button" aria-label="@Text.Get("Export CSS")" @onclick="Export">@Text.Get("Export CSS")</button></div>
+        </section>
+    }
+    <div class="appearance-feedback" role="status">@if(_saving){<HitSpinner Label="@Text.Get("Saving appearance")" />}else if(_message is not null){<span>@_message</span>}</div>
+    @if(_error is not null){<p class="settings-error" role="alert">@_error</p>}
+    <dialog @ref="_exportDialog" class="theme-delete-dialog hit-confirm" aria-labelledby="@_exportTitle" @oncancel="CancelExport" @oncontextmenu="CancelExport" @oncontextmenu:preventDefault="true" @oncontextmenu:stopPropagation="true" @onkeydown:stopPropagation="true" @onwheel:stopPropagation="true">
+        <h2 id="@_exportTitle">@Text.Get("Videos cannot be exported as CSS")</h2>
+        <p>@Text.Get("CSS cannot play videos. You can export this theme with a fixed frame for each video instead. Your local profile keeps its videos.")</p>
+        <div class="dialog-actions"><button type="button" data-dialog-cancel aria-label="@Text.Get("Cancel video CSS export")" @onclick="CancelExport">@Text.Get("Cancel")</button><button type="button" aria-label="@Text.Get("Export with fixed frames")" @onclick="ExportPosters">@Text.Get("Export with fixed frames")</button></div>
+    </dialog>
+</section>
+}
+
+@code {
+    public static readonly string[] Categories=["General","Colors","Shape and typography","Background","Visual profiles"];
+    public static bool ValidPage(string page)=>Categories.Contains(page)||page=="Custom font";
+    public static string ParentPage(string page)=>page=="Custom font"?"Shape and typography":"";
+    [Parameter] public EventCallback BackRequested{get;set;}
+    [Parameter] public bool ShowBack{get;set;}=true;
+    [Parameter] public string BackLabel{get;set;}="Themes";
+    [Parameter] public string Page{get;set;}="";
+    [Parameter] public EventCallback<string> PageChanged{get;set;}
+    [Parameter] public bool Active{get;set;}=true;
+    [Parameter] public bool SphereMode{get;set;}
+    private bool Show(string page)=>Page==page;
+    private Task ChooseFontPage()=>PageChanged.InvokeAsync("Custom font");
+    private void CustomFontChanged(string font)=>Preview(_draft with{Font="custom",CustomFont=font},editedProperty:nameof(HitAppearancePreferences.Font));
+    private void SaveBehavior(Func<HitSettings,HitSettings> change)=>Run(()=>Settings.Update(change));
+    private void FontChanged(ChangeEventArgs args)=>Preview(_draft with{Font=args.Value?.ToString()??"default"},editedProperty:nameof(HitAppearancePreferences.Font));
+    private async Task FontCommitted(ChangeEventArgs args){if(args.Value?.ToString()=="custom")await ChooseFontPage();}
+    public bool Enabled=>_draft.Enabled;
+    public Task SetEnabledAsync(bool enabled)=>InvokeAsync(()=>{Preview(_draft with{Enabled=enabled},true);StateHasChanged();});
+    private BackgroundImageGallery? _gallery;
+    private HitAppearancePreferences _draft=new(),_opened=new();
+    private HitAppearancePreferences? _selectOpened;
+    private string? _selectProperty;
+    private string _theme="default",_openedTheme="default",_name="My profile",_selected="";
     private HitVisualProfile[] _profiles=[];
     private string? _message,_error;
-    private HitAppearancePreferences _opened=new();private string _openedTheme="default";
-    private CancellationTokenSource? _saveCancellation;private Task? _saveTask;private bool _disposed,_saving;
+    private bool _disposed,_saving,_importing,_confirmExport;
+    private CancellationTokenSource? _saveCancellation;
+    private CancellationTokenSource? _importCancellation;
+    private readonly CancellationTokenSource _lifetime=new();
+    private Task? _saveTask,_importTask;
     private IJSObjectReference? _imageModule;
-    private readonly CancellationTokenSource _lifetime=new();private Task? _importTask;private bool _importing;
+    private Task<IJSObjectReference>? _moduleImport;
+    private ElementReference _exportDialog;
+    private readonly string _exportTitle="export-video-"+Guid.NewGuid().ToString("N");
     protected override void OnInitialized(){_draft=_opened=Settings.Current.Appearance;_theme=_openedTheme=Settings.Current.Theme;Run(()=>_profiles=Appearance.Profiles());}
-    private void Run(Action action){_error=null;try{action();}catch(Exception error)when(error is IOException or UnauthorizedAccessException or System.Text.Json.JsonException or ArgumentException or InvalidOperationException){_error=error.Message;}}
-    private void Preview(HitAppearancePreferences value,bool preserveEnabled=false){_draft=(preserveEnabled?value:value with{Enabled=true}).Normalize();Appearance.Preview(_draft,_theme);_saving=true;_saveCancellation?.Cancel();_saveCancellation?.Dispose();_saveCancellation=new();_saveTask=SaveLaterAsync(_saveCancellation.Token);}
-    private async Task SaveLaterAsync(CancellationToken token){try{await Task.Delay(250,token);await InvokeAsync(()=>{if(!token.IsCancellationRequested&&!_disposed){Apply();StateHasChanged();}});}catch(OperationCanceledException){}}
-    private string Color(string field)=>field switch{"Background"=>_draft.Background,"Idle background"=>_draft.IdleBackground??_draft.Background,"Muted text"=>_draft.Muted??_draft.Text,"Eyes"=>_draft.Eyes??_draft.Text,"Accent"=>_draft.Accent,"Text"=>_draft.Text,_=>_draft.Border};
-    private void SetColor(string field,string? value){if(value is null)return;Preview(field switch{"Background"=>_draft with{Background=value},"Idle background"=>_draft with{IdleBackground=value},"Muted text"=>_draft with{Muted=value},"Eyes"=>_draft with{Eyes=value},"Accent"=>_draft with{Accent=value},"Text"=>_draft with{Text=value},_=>_draft with{Border=value}});}
-    private void SetExtra(string option,ChangeEventArgs args){if(int.TryParse(args.Value?.ToString(),out var value))Preview(option switch{"Eye size"=>_draft with{EyeSize=value},"Eye gap"=>_draft with{EyeGap=value},"Control radius"=>_draft with{ControlRadius=value},"Shadow strength"=>_draft with{ShadowStrength=value},_=>_draft with{ImageOpacity=value}});}
-    private void Apply(){Run(()=>{Appearance.Apply(_draft,_theme);_message="Saved automatically.";});_saving=false;}
-    private void Undo(){_theme=_openedTheme;Preview(_opened,true);}
-    private void Reset()=>Preview(new(),true);
-    private void Load(){var profile=_profiles.FirstOrDefault(p=>p.Id==_selected);if(profile is null)return;_theme=Appearance.ValidTheme(profile.Theme);_name=profile.Name;Preview(profile.Appearance,true);}
-    private void Save()=>Run(()=>{var profile=Appearance.Save(_name,_draft,_theme);_profiles=Appearance.Profiles();_selected=profile.Id;_message="Profile saved.";});
-    private void Duplicate()=>Run(()=>{var original=_profiles.First(p=>p.Id==_selected);var profile=Appearance.Save((original.Name[..Math.Min(59,original.Name.Length)])+" copy",original.Appearance,original.Theme);_profiles=Appearance.Profiles();_selected=profile.Id;_message="Profile duplicated.";});
-    private void Export()=>Run(()=>_message="CSS saved locally: "+Appearance.Export(_draft,_theme));
-    private Task ImportImage(InputFileChangeEventArgs args)=>_importTask=ImportImageCore(args);
-    private async Task ImportImageCore(InputFileChangeEventArgs args)
+    protected override void OnParametersSet(){if(!Active){_importCancellation?.Cancel();Flush();_confirmExport=false;}}
+    private void Run(Action action){_error=null;try{action();}catch(Exception error)when(error is IOException or InvalidDataException or UnauthorizedAccessException or System.Text.Json.JsonException or ArgumentException or InvalidOperationException){_error=error.Message;}}
+    private void Preview(HitAppearancePreferences value,bool preserveEnabled=false,string? editedProperty=null,bool restore=false)
     {
-        if(_disposed||_importing)return;_importing=true;
-        var imported = new List<string>();
-        var accepted = false;
+        value=preserveEnabled?value:value with{Enabled=true};
+        _draft=restore?value.Normalize():value.WithEditsFrom(_draft,editedProperty is null?[]:[editedProperty]);Appearance.Preview(_draft,_theme);_saving=true;
+        _saveCancellation?.Cancel();_saveCancellation?.Dispose();_saveCancellation=new();_saveTask=SaveLaterAsync(_saveCancellation.Token);
+    }
+    private void BeginSelectEdit(string property){_selectOpened=_draft;_selectProperty=property;}
+    private void CancelSelectEdit(string property)
+    {
+        if(_selectOpened is not {} original||_selectProperty!=property)return;
+        _selectOpened=null;_selectProperty=null;var restored=_draft.RestoreSelectFrom(original,property);
+        if(restored!=_draft)Preview(restored,true,restore:true);
+    }
+    private async Task SaveLaterAsync(CancellationToken token){try{await Task.Delay(250,token);await InvokeAsync(()=>{if(!token.IsCancellationRequested&&!_disposed){Apply();StateHasChanged();}});}catch(OperationCanceledException){}}
+    public void Flush(){if(!_disposed)FlushCore();}
+    private void FlushCore(){_saveCancellation?.Cancel();if(_saving)Apply();}
+    private async Task<IJSObjectReference> ModuleAsync()
+    {
+        var module=await (_moduleImport??=JS.InvokeAsync<IJSObjectReference>("import","./js/hit-appearance.js").AsTask());
+        _imageModule=module;return module;
+    }
+    private string Color(string field)=>field switch{"Background"=>_draft.Background,"Idle background"=>_draft.IdleBackground??_draft.Background,"Muted text"=>_draft.Muted??_draft.Text,"Eyes"=>_draft.Eyes??_draft.Text,"Accent"=>_draft.Accent,"Text"=>_draft.Text,"Shadow color"=>_draft.ShadowColor,_=>_draft.Border};
+    private void SetColor(string field,string value)=>Preview(field switch{"Background"=>_draft with{Background=value},"Idle background"=>_draft with{IdleBackground=value},"Muted text"=>_draft with{Muted=value},"Eyes"=>_draft with{Eyes=value},"Accent"=>_draft with{Accent=value},"Text"=>_draft with{Text=value},"Shadow color"=>_draft with{ShadowColor=value},_=>_draft with{Border=value}},editedProperty:field switch{"Idle background"=>nameof(HitAppearancePreferences.IdleBackground),"Muted text"=>nameof(HitAppearancePreferences.Muted),"Shadow color"=>nameof(HitAppearancePreferences.ShadowColor),_=>field});
+    private void Apply(){Run(()=>{Appearance.Apply(_draft,_theme);_message=Text.Get("Saved automatically.");});_saving=false;}
+    private void Undo(){_importCancellation?.Cancel();_theme=_openedTheme;Preview(_opened,true,restore:true);}
+    private void ResetSphere()=>Run(()=>
+    {
+        _saveCancellation?.Cancel();Settings.Update(current=>HitSphereSettings.RestoreDefaults(current,_draft));
+        _draft=Settings.Current.Appearance;_saving=false;Appearance.Cancel();_message=Text.Get("Sphere defaults restored.");
+    });
+    private void Reset(){_importCancellation?.Cancel();Preview(new(){EditedProperties=""},true,restore:true);}
+    private void Load(){var profile=_profiles.FirstOrDefault(p=>p.Id==_selected);if(profile is null)return;_theme=Appearance.ValidTheme(profile.Theme);_name=profile.Name;Preview(profile.Appearance,true,restore:true);}
+    private void Save()=>Run(()=>{var profile=Appearance.Save(_name,_draft,_theme);_profiles=Appearance.Profiles();_selected=profile.Id;_message=Text.Get("Profile saved.");});
+    private void Duplicate()=>Run(()=>{var original=_profiles.First(p=>p.Id==_selected);var profile=Appearance.Save(original.Name[..Math.Min(59,original.Name.Length)]+" copy",original.Appearance,original.Theme);_profiles=Appearance.Profiles();_selected=profile.Id;_message=Text.Get("Profile duplicated.");});
+    private void Export(){if(_draft.MediaIds.Any(HitAppearanceService.IsVideo))_confirmExport=true;else ExportCore(false);}
+    private void CancelExport()=>_confirmExport=false;
+    private void ExportPosters(){if(!_confirmExport)return;_confirmExport=false;ExportCore(true);}
+    private void ExportCore(bool posters)=>Run(()=>_message=Text.Format("CSS saved locally: {0}",Appearance.Export(_draft,_theme,posters)));
+    private Task AskRemoveAllAsync()=>_gallery?.AskRemoveAllAsync()??Task.CompletedTask;
+    private void SetMedia(string[] ids)=>Preview(_draft with{BackgroundMedia=ids,BackgroundImage=ids.FirstOrDefault(HitAppearanceService.ValidImageId),BackgroundImages=string.Join(',',ids.Where(HitAppearanceService.ValidImageId).Skip(1))},editedProperty:nameof(HitAppearancePreferences.BackgroundMedia));
+    private void RemoveMedia(string id)=>SetMedia(_draft.MediaIds.Where(value=>value!=id).ToArray());
+    private void RemoveAllMedia()=>SetMedia([]);
+    private Task ImportMedia(InputFileChangeEventArgs args)=>_importTask=ImportMediaCore(args);
+    private async Task ImportMediaCore(InputFileChangeEventArgs args)
+    {
+        if(_disposed||_importing)return;_importing=true;_error=null;
+        _importCancellation?.Dispose();_importCancellation=CancellationTokenSource.CreateLinkedTokenSource(_lifetime.Token);
+        var token=_importCancellation.Token;
+        var imported=new List<string>();var accepted=false;
         try
         {
-            var files = args.GetMultipleFiles(8);
-            var existing = _draft.BackgroundMode == "single" ? Array.Empty<string>() : _draft.ImageIds;
-            if (existing.Length + files.Count > 8) throw new InvalidDataException(Text.Get("Choose up to 8 background images."));
-            _imageModule ??= await JS.InvokeAsync<IJSObjectReference>("import",_lifetime.Token,"./js/hit-appearance.js");
-            foreach (var file in files)
+            if(args.FileCount>Appearance.MediaLimit)throw new InvalidDataException(Text.Format("Choose up to {0} background media items.",Appearance.MediaLimit));
+            var files=args.GetMultipleFiles(Appearance.MediaLimit);
+            var mode=_draft.BackgroundMode;var originalIds=_draft.MediaIds;
+            var existing=mode=="single"?Array.Empty<string>():originalIds;
+            if(existing.Length+files.Count>Appearance.MediaLimit)throw new InvalidDataException(Text.Format("Choose up to {0} background media items.",Appearance.MediaLimit));
+            _imageModule=await ModuleAsync();token.ThrowIfCancellationRequested();
+            foreach(var file in files)
             {
-                await using var source = file.OpenReadStream(Appearance.ImageByteLimit,_lifetime.Token);
-                var id = await Appearance.ImportImageAsync(source,_lifetime.Token); imported.Add(id);
-                if (!await _imageModule.InvokeAsync<bool>("validateImage",_lifetime.Token,Appearance.ImageUrl(id)))
-                    throw new InvalidDataException(Text.Get("Choose a valid image up to 4096 x 4096 pixels."));
+                var video=Path.GetExtension(file.Name).ToLowerInvariant() is ".mp4" or ".webm";
+                await using var source=file.OpenReadStream(video?Appearance.VideoByteLimit:Appearance.ImageByteLimit,token);
+                var id=video?await Appearance.ImportVideoAsync(source,token):await Appearance.ImportImageAsync(source,token);imported.Add(id);
+                if(video)
+                {
+                    var poster=await _imageModule.InvokeAsync<string?>("validateVideo",token,Appearance.MediaUrl(id),_exportTitle);
+                    if(poster is null)throw new InvalidDataException(Text.Get("Choose a playable MP4 or WebM video up to 4096 x 4096 pixels."));
+                    await Appearance.SaveVideoPosterAsync(id,poster,token);
+                }
+                else if(!await _imageModule.InvokeAsync<bool>("validateImage",token,Appearance.ImageUrl(id),_exportTitle))throw new InvalidDataException(Text.Get("Choose a valid image up to 4096 x 4096 pixels."));
             }
-            if (!_disposed)
+            if(!_disposed&&!token.IsCancellationRequested)
             {
-                var images = existing.Concat(imported).ToArray();
-                Preview(_draft with { BackgroundImage = images.FirstOrDefault(), BackgroundImages = string.Join(",",images.Skip(1)), Enabled = true });
-                accepted = true;
+                if(_draft.BackgroundMode!=mode||!_draft.MediaIds.SequenceEqual(originalIds))throw new InvalidOperationException(Text.Get("The background selection changed. Choose the files again."));
+                if(existing.Length+imported.Count>Appearance.MediaLimit)throw new InvalidDataException(Text.Format("Choose up to {0} background media items.",Appearance.MediaLimit));
+                SetMedia(existing.Concat(imported).ToArray());accepted=true;
             }
         }
-        catch (OperationCanceledException) when (_lifetime.IsCancellationRequested) { }
-        catch (Exception error) when (error is IOException or UnauthorizedAccessException or JSException or InvalidOperationException) { _error = error.Message; }
+        catch(OperationCanceledException)when(token.IsCancellationRequested){}
+        catch(Exception error)when(error is IOException or InvalidDataException or UnauthorizedAccessException or JSException or InvalidOperationException or ArgumentException){_error=error.Message;}
         finally
         {
-            _importing = false;
-            if (!accepted) foreach (var id in imported) try { Appearance.RemoveImportedImage(id); }
-                catch (Exception error) when (error is IOException or UnauthorizedAccessException) { _error = Text.Get("Could not remove the unused image."); }
+            _importing=false;
+            if(!accepted)foreach(var id in imported)try{Appearance.RemoveImportedMedia(id);}catch(Exception error)when(error is IOException or UnauthorizedAccessException){_error=Text.Get("Could not remove the unused media.");}
         }
     }
-
-    public async ValueTask DisposeAsync(){_disposed=true;_lifetime.Cancel();_saveCancellation?.Cancel();if(_saveTask is not null)await _saveTask;if(_importTask is not null)await _importTask;if(Appearance.PreviewTheme is not null)Apply();Appearance.Cancel();_saveCancellation?.Dispose();_lifetime.Dispose();if(_imageModule is not null)try{await _imageModule.DisposeAsync();}catch(JSDisconnectedException){}}
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if(_confirmExport&&_imageModule is null)await ModuleAsync();
+        if(_disposed)return;
+        if((!Active||_importCancellation?.IsCancellationRequested==true)&&_imageModule is not null)await _imageModule.InvokeVoidAsync("cancelValidations",_exportTitle);
+        if(_imageModule is not null)await _imageModule.InvokeVoidAsync("dialog",_exportDialog,_confirmExport);
+    }
+    public async ValueTask DisposeAsync()
+    {
+        _disposed=true;_lifetime.Cancel();_saveCancellation?.Cancel();
+        if(_imageModule is not null)try{await _imageModule.InvokeVoidAsync("cancelValidations",_exportTitle);}catch(JSDisconnectedException){}
+        if(_saveTask is not null)await _saveTask;if(_importTask is not null)await _importTask;
+        if(_moduleImport is not null&&_imageModule is null)try{await ModuleAsync();}catch(JSDisconnectedException){}
+        FlushCore();Appearance.Cancel();_saveCancellation?.Dispose();_importCancellation?.Dispose();_lifetime.Dispose();
+        if(_imageModule is not null)try{await _imageModule.InvokeVoidAsync("dialog",_exportDialog,false);await _imageModule.DisposeAsync();}catch(JSDisconnectedException){}
+    }
 }

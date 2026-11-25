@@ -9,8 +9,8 @@
     <Nullable>enable</Nullable>
     <!-- Published builds and tools are outputs, never source or application content. -->
     <DefaultItemExcludes>$(DefaultItemExcludes);artifacts/**;**/bin/**;**/obj/**</DefaultItemExcludes>
-    <HitReleaseDate>2026-10-29</HitReleaseDate>
-    <HitReleaseGeneration>2</HitReleaseGeneration>
+    <HitReleaseDate>2026-11-25</HitReleaseDate>
+    <HitReleaseGeneration>3</HitReleaseGeneration>
     <Version>$([System.DateTime]::Parse('$(HitReleaseDate)').ToString('yyyy.MM.dd'))</Version>
     <InformationalVersion>$(HitReleaseGeneration)v$([System.DateTime]::Parse('$(HitReleaseDate)').ToString('ddMM'))</InformationalVersion>
     <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
@@ -22,12 +22,15 @@
     <AssemblyMetadata Include="HitReleaseDate" Value="$(HitReleaseDate)" />
     <AssemblyMetadata Include="HitReleaseGeneration" Value="$(HitReleaseGeneration)" />
     <InternalsVisibleTo Include="HIT.Example.Tests" />
+    <InternalsVisibleTo Include="HIT.Chess.Tests" />
     <Compile Remove="Modules/**;Tests/**;Sdk/**;Examples/**" />
     <Content Remove="Modules/**;Tests/**;Sdk/**;Examples/**" />
     <None Remove="Modules/**;Tests/**;Sdk/**;Examples/**" />
     <RazorComponent Remove="Modules/**;Tests/**;Sdk/**;Examples/**" />
     <ProjectReference Include="Modules/HIT.Sdk/HIT.Sdk.csproj" />
     <EmbeddedResource Include="Resources/en.json" />
+    <EmbeddedResource Include="Resources/pt-BR.json" />
+    <EmbeddedResource Include="Docs/CHANGELOG.md" />
     <Content Include="Resources/hit.ico" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <PackageReference Include="Photino.Blazor" Version="4.0.13" />
     <PackageReference Include="NAudio.Wasapi" Version="2.2.1" />

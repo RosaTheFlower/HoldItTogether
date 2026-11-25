@@ -1,0 +1,78 @@
+@using HoldItTogether.Services.Localization
+@using Microsoft.AspNetCore.Components.Forms
+@implements IAsyncDisposable
+@inject HoldItTogether.Services.HitApplicationService Application
+
+<section class="language-settings-view" aria-label="@Text.Get("Languages")" data-no-drag>
+    <h2>@Text.Get("Languages")</h2>
+    <label class="hit-setting-row" data-hit-option-descriptions="false">
+        <span>@Text.Get("Language")</span>
+        <select aria-label="@Text.Get("Language")" @bind="_locale" data-hit-select-value="@_locale" disabled="@_busy">
+            @foreach (var language in _languages) { <option @key="language.Locale" value="@language.Locale">@language.Name</option> }
+        </select>
+    </label>
+    <p class="setting-description">@Text.Get("English is the default. Missing translations use English. Apply restarts HIT.")</p>
+    <div class="language-actions">
+        <div class="language-feedback hit-muted" aria-live="polite" aria-atomic="true">
+            @if (_message is not null) { <p class="@(_isError ? "settings-error" : null)" role="@(_isError ? "alert" : "status")">@_message</p> }
+        </div>
+        <label class="hit-button language-import hit-busy-action" aria-busy="@(_importing ? "true" : "false")" title="@Text.Get("Import language JSON")">
+            <span class="hit-busy-label">@Text.Get("Import language JSON")</span>
+            @if (_importing) { <span class="hit-busy-indicator"><HitSpinner Label="@Text.Get("Import language JSON")" /></span> }
+            <InputFile OnChange="Import" accept=".json,application/json" disabled="@_busy" aria-label="@Text.Get("Import language JSON")" />
+        </label>
+        <button type="button" class="hit-button hit-busy-action" disabled="@(_busy || _languages.Count == 0)" aria-busy="@(_applying ? "true" : "false")" title="@Text.Get("Apply and restart HIT")" @onclick="Apply">
+            <span class="hit-busy-label">@Text.Get("Apply and restart HIT")</span>
+            @if (_applying) { <span class="hit-busy-indicator"><HitSpinner Label="@Text.Get("Apply and restart HIT")" /></span> }
+        </button>
+    </div>
+</section>
+
+@code {
+    private IReadOnlyList<HitLanguage> _languages = [];
+    private string _locale = "en-US";
+    private string? _message;
+    private bool _importing, _applying, _isError;
+    private bool _busy => _importing || _applying;
+    private readonly CancellationTokenSource _lifetime = new();
+    private Task? _import;
+    protected override void OnInitialized()
+    {
+        try { _languages = HitLanguageStore.Default.Installed(); _locale = HitLanguageStore.Current.Locale; }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException) { _isError = true; _message = Text.Get("Could not load languages."); }
+    }
+    private Task Import(InputFileChangeEventArgs args) => _busy ? Task.CompletedTask : _import = ImportAsync(args);
+    private async Task ImportAsync(InputFileChangeEventArgs args)
+    {
+        if (_busy) return;
+        _importing = true; _isError = false; _message = null;
+        try
+        {
+            await using var stream = args.File.OpenReadStream(HitLanguageStore.MaximumBytes, _lifetime.Token);
+            using var output = new MemoryStream();
+            await stream.CopyToAsync(output, _lifetime.Token);
+            var language = HitLanguageStore.Default.Import(output.ToArray());
+            _languages = HitLanguageStore.Default.Installed(); _locale = language.Locale;
+            _message = Text.Get("Language installed. Apply to use it.");
+        }
+        catch (OperationCanceledException) { }
+        catch (Exception error) when (error is InvalidDataException or IOException or UnauthorizedAccessException or System.Text.Json.JsonException or ArgumentException or FormatException)
+        { _isError = true; _message = Text.Get("Could not import language. Check the JSON format, message keys, placeholders and 1 MB limit."); }
+        finally { _importing = false; }
+    }
+    private async Task Apply()
+    {
+        if (_busy || _languages.Count == 0) return;
+        _applying = true; _isError = false; _message = null;
+        try { HitLanguageStore.Default.Select(_locale); await Application.RestartAsync(); }
+        catch (Exception error) when (error is InvalidDataException or IOException or UnauthorizedAccessException or InvalidOperationException or System.ComponentModel.Win32Exception)
+        { _isError = true; _message = Text.Get("Could not restart HIT. The selected language will apply next time."); }
+        finally { _applying = false; }
+    }
+    public async ValueTask DisposeAsync()
+    {
+        _lifetime.Cancel();
+        if (_import is not null) await _import;
+        _lifetime.Dispose();
+    }
+}

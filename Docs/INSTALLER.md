@@ -41,7 +41,7 @@ The script also recognizes `artifacts/tools/innosetup/ISCC.exe` and standard Inn
 Reuse a release that contains the current host's installer import command:
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File Tools/Build-Installer.ps1 -ReleaseDirectory artifacts/releases/2v2910
+powershell -NoProfile -ExecutionPolicy Bypass -File Tools/Build-Installer.ps1 -ReleaseDirectory artifacts/releases/3v2511
 ```
 
 The output is `installer/HIT-NvDDMM-win-x64-Setup.exe` within that release directory.
@@ -71,7 +71,7 @@ The generated installer is unsigned unless separately signed with a publisher's 
 ## Validation
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File Tools/Test-Installer.ps1 -ReleaseDirectory artifacts/releases/2v2910
+powershell -NoProfile -ExecutionPolicy Bypass -File Tools/Test-Installer.ps1 -ReleaseDirectory artifacts/releases/3v2511
 ```
 
 The integration helper compiles a test variant without shortcuts or uninstall registry registration, installs all four

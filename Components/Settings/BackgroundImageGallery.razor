@@ -4,35 +4,35 @@
 @inject HitAppearanceService Appearance
 @inject IJSRuntime JS
 
-<section class="background-gallery" aria-label="@Text.Get("Background image preview")" data-no-drag @onkeydown="HandleKey" @onkeydown:stopPropagation="true" @onfocusout="()=>_armed=null" @onclick:stopPropagation="true">
+<section class="background-gallery" aria-label="@Text.Get("Background media preview")" data-no-drag @onkeydown="HandleKey" @onkeydown:stopPropagation="true" @onfocusout="()=>_armed=null" @onclick:stopPropagation="true">
     <div class="background-gallery-carousel">
-        <button type="button" class="background-gallery-arrow" disabled="@(Disabled || Images.Length < 2)" aria-label="@Text.Get("Previous images")" @onclick="()=>MoveAsync(-1)">&#8249;</button>
-        <div @ref="_track" class="background-gallery-track" tabindex="0" role="region" aria-label="@Text.Get("Selected background images")">
+        <button type="button" class="background-gallery-arrow" disabled="@(Disabled || Images.Length < 2)" aria-label="@Text.Get("Previous media")" @onclick="()=>MoveAsync(-1)">&#8249;</button>
+        <div @ref="_track" class="background-gallery-track" tabindex="0" role="region" aria-label="@Text.Get("Selected background media")">
             @for (var i = 0; i < Images.Length; i++)
             {
                 var id = Images[i]; var index = i + 1;
                 <div @key="id" class="background-gallery-item">
-                    <button type="button" class="background-gallery-select" aria-label="@Text.Format("Select background image {0}", index)" aria-pressed="@(_selected == id ? "true" : "false")" disabled="@Disabled" @onclick="()=>Select(id)">
-                        @if (_urls.GetValueOrDefault(id) is { } url) { <img src="@url" alt="@Text.Format("Background image {0}", index)" loading="lazy" decoding="async" draggable="false" /> }
-                        else { <span>@Text.Format("Image {0}", index)</span> }
+                    <button type="button" class="background-gallery-select" aria-label="@Text.Format("Select background media {0}", index)" aria-pressed="@(_selected == id ? "true" : "false")" disabled="@Disabled" @onclick="()=>Select(id)">
+                        @if (_urls.GetValueOrDefault(id) is { } url) { <img src="@url" alt="@Text.Format("Background media {0}", index)" loading="lazy" decoding="async" draggable="false" /> }
+                        else { <span>@Text.Format("Media {0}", index)</span> }
                     </button>
                     @if (_selected == id)
                     {
-                        <button type="button" class="background-gallery-delete @(_armed == id ? "is-armed" : "")" aria-label="@Text.Get(_armed == id ? "Confirm image removal" : "Remove selected image")" title="@Text.Get(_armed == id ? "Click again to remove this image" : "Click twice to remove this image")" disabled="@Disabled" @onclick="()=>DeleteAsync(id)">
+                        <button type="button" class="background-gallery-delete @(_armed == id ? "is-armed" : "")" aria-label="@Text.Get(_armed == id ? "Confirm media removal" : "Remove selected media")" title="@Text.Get(_armed == id ? "Click again to remove this media" : "Click twice to remove this media")" disabled="@Disabled" @onclick="()=>DeleteAsync(id)">
                             <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 6h12M8 3h4M6 6l1 11h6l1-11M9 9v5m2-5v5" /></svg>
                         </button>
                     }
                 </div>
             }
-            @if (Images.Length == 0) { <p class="hit-muted">@Text.Get("No background images selected.")</p> }
+            @if (Images.Length == 0) { <p class="hit-muted">@Text.Get("No background media selected.")</p> }
         </div>
-        <button type="button" class="background-gallery-arrow" disabled="@(Disabled || Images.Length < 2)" aria-label="@Text.Get("Next images")" @onclick="()=>MoveAsync(1)">&#8250;</button>
+        <button type="button" class="background-gallery-arrow" disabled="@(Disabled || Images.Length < 2)" aria-label="@Text.Get("Next media")" @onclick="()=>MoveAsync(1)">&#8250;</button>
     </div>
-    @if (_armed is not null) { <p class="hit-muted" role="status">@Text.Get("Click the trash button again to remove this image. Escape cancels.")</p> }
+    @if (_armed is not null) { <p class="hit-muted" role="status">@Text.Get("Click the trash button again to remove this media. Escape cancels.")</p> }
     <dialog @ref="_dialog" class="theme-delete-dialog hit-confirm" aria-labelledby="@_titleId" @oncancel="CancelAll" @oncontextmenu="CancelAll" @oncontextmenu:preventDefault="true" @oncontextmenu:stopPropagation="true" @onwheel:stopPropagation="true" @onkeydown:stopPropagation="true">
-        <h2 id="@_titleId">@Text.Get("Remove all background images?")</h2>
-        <p>@Text.Format("Remove all {0} images from this background selection?", Images.Length)</p>
-        <div class="dialog-actions"><button type="button" data-dialog-cancel aria-label="@Text.Get("Cancel removing all images")" @onclick="CancelAll">@Text.Get("Cancel")</button><button type="button" class="is-primary" aria-label="@Text.Get("Confirm removing all images")" @onclick="ConfirmAllAsync">@Text.Get("Remove all images")</button></div>
+        <h2 id="@_titleId">@Text.Get("Remove all background media?")</h2>
+        <p>@Text.Format("Remove all {0} media items from this background selection?", Images.Length)</p>
+        <div class="dialog-actions"><button type="button" data-dialog-cancel aria-label="@Text.Get("Cancel removing all media")" @onclick="CancelAll">@Text.Get("Cancel")</button><button type="button" class="is-primary" aria-label="@Text.Get("Confirm removing all media")" @onclick="ConfirmAllAsync">@Text.Get("Remove all media")</button></div>
     </dialog>
 </section>
 
@@ -50,7 +50,7 @@
     protected override void OnParametersSet()
     {
         var key=Appearance.GifBackgroundsAllowed+":"+string.Join(',',Images);
-        if (_imageKey != key) { _imageKey=key; _urls.Clear(); foreach(var id in Images) _urls[id]=Appearance.ImageUrl(id); _armed=null; }
+        if (_imageKey != key) { _imageKey=key; _urls.Clear(); foreach(var id in Images) _urls[id]=Appearance.PosterUrl(id); _armed=null; }
         if (_selected is not null && !Images.Contains(_selected)) _selected=null;
         if (Images.Length==0) _confirmAll=false;
     }

@@ -38,10 +38,9 @@
     justify-items: var(--sphere-align-x, center);
     align-items: var(--sphere-align-y, center);
 }
-/* Keep the active surface opaque even when a personal theme uses an alpha color. */
+/* Preserve the active color alpha independently of the retained native canvas. */
 .sphere-area[data-hit-canvas="true"] > .dynamic-sphere.is-open {
     background-color: var(--hit-active-surface, var(--hit-open-background, #17191e));
-    background-color: rgb(from var(--hit-active-surface, var(--hit-open-background, #17191e)) r g b / 1);
 }
 .sphere-area .dynamic-sphere.is-open[data-hit-opening-pending="true"] {
     width: var(--sphere-pending-width, 56px);
@@ -369,10 +368,13 @@
 
 .sphere-title-icon{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0;}.sphere-title{display:flex;align-items:center;gap:7px;}
 .sphere-heading{display:flex;align-items:center;gap:6px;min-width:0;}
+.dynamic-sphere[data-hit-personalization-hidden=true] :is(.sphere-heading,.hit-menu-measure,.sphere-action-reading-cover,.sphere-notifications){visibility:hidden;pointer-events:none;}
 .sphere-action-back{flex:0 0 auto;pointer-events:auto;}
 
 .sphere-custom-backdrop.has-background-slides{background-image:none!important;overflow:hidden;}
 .custom-background-frame{position:absolute;inset:0;background-position:center;background-repeat:no-repeat;}
+.custom-background-frame video{display:block;width:100%;height:100%;pointer-events:none;}
+.custom-background-frame video[hidden]{display:none;}
 .custom-background-enter.fade{animation:hit-background-fade var(--background-transition,1500ms) ease-in-out both;}
 .custom-background-enter.slide{animation:hit-background-slide var(--background-transition,1500ms) ease-in-out both;}
 .custom-background-enter.zoom{animation:hit-background-zoom var(--background-transition,1500ms) ease-in-out both;}
@@ -382,6 +384,7 @@
 @media(prefers-reduced-motion:reduce){.custom-background-enter{animation:none!important;}}
 
 .custom-background-exit{animation:hit-background-fade-out var(--background-transition,1500ms) ease-in-out both;}
+.dynamic-sphere:not(.is-open)>.sphere-custom-backdrop:not([data-hit-background-active=true]) .custom-background-enter{animation:none;opacity:1;transform:none;}
 @keyframes hit-background-fade-out{from{opacity:1;}to{opacity:0;}}
 @media(prefers-reduced-motion:reduce){.custom-background-exit{display:none;}}
 

@@ -70,7 +70,8 @@ internal static class PlacementChecks
         Check(new HitSettings().WindowEdgeReachPercent==98&&(new HitSettings {WindowEdgeReachPercent=20}).Normalize().WindowEdgeReachPercent==85,"Placement defaults and bounds");
 
         Check(HitUpdateService.VersionLabel==HitUpdateService.ReleaseGeneration+"v"+HitUpdateService.ReleaseDate.ToString("ddMM"),"Public version includes generation and date from build release metadata.");
-        Check(HitUpdateService.VersionLabel=="2v2910","The requested release label is 2v2910.");
+        Check(HitUpdateService.VersionLabel=="3v2511","The requested release label is 3v2511.");
+        Check(HitUpdateService.BundledChangelog.Contains("3v2511"),"Current release notes are embedded for offline reading.");
         Check(!HitUpdateService.IsNewerRelease("v0111",null,new(2026,10,29),2),"A later generation-one date cannot downgrade generation two.");
         Check(HitUpdateService.IsNewerRelease("2v3010",null,new(2026,10,29),2)&&HitUpdateService.IsNewerRelease("3v0110",null,new(2026,10,29),2),"Generations precede release-date ordering.");
         Check(!HitUpdateService.IsNewerRelease("2v2910",null,new(2026,10,29),2)&&!HitUpdateService.IsNewerRelease("2v3102",null,new(2026,10,29),2),"Same release and malformed generation-date tags do not offer updates.");

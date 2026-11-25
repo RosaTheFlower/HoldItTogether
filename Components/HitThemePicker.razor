@@ -21,7 +21,7 @@
     }
     @if(_personalizing)
     {
-        <HoldItTogether.Components.Settings.AppearanceView BackLabel="Themes" BackRequested="ClosePersonalizationAsync" />
+        <HoldItTogether.Components.Settings.AppearanceView BackLabel="Themes" Page="@_appearancePage" PageChanged="p=>_appearancePage=p" BackRequested="BackAppearanceAsync" />
     }
     else
     {
@@ -69,6 +69,8 @@ else
     private ElementReference _themeSelect, _deleteDialog;
     private bool _disposed, _dialogVisible;
     private bool _personalizing;
+    private string _appearancePage="";
+    private Task BackAppearanceAsync()=>_appearancePage.Length>0?InvokeAsync(()=>_appearancePage=HoldItTogether.Components.Settings.AppearanceView.ParentPage(_appearancePage)):ClosePersonalizationAsync();
     public bool IsPersonalizing=>_personalizing;
     public Task ClosePersonalizationAsync()=>InvokeAsync(()=>{_personalizing=false;StateHasChanged();});
     private string? _error, _runtimeError;

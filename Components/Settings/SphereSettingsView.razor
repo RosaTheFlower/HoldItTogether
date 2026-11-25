@@ -1,0 +1,59 @@
+@using HoldItTogether.Services.Settings
+@using HoldItTogether.Services.Themes
+@inject HitSettingsService Settings
+
+<section class="sphere-settings-view" data-no-drag>
+    @if(Page.Length==0)
+    {
+        <div class="sphere-settings-heading"><h2>@Text.Get("HIT Sphere")</h2><button type="button" class="hit-button" aria-label="@Text.Get("Restore sphere defaults")" @onclick="ResetRequested">@Text.Get("Restore defaults")</button></div>
+        <nav class="appearance-categories" aria-label="@Text.Get("Sphere settings categories")">
+            @foreach(var page in Pages){<button type="button" class="hit-link-row" @onclick="()=>PageChanged.InvokeAsync(page)"><span>@Text.Get(page)</span><span aria-hidden="true">&#8250;</span></button>}
+        </nav>
+    }
+    else
+    {
+        @if(Page is not ("Window placement" or "Collapsed sphere" or "Inactive sphere")){<h2>@Text.Get(Page)</h2>}
+        <section class="appearance-category">
+        @if(Page=="Behavior")
+        {
+            <SettingRange Label="Compact after" Description="Time after the pointer leaves HIT before supported pinned views compact." Value="Settings.Current.MenuCompactDelayMs" Min="0" Max="10000" Step="500" Unit="ms" Disabled="false" Changed="v=>BehaviorChanged.InvokeAsync(s=>s with {MenuCompactDelayMs=(int)v})" />
+            <SettingToggle Label="Shrink inactive sphere" Description="Reduce the closed sphere after inactivity. Turning this off still closes an unpinned menu when the pointer leaves." Value="Settings.Current.ShrinkInactiveSphere" Changed="v=>BehaviorChanged.InvokeAsync(s=>s with{ShrinkInactiveSphere=v})" />
+            <SettingRange Label="Sphere shrink delay" Description="Time before the closed sphere reduces its size." Value="Settings.Current.SphereShrinkDelayMs" Min="0" Max="60000" Step="1000" Unit="ms" Disabled="@(!Settings.Current.ShrinkInactiveSphere)" Changed="v=>BehaviorChanged.InvokeAsync(s=>s with{SphereShrinkDelayMs=(int)v})" />
+        }
+        @if(Page is "Collapsed sphere" or "Inactive sphere")
+        {
+            <SphereStateEditor Value="Value" Inactive="@(Page=="Inactive sphere")" Changed="Changed" BeginEdit="BeginEdit" CancelEdit="CancelEdit" />
+        }
+        @if(Page=="Window placement")
+        {
+            <WindowPlacementView Settings="Settings.Current" ShowBack="false" Changed="SavePlacement" />
+            <SettingToggle Label="Always on Top" Description="Keep HIT above ordinary desktop windows." Value="Settings.Current.AlwaysOnTop" Disabled="false" Changed="v=>BehaviorChanged.InvokeAsync(s=>s with {AlwaysOnTop=v})" />
+            <SettingToggle Label="Force Always on Top" Description="Experimental repeated topmost recovery; exclusive fullscreen may remain unsupported." Value="Settings.Current.ForceAlwaysOnTop" Disabled="!Settings.Current.AlwaysOnTop || !OperatingSystem.IsWindows()" Changed="v=>BehaviorChanged.InvokeAsync(s=>s with {ForceAlwaysOnTop=v})" />
+        }
+        @if(Page=="Idle transparency")
+        {
+            <SettingToggle Label="Automatic transparency" Description="Reduce opacity after inactivity in the selected presentation states." Value="Settings.Current.IdleOpacityEnabled" Disabled="false" Changed="v=>BehaviorChanged.InvokeAsync(s=>s with {IdleOpacityEnabled=v})" />
+            <SettingToggle Label="Fade collapsed sphere" Description="Apply automatic transparency while HIT is a collapsed sphere." Value="Settings.Current.IdleOpacitySphere" Disabled="!Settings.Current.IdleOpacityEnabled" Changed="v=>BehaviorChanged.InvokeAsync(s=>s with {IdleOpacitySphere=v})" />
+            <SettingToggle Label="Fade compact menu" Description="Apply automatic transparency to a visible compact menu." Value="Settings.Current.IdleOpacityCompact" Disabled="!Settings.Current.IdleOpacityEnabled" Changed="v=>BehaviorChanged.InvokeAsync(s=>s with {IdleOpacityCompact=v})" />
+            <SettingToggle Label="Fade inactive open panel" Description="Apply automatic transparency to an open panel after the pointer leaves." Value="Settings.Current.IdleOpacityOpen" Disabled="!Settings.Current.IdleOpacityEnabled" Changed="v=>BehaviorChanged.InvokeAsync(s=>s with {IdleOpacityOpen=v})" />
+            <SettingRange Label="Transparency delay" Description="Idle time before transparency starts." Value="Settings.Current.IdleOpacityDelayMs" Min="0" Max="60000" Step="500" Unit="ms" Disabled="!Settings.Current.IdleOpacityEnabled" Changed="v=>BehaviorChanged.InvokeAsync(s=>s with {IdleOpacityDelayMs=(int)v})" />
+            <SettingRange Label="Idle opacity" Description="Opacity while inactive; interacting restores full opacity." Value="Settings.Current.IdleOpacityPercent" Min="10" Max="90" Step="1" Unit="%" Disabled="!Settings.Current.IdleOpacityEnabled" Changed="v=>BehaviorChanged.InvokeAsync(s=>s with {IdleOpacityPercent=(int)v})" />
+            <SettingRange Label="Transparency fade duration" Description="Duration of the fade into the inactive opacity." Value="Settings.Current.IdleOpacityTransitionMs" Min="0" Max="3000" Step="50" Unit="ms" Disabled="!Settings.Current.IdleOpacityEnabled" Changed="v=>BehaviorChanged.InvokeAsync(s=>s with {IdleOpacityTransitionMs=(int)v})" />
+        }
+        </section>
+    }
+</section>
+
+@code {
+    public static readonly string[] Pages=["Behavior","Collapsed sphere","Inactive sphere","Window placement","Idle transparency"];
+    public static string CanonicalPage(string page)=>page is "Size and shape" or "Eyes" or "Background"?"Collapsed sphere":Pages.Contains(page)?page:"";
+    [Parameter] public string Page{get;set;}="";
+    [Parameter] public EventCallback<string> PageChanged{get;set;}
+    [Parameter] public HitAppearancePreferences Value{get;set;}=new();
+    [Parameter] public EventCallback<HitAppearancePreferences> Changed{get;set;}
+    [Parameter] public EventCallback<Func<HitSettings,HitSettings>> BehaviorChanged{get;set;}
+    [Parameter] public EventCallback ResetRequested{get;set;}
+    [Parameter] public EventCallback<string> BeginEdit{get;set;}
+    [Parameter] public EventCallback<string> CancelEdit{get;set;}
+    private Task SavePlacement(HitSettings changed)=>BehaviorChanged.InvokeAsync(s=>s with{WindowMagnetize=changed.WindowMagnetize,WindowMagnetizeCenter=changed.WindowMagnetizeCenter,WindowAllowOtherMonitors=changed.WindowAllowOtherMonitors,WindowEdgeReachPercent=changed.WindowEdgeReachPercent});
+}

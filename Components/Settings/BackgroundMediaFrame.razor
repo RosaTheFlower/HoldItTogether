@@ -1,0 +1,14 @@
+@using HoldItTogether.Services.Themes
+@inject HitAppearanceService Appearance
+<div class="custom-background-frame @CssClass" style="@Style">
+    @if(HitAppearanceService.IsVideo(Id))
+    {
+        <video data-background-video data-src="@Appearance.MediaUrl(Id)" poster="@Appearance.PosterUrl(Id)" muted loop playsinline preload="none" tabindex="-1" aria-hidden="true" style="@($"object-fit:{(Fit=="stretch"?"fill":Fit)}")"></video>
+    }
+</div>
+@code {
+    [Parameter] public string Id{get;set;}="";
+    [Parameter] public string Style{get;set;}="";
+    [Parameter] public string CssClass{get;set;}="";
+    [Parameter] public string Fit{get;set;}="cover";
+}

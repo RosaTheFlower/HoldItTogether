@@ -8,8 +8,7 @@ Source: `Components/HitMenus/HitMenuSettings.razor`. Controls follow [Design](DE
 
 Audio settings -> Lyrics includes a preview-based radio picker for Down, Up, Left, Right, Spotlight and Word rise. It applies and saves immediately; existing profiles default to Down. See [Audio presentation preferences](AUDIO.md#lyrics-presentation-preferences) for ordering, timing and untimed-lyrics behavior.
 
-The compact workspace has a persistent left sidebar: General, Appearance, Themes, Personalization,
-Extensions, Interaction, Scroll, Accessibility, Window placement and bottom-pinned Info. A bounded
+The workspace sidebar orders General, HIT Sphere, Interaction, Scroll and Accessibility first; then Themes and Personalization; then Appearance and Background media; finally Extensions and bottom-pinned Info. Small blank gaps separate the groups. A bounded
 right pane scrolls the selected topic. Themes and Personalization are separate topics. Themes has a
 full-width quick-selection combobox followed by installed-theme management and CSS import.
 Info opens Changelog and Performance as separate detail views; returning closes just that view. Changelog,
@@ -19,8 +18,7 @@ a combobox is open. An open combobox blocks wheel navigation across the interfac
 The workspace stays in configuration mode for artwork and idle policies. Its topics omit the
 redundant Back to Settings control; the sidebar, shared header Back, Escape and right-click provide
 navigation. The header chevron is hidden on General and returns one level on topic/detail pages.
-All topics publish their own header title; Info, Extensions and Window placement also have visible
-content headings. Install .hitmenu aligns to the right of the Extensions heading.
+All topics publish their menu header title and retain their internal page heading. Install .hitmenu stays right-aligned in the Extensions toolbar.
 The header cover icon temporarily hides music artwork for the current configuration screen, without changing Audio preferences.
 It resets when leaving that screen and is disabled when no artwork background is active.
 
@@ -78,8 +76,9 @@ All core options have explanations; nested form controls receive explanatory hel
 settings control adapter when they do not already supply help. Action-button explanations use
 tooltips instead of visible secondary text; file-upload controls are not augmented with descriptions.
 Sliders retain plain editable numeric values without input boxes or spinner arrows, and service-side
-normalization. Custom listboxes use a rounded continuous wheel of up to three visible rows, without
-empty end padding; additional choices are reached by wheel or keyboard navigation.
+normalization. Custom listboxes use a rounded continuous wheel of up to 3.5 visible rows: three full
+choices and clipped quarter-row neighbors under dark-to-transparent edge gradients, without empty
+end padding. Additional choices are reached by wheel or keyboard navigation.
 The active item is always centered; wheel and arrow keys move to and immediately apply the next
 enabled option. The wheel wraps at either end and accumulates small touchpad movements. Enter or
 click confirms and closes; Escape restores the selection from before opening. Clicking outside
@@ -127,22 +126,55 @@ Neither direction wraps. M2 inside configuration returns only one level. Opening
 separate physical gestures. Dialogs keep their own cancellation behavior. The side-button preference
 affects HIT only; global mouse bindings are not registered. Existing title M2/keyboard access remains.
 
+## HIT Sphere
+
+Settings -> HIT Sphere groups Behavior, Collapsed sphere, Inactive sphere, Window placement and
+Idle transparency. It is a Settings topic, with no extra navigation dot. Child pages keep the
+shared workspace, title, autosave and one-level Back/M2/Escape behavior.
+
+Collapsed sphere targets only closed Away/Hovered states. Inactive sphere targets only the closed
+Idle state after Sphere shrink delay; its controls are disabled if Shrink inactive sphere is off.
+Neither targets an open menu, including an open compact Player/Clock/Chess menu. Their Size and
+shape, Eyes and Background groups have independent choices and a per-state Use theme defaults
+action. Controls include size, roundness, overall opacity, surface color, border/style/color,
+shadow, eye visibility/color/size/height/gap/roundness/position/opacity/rotation/tracking, media
+visibility/playback/opacity/fit/position/zoom/rotation and blur/color adjustments.
+
+The optional Appearance.CollapsedSphere and Appearance.InactiveSphere snapshots persist those
+nullable properties. Null members inherit theme/shared media settings. A missing/null snapshot
+loads existing SphereSize/InactiveSphereSize, eye and collapsed-background preferences; editing
+one state copies those effective legacy choices before changing the selected value. An empty
+snapshot explicitly inherits, so resetting one state does not clear the other's legacy choices.
+Existing serialized keys stay valid, and profiles/export/session Undo retain both snapshots.
+
+Restore defaults on the overview resets sphere behavior/placement/idle policy and the two closed
+appearance states. It preserves open-menu radius/borders/shadow, general palette, font, base theme,
+media references/files and profiles, and never deletes saved native window positions. Open-menu
+shape and shadow controls live in Personalization -> Shape and typography; their colors live in
+Colors. Legacy Placement routes enter Window placement; old Sphere Size and shape/Eyes/Background
+and Personalization Sphere/Eyes routes enter Collapsed sphere.
+
 ## Personalization and visual profiles
 
 Settings -> Personalization opens the editor in its own sidebar topic, separate from Themes.
 It also includes the shared configuration-artwork and menu-title preferences from Appearance.
 The right options pane owns scrolling; the embedded editor does not trap wheel input in an
 unbounded nested scroller. All palette, shape, image and visual-profile controls remain reachable.
-Back/M2/mouse Back returns from Personalization to General. Changes apply immediately and save automatically
+Back/M2/mouse Back returns from a category to the Personalization overview, then General. Changes apply immediately and save automatically
 after a 250 ms pause. Leaving the editor flushes any pending save; there is no Apply or Cancel button.
-Use custom appearance enables
-overrides for background, accent, text, border color, open-surface corner radius (0-48 px) and border
-width (0-4 px). Existing profiles without this preference keep their current theme unchanged.
-Colors accept six-digit hex values. The selected base theme remains underneath the overrides.
+Use custom appearance enables only the properties edited in Personalization. Turning it on by itself
+leaves the selected CSS theme unchanged. Adding a wallpaper owns the media layer; colors, font,
+window/control shape, shadow and title styling continue to come from the theme until edited.
+Explicitly selecting an editor default still counts as an edit, including corner radius (0-48 px)
+and border width (0-4 px).
+Colors accept six-digit HEX (opaque) and eight-digit HEX (RGBA). The selected base theme remains underneath the overrides.
 
 Editing a visual option enables custom appearance automatically. The master switch can disable it
 without discarding the saved values. Undo this session restores the appearance and theme that were
-active when the editor opened; Restore theme defaults disables the overrides. Both save automatically.
+active when the editor opened, including which properties inherited from the theme; Restore theme
+defaults clears that selection and disables overrides. Both save automatically. These two compact
+actions include an icon and visible text, and sit immediately left of the master switch, on the right of the overview's page heading.
+Category pages retain their titles and return to the overview for these session actions.
 Allow artwork colors is ON by
 default: active music coloring remains authoritative. Turn it OFF to prioritize the personal palette
 while retaining the actual cover/effects. Shape overrides remain independent of music colors.
@@ -151,6 +183,15 @@ Save new profile stores the current choices under a 1-64-character name. Up to 5
 are stored atomically in Appearance/profiles.json. Use profile immediately activates and saves its
 appearance and base theme. Duplicate profile creates an independent named copy. A missing base
 theme falls back to HIT Dark Theme. Invalid profile files show an error and are not overwritten.
+The optional `Appearance.EditedProperties` field stores an allowlisted, sorted comma-separated set
+of property names. Empty means full inheritance. A missing/null field identifies legacy snapshots:
+only normalized values differing from the editor defaults are inferred as overrides; this prevents
+old wallpaper-only profiles from replacing the theme palette/shape. Historical intent for values
+equal to those defaults cannot be recovered; editing one again records it explicitly. Profiles,
+autosave and Undo preserve the same selection. Unknown property names are discarded.
+The legacy `system` font was also an editor default and therefore inherits until explicitly
+confirmed again. Its stored preset value remains supported; new explicit System selections keep
+their font override across restart.
 
 Export CSS saves the draft plus its base-theme CSS under Appearance/Exports and shows the local
 path. It can be imported through Themes like other CSS (1 MiB limit). Export contains appearance,
@@ -158,7 +199,7 @@ not behavioral settings. Canonical bundled CSS is never modified. Reset settings
 visual profiles/exports but resets the active overrides; Delete everything removes Appearance too.
 
 Additional options include collapsed-sphere background, muted text and eye colors, eye size/gap,
-pointer following, control radius, border style, font (system/Arial/monospace) and shadow strength.
+pointer following, control radius, border style, font (theme default, named presets or a custom installed family) and shadow strength.
 They are included in saved profiles and exported CSS, with normalized ranges and allowlisted values.
 
 Background images are copied to Appearance/Images with generated IDs. PNG/JPEG/WebP/GIF are supported
@@ -288,7 +329,7 @@ Settings workspaces constrain their grid row to the available height. Each optio
 
 ### Background modes
 
-Personalization keeps the Background style wheel selector beside Remove all images. Single image replaces the current selection; Carousel and Smooth transition accept multiple local files and append them, up to eight images. Remove all images clears the entire selection after confirmation. Selected images are shown in a horizontally scrollable preview carousel. Each file retains the PNG/JPEG/WebP/GIF, configured file-size limit and decoded 4096 by 4096 limits; a failed batch preserves the previous selection.
+Personalization keeps the Background style wheel selector beside Remove all media. Single media replaces the current selection; Carousel and Smooth transition accept multiple local files and append them, up to the configured item limit (eight by default, adjustable from 1 to 256). Remove all media clears the entire selection after confirmation. Selected media are shown in a horizontally scrollable preview carousel. Each file retains the PNG/JPEG/WebP/GIF, configured file-size limit and decoded 4096 by 4096 limits; a failed batch preserves the previous selection.
 
 Image opacity is an explicitly titled, editable percentage. Image interval is 5-3600 seconds (default 15). Smooth transition offers Fade, Slide and Zoom, with duration 100-4000 ms (default 1500). The whole set and mode/timing preferences persist in settings and visual profiles. CSS export embeds the selected images and slideshow rules, subject to the existing total 1 MB theme limit.
 
@@ -296,9 +337,9 @@ The live slideshow uses two presentation layers and advances only while HIT is o
 
 GIF87a/GIF89a and animated WebP backgrounds retain their native browser animation in single and multi-image modes. The original validated local file is served and embedded in exports; images are not flattened to a still frame. The same configured file-size limit and decoded 4096 by 4096 limits apply. Slideshow switching pauses in resource sleep; playback of the visible animated image is handled by WebView2.
 
-Show background when collapsed defaults to ON for compatibility with existing personal images. OFF hides the image layer on the collapsed sphere; ON keeps the selected image and its native GIF/WebP animation visible. This preference does not resume carousel switching while collapsed. It is saved in settings/profiles and included in exported CSS.
+Show background when collapsed defaults to ON for compatibility with existing personal images. OFF hides the image layer on the collapsed sphere; ON keeps the selected image and its native GIF/WebP animation visible. Each closed state now has a separate Play videos and slideshows option; legacy profiles keep paused closed playback until it is enabled. It is saved in settings/profiles and included in exported CSS.
 
-In the Images sidebar topic, Image size limit accepts any finite MB value from 0.25 MB (250 KB) upward, or Unlimited image size. Units are decimal (1 MB = 1,000,000 bytes). The default is 2 MB; null in BackgroundImageLimitMb denotes unlimited. The limit applies to each new image import, not existing references. File contents stream through an 80 KB buffer into a temporary file with atomic rename, including in unlimited mode. The decoded dimension limit remains 4096 by 4096 and portable CSS retains its total 1 MB limit.
+In the Background media sidebar topic, Image size limit accepts any finite MB value from 0.25 MB (250 KB) upward, or Unlimited image size. Units are decimal (1 MB = 1,000,000 bytes). The default is 2 MB; null in BackgroundImageLimitMb denotes unlimited. The limit applies to each new image import, not existing references. File contents stream through an 80 KB buffer into a temporary file with atomic rename, including in unlimited mode. The decoded dimension limit remains 4096 by 4096 and portable CSS retains its total 1 MB limit.
 
 ### Per-menu page history and wheel boundaries
 
@@ -308,13 +349,13 @@ System Settings sidebar topics are peers without a header Back chevron. Separate
 
 ### Preview carousel and image removal
 
-Personalization previews every selected image in a horizontal carousel with Previous/Next buttons, wheel scrolling and keyboard arrows. Images use lazy decoding and the original animated files. Select a thumbnail to reveal its trash button. The first trash activation arms removal; a second activation removes that image from the active set. Selecting another image, moving focus away, Escape or changing the set cancels the armed state. Remove all images opens the shared confirmation dialog with Cancel initially focused; only the explicit confirmation clears the set. These actions update the saved selection immediately through the normal debounce. Files are retained for session Undo and saved profiles; removal does not invalidate another profile. The preview does not auto-advance or create its own polling worker.
+Personalization previews every selected media item in a horizontal carousel with Previous/Next buttons, wheel scrolling and keyboard arrows. Images use lazy decoding and the original animated files; videos use generated posters. Select a thumbnail to reveal its trash button. The first trash activation arms removal; a second activation removes that image from the active set. Selecting another image, moving focus away, Escape or changing the set cancels the armed state. Remove all media opens the shared confirmation dialog with Cancel initially focused; only the explicit confirmation clears the set. These actions update the saved selection immediately through the normal debounce. Files are retained for session Undo and saved profiles; removal does not invalidate another profile. The preview does not auto-advance or create its own polling worker.
 
 Accessibility includes Menu entrance animations (ON by default), independently controlling the short menu/topic reveal. Remove animations disables and locks this preference in the UI; system reduced motion suppresses the effect as well. Settings slider rows use small inline labels, tracks, editable values and explicit units rather than separate headings. Their help remains in tooltips.
 
-### Images topic and GIF policy
+### Background media topic and GIF policy
 
-Settings -> Images centralizes the maximum file size in MB and Unlimited image size, moved out of Personalization without changing the persisted Appearance.BackgroundImageLimitMb key. Changes apply immediately without enabling custom appearance. Allow GIF backgrounds defaults ON; OFF rejects GIF signatures on import and suppresses managed GIF image URLs, slideshow frames, gallery thumbnails and CSS export. References and files remain intact for re-enabling the option. WebP remains supported independently. GIF policy is global and cannot be overridden by a visual profile; embedded third-party theme CSS is outside this managed-asset policy.
+Settings -> Background media centralizes the maximum file size in MB and Unlimited image size, moved out of Personalization without changing the persisted Appearance.BackgroundImageLimitMb key. Changes apply immediately without enabling custom appearance. Allow GIF backgrounds defaults ON; OFF rejects GIF signatures on import and suppresses managed GIF image URLs, slideshow frames, gallery thumbnails and CSS export. References and files remain intact for re-enabling the option. WebP remains supported independently. GIF policy is global and cannot be overridden by a visual profile; embedded third-party theme CSS is outside this managed-asset policy.
 
 ### Infinite menu
 
@@ -326,4 +367,73 @@ Held M1 on a title is disabled while the host is in any configuration page; it c
 
 Info keeps its three shared-row actions and Delete my data at the bottom of its options area. Update status appears as plain muted text immediately above those actions, without popup framing or a dismiss button. A newer-release link remains available when applicable.
 
-Changelog reads the latest published GitHub release notes whenever opened, displaying the release tag/name and body as escaped plain text with Markdown preserved as text. Drafts are not shown. A bounded 1 MB response and 8-second timeout apply; loading uses the shared spinner and failures offer Retry. Closing cancels/awaits the request. No background polling or arbitrary release HTML is executed.
+Changelog first displays the embedded current-build notes from [CHANGELOG.md](CHANGELOG.md), available offline, then reads the latest published GitHub release notes whenever opened, displaying the release tag/name and body as escaped plain text with Markdown preserved as text. Drafts are not shown. A bounded 1 MB response and 8-second timeout apply; loading uses the shared spinner and failures offer Retry. Closing cancels/awaits the request. No background polling or arbitrary release HTML is executed.
+
+### Personalization categories and custom color picker
+
+Personalization opens an overview of General, Colors, Shape and typography, Background and Visual profiles. Sphere-specific settings live in the HIT Sphere sidebar topic. It keeps the original 610 x 420 workspace and comfortable option spacing. Page titles remain visible throughout Settings. The editor renders exactly one internal h2 per page; its overview places the master ON/OFF switch beside that h2 before the category list. It never places the switch in the shared menu header.
+
+Categories share their draft, autosave and session Undo. Custom font is a child of Shape and typography; Back, M2 and Escape follow that parent before returning to the overview. The former list/category action stays removed; the historical personalizationListView key is accepted but ignored. Descriptions remain hidden only in the editor.
+
+Each swatch opens SettingColor: a compact RGB editor (280 px maximum width), a thin-bordered saturation/brightness plane, a full-spectrum Hue track with a narrow rectangular marker, an opacity track over a transparency checkerboard, and HEX/RGBA byte fields. It reuses SettingRange and native keyboard semantics. Its neutral theme-derived opaque surface and text remain readable while editing background colors. Alpha ranges from 0% transparent to 100% opaque. Six-digit
+HEX remains compatible; eight-digit RGBA retains transparency and normalizes to six digits
+when fully opaque. Invalid/incomplete HEX stays in the field without replacing the last valid
+color. Escape, outside click or Done dismisses the picker without undoing valid live edits.
+The picker owns focus/wheel input and releases pointer handlers on closing/removal.
+Color alpha, background-media opacity and idle opacity remain independent.
+
+Hide UI exists only in Personalization. It temporarily conceals menu title, Back,
+artwork override, sidebar and content. Restore UI, Pin, Close and navigation dots remain visible.
+Concealed content is inert and preserves its dimensions. Escape restores the same page first.
+Leaving the page/menu or closing clears the state; it is never saved and does not affect compact
+mode or the existing backdrop/artwork composition.
+
+### Video backgrounds and compatibility
+
+The gallery accepts a configurable number of mixed local PNG/JPEG/WebP/GIF/MP4/WebM assets. Single media uses
+the first available item; Carousel and Smooth transition append files and advance using the
+configured interval, including videos. Videos loop silently and share background fit/opacity.
+Signatures and WebView2 decoding must succeed before the batch replaces the previous selection.
+Unsupported codecs, invalid dimensions or failed batches preserve the previous background.
+
+Background media (the former Images topic, retaining its internal page identity) adds a separate
+video limit of 100 MB by default, configurable from 0.25 to 100,000 MB. `backgroundVideoLimitMb`
+is independent of visual profiles. Both media kinds retain the 4096 x 4096 pixel limit. Existing
+image limits, unlimited-image mode and global GIF permission remain unchanged.
+
+New selections store ordered `Appearance.BackgroundMedia` IDs. An absent/null list loads legacy
+BackgroundImage/BackgroundImages; an explicit empty list stays empty. Image storage/URLs remain
+unchanged. Videos stream through bounded buffers to Appearance/Videos with generated IDs, atomic
+rename and generated JPEG posters. Only validated video/poster IDs are served through
+appearance-videos; arbitrary filesystem paths and profile JSON are not exposed.
+
+Videos play while the background is visible and awake: open menus retain normal playback, and
+closed states require Play videos and slideshows for that state. Resource sleep, hidden documents,
+reduced motion and Remove animations suspend video/slideshow presentation; reduced motion uses
+the poster. Automatic resource saving still takes precedence after its idle grace. Disable it in
+General to keep the inactive background playing; enabling state playback does not disable that policy. At most two presentation frames
+exist during smooth transitions, and outgoing media is released at the transition end. Gallery
+previews use posters and never play videos. Hide UI keeps the previewed background active.
+
+Export CSS warns that video playback cannot be exported. Cancel has initial focus; Export with
+fixed frames explicitly substitutes each video with its poster, retaining order and slideshow
+settings. Local profiles keep their videos. Missing posters or the combined 1 MiB limit fail
+without creating a partial export.
+
+### Additional visual details
+
+Visual profiles, autosave, Undo and CSS export include title size (10–24 px), weight (300–800 in 100 steps), letter spacing (0–4 px in 0.1 steps), eye height (3–24 px; absent retains theme height), eye roundness (0–50%), shadow blur (0–60 px), shadow offset (0–30 px), background horizontal/vertical position (0–100%), blur (0–30 px) and saturation (0–200%). Background adjustments affect only personal media, including video/posters and portable exports; they do not filter controls or music artwork. Service normalization rejects nonfinite spacing and clamps all ranges. Existing profiles use neutral defaults.
+
+### Fonts, sphere behavior and expanded media limits
+
+Keep theme default is the default font mode and emits no font-family override. Explicit legacy system/Arial/monospace selections remain supported. Presets also include Calibri, Cambria, Georgia, Times New Roman, Verdana, Tahoma and Trebuchet MS. Custom font opens a separate searchable list of every installed font family returned by Windows DirectWrite, with Refresh installed fonts, selection feedback and font samples. Enumeration is on demand with a coalesced service-owned snapshot; cancellation releases the view and native COM resources are released after enumeration. Font names retain Windows metadata and are quoted as CSS data. CustomFont is limited to 256 characters and rejects controls. Profiles and CSS exports retain the selected family name; another PC uses its installed family or the CSS sans-serif fallback. Reference: [DirectWrite font enumeration](https://learn.microsoft.com/en-us/windows/win32/directwrite/font-enumeration).
+
+Settings -> Background media exposes Maximum background items (backgroundMediaLimit, default 8, range 1–256), independently of per-file image/video byte limits. Increasing it permits larger mixed batches. Reducing it never trims an existing selection, an Undo snapshot or a saved profile. Storage normalization retains up to the absolute 256-item bound. New imports honor the current policy, reject stale batches, preserve the previous selection on failure and remove only unused newly imported files. The profiles.json read bound is 2 MiB to accommodate larger galleries; portable CSS still has the total 1 MiB limit, with aggregate encoded-image preflight before loading an export. At most two live presentation layers remain active.
+
+Shrink inactive sphere (shrinkInactiveSphere, default true) and Sphere shrink delay (sphereShrinkDelayMs, default 10000, range 0–60000 ms) are independent behavioral settings in HIT Sphere -> Behavior. Turning shrinking off keeps the normal closed sphere size; it still closes an unpinned menu after mouse departure. It does not pin the menu, disable resource saving or change compact-menu behavior. Disabling it while already small restores the normal sphere; queued Idle transitions must honor the latest preference.
+
+HIT Sphere adds normal size (32–128 px), inactive size (16–128 px), the existing Show background when collapsed switch and an independent collapsed-background opacity (0–100%). Absent size/opacity overrides keep the theme dimensions/general image opacity. Closed videos use a fixed frame by default; their state-specific playback option can resume them while awake. Disabling the state background hides images and video posters. Visual sizes belong to profiles; the shrink behavior/delay remain global settings. Other new profile details include shadow color with alpha, eye X/Y offsets (−16–16 px), optional interface text size (10–20 px), optional text line height (1–2.5), personal-media brightness/contrast (0–200%), grayscale (0–100%), zoom (100–200%) and rotation (−180–180 degrees). Defaults preserve existing presentation, and media effects do not filter controls or music artwork.
+
+Custom font is an explicit action in the Font family combobox, with no separate navigation button. Wheel, Arrow, Home and End navigation can center it without applying it or leaving the page. Click, Enter or Space confirms it and opens the installed-font list, including when Custom font was already the saved mode. Passing through it leaves the last applied font selected; Escape restores the opening font without opening a child page. Standalone comboboxes fill their available area; labeled rows fill the space after the label. Other placements reserve the measured width of their longest option and keep it during navigation. All cases are bounded by the options pane. Explicitly confirming an unchanged normal choice emits one change so selecting an editor default can override a theme value; previewed choices do not emit a duplicate change on confirmation.
+
+Info > Languages selects embedded English/Portuguese or imports a JSON translation. Apply and restart HIT saves the selection and restarts. See [Localization](LOCALIZATION.md) for the versioned format, limits and reset behavior.

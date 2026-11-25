@@ -1,6 +1,6 @@
 # HIT public API reference
 
-Reference: application 2v2910, NuGet `HIT.Sdk` 1.2.0, namespace `HIT.Sdk`, contract `"1"`.
+Reference: application 3v2511, NuGet `HIT.Sdk` 1.2.0, namespace `HIT.Sdk`, contract `"1"`.
 The authoritative declarations are [Contracts.cs](../Modules/HIT.Sdk/Contracts.cs) and
 [Events.cs](../Modules/HIT.Sdk/Events.cs).
 These are in-process C# contracts, not HTTP endpoints. An extension references the SDK, never the executable's internal service types.

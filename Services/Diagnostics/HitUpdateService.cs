@@ -13,6 +13,15 @@ public sealed class HitUpdateService
     private readonly HttpClient? _http;
     public HitUpdateService() { }
     public HitUpdateService(HttpClient http) => _http=http;
+    public static string BundledChangelog
+    {
+        get
+        {
+            using var stream = typeof(HitUpdateService).Assembly.GetManifestResourceStream("HoldItTogether.Docs.CHANGELOG.md");
+            using var reader = stream is null ? null : new StreamReader(stream);
+            return reader?.ReadToEnd() ?? "";
+        }
+    }
     public async Task<HitReleaseNotes> ReadChangelogAsync(CancellationToken token)
     {
         using var owned=_http is null?new HttpClient{Timeout=TimeSpan.FromSeconds(8)}:null;
@@ -29,7 +38,7 @@ public sealed class HitUpdateService
         return new(Read("tag_name"),Read("name"),Read("body"));
     }
     public const string RepositoryUrl = "https://github.com/RosaTheFlower/HoldItTogether";
-    public static string VersionLabel => typeof(HitUpdateService).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion.Split('+')[0] ?? "2v2910";
+    public static string VersionLabel => typeof(HitUpdateService).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion.Split('+')[0] ?? "3v2511";
     public static int ReleaseGeneration => int.Parse(typeof(HitUpdateService).Assembly.GetCustomAttributes<AssemblyMetadataAttribute>()
         .Single(value=>value.Key=="HitReleaseGeneration").Value!,CultureInfo.InvariantCulture);
     public static DateOnly ReleaseDate => DateOnly.ParseExact(typeof(HitUpdateService).Assembly.GetCustomAttributes<AssemblyMetadataAttribute>()

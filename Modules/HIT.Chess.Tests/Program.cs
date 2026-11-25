@@ -12,6 +12,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.JSInterop;
 
+HoldItTogether.Services.Localization.HitLanguageStore.ConfigureTestProfile(Path.Combine(Environment.CurrentDirectory,"obj","test-languages",Guid.NewGuid().ToString("N")));
 static void Check(bool condition, string message) { if (!condition) throw new Exception(message); }
 static long Perft(Position p, int depth) => depth == 0 ? 1 : p.LegalMoves().Sum(m => Perft(p.Play(m), depth - 1));
 static Move Find(Position p, string from, string to, int promotion = 0) => p.LegalMoves().Single(m => Position.Square(m.From) == from && Position.Square(m.To) == to && m.Promotion == promotion);

@@ -38,10 +38,10 @@ try {
         assert.ok(result.frames>10);assert.deepEqual(result.bad,[],'Navigation must never fade content to the empty background in '+file);assert.ok(result.sizes.length<=1,'Wheel navigation retains one native canvas: '+JSON.stringify(result));
     }
     await evaluate("area.style.setProperty('--hit-open-background','rgba(17,19,23,.15)')");await wait(750);
-    assert.deepEqual(await evaluate("(()=>{const c=document.createElement('canvas');c.width=c.height=1;const x=c.getContext('2d');x.fillStyle=getComputedStyle(sphere).backgroundColor;x.fillRect(0,0,1,1);return [...x.getImageData(0,0,1,1).data]})()"),[17,19,23,255],'An active surface does not reveal the desktop through an alpha theme');
+    assert.equal(await evaluate('getComputedStyle(sphere).backgroundColor'),'rgba(17, 19, 23, 0.15)','An active surface preserves the requested theme alpha');
     await evaluate("sphere.className='dynamic-sphere is-away'");await wait(850);
     assert.equal(await evaluate('area.hasAttribute("data-hit-canvas")'),false,'Closing releases the retained native canvas');
     await evaluate('shell.disconnect(area)');assert.deepEqual(await evaluate('errors'),[]);
     assert.ok(await evaluate('zoomResets')>=2,'Startup and opening both request 100% native page zoom');
-    console.log('PASS: rapid wheel navigation in three themes retains opaque content and a stable native canvas; closing releases it.');
+    console.log('PASS: rapid wheel navigation in three themes retains visible content and a stable native canvas; closing releases it.');
 } finally {await browser.close();}

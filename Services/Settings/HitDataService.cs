@@ -34,6 +34,8 @@ public sealed class HitDataService
         }
         // Only application-owned locations are removed; canonical bundled files live elsewhere.
         File.Delete(Path.Combine(root, "settings.json"));
+        var languageSelection = Path.Combine(root, "Languages", "selection.json");
+        if (File.Exists(languageSelection)) File.Delete(languageSelection);
         File.Delete(Path.Combine(root, "window.json"));
         File.Delete(Path.Combine(root, "window-fullscreen.json"));
         RemoveDirectory("Clock");
@@ -41,6 +43,7 @@ public sealed class HitDataService
         if (request.DeleteEverything)
         {
             RemoveDirectory("Themes");
+            RemoveDirectory("Languages");
             RemoveDirectory("Appearance");
             RemoveDirectory("Modules");
         }

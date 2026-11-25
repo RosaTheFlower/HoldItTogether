@@ -1,12 +1,15 @@
 @using HoldItTogether.Services.Settings
+@using HoldItTogether.Services.Themes
 @inject HitSettingsService Settings
 
-<section class="image-settings-view" aria-label="@Text.Get("Images")" data-no-drag>
-    <h2>@Text.Get("Images")</h2>
+<section class="image-settings-view" aria-label="@Text.Get("Background media")" data-no-drag>
+    <h2>@Text.Get("Background media")</h2>
+    <SettingRange Label="Maximum background items" Description="Limit new selections without removing media already used by profiles or Undo." Value="Settings.Current.BackgroundMediaLimit" Min="1" Max="HitAppearanceService.MaxMediaItems" Changed="v=>Save(s=>s with{BackgroundMediaLimit=(int)v})" />
     <SettingToggle Label="Allow GIF backgrounds" Description="Accept GIF imports and display selected GIF backgrounds. Turning this off keeps their references for later." Value="Settings.Current.AllowGifBackgrounds" Changed="v=>Save(s=>s with{AllowGifBackgrounds=v})" />
     <SettingToggle Label="Unlimited image size" Description="Allow background images of any file size. The image dimension limit still applies." Value="@(Settings.Current.Appearance.BackgroundImageLimitMb is null)" Changed="v=>Save(s=>s with{Appearance=s.Appearance with{BackgroundImageLimitMb=v?null:2}})" />
     <label class="hit-setting-row"><span>@Text.Get("Maximum size per image (MB)")<small>@Text.Get("Minimum 250 KB. Applies to new imports.")</small></span><input type="number" min="0.25" step="0.25" aria-label="@Text.Get("Maximum size per image (MB)")" disabled="@(Settings.Current.Appearance.BackgroundImageLimitMb is null)" value="@Settings.Current.Appearance.BackgroundImageLimitMb?.ToString(System.Globalization.CultureInfo.InvariantCulture)" @onchange="SetLimit" /></label>
     @if(_error is not null){<p class="settings-error" role="alert">@_error</p>}
+    <label class="hit-setting-row"><span>@Text.Get("Maximum size per video (MB)")<small>@Text.Get("Applies to new MP4 and WebM imports. Maximum dimensions: 4096 x 4096.")</small></span><input type="number" min="0.25" max="100000" step="0.25" aria-label="@Text.Get("Maximum size per video (MB)")" value="@Settings.Current.BackgroundVideoLimitMb.ToString(System.Globalization.CultureInfo.InvariantCulture)" @onchange="SetVideoLimit" /></label>
 </section>
 
 @code {
@@ -20,5 +23,9 @@
     {
         if(double.TryParse(args.Value?.ToString(),System.Globalization.CultureInfo.InvariantCulture,out var value)&&double.IsFinite(value))
             Save(s=>s with{Appearance=s.Appearance with{BackgroundImageLimitMb=Math.Max(.25,value)}});
+    }
+    private void SetVideoLimit(ChangeEventArgs args)
+    {
+        if(double.TryParse(args.Value?.ToString(),System.Globalization.CultureInfo.InvariantCulture,out var value)&&double.IsFinite(value))Save(s=>s with{BackgroundVideoLimitMb=value});
     }
 }

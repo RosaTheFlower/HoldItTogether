@@ -1,6 +1,6 @@
 # HIT extension packages — format 1 / SDK 1
 
-Application 2v2910; SDK NuGet 1.2.0. Complete signatures, DTOs, capability rules and examples are in [API](API.md).
+Application 3v2511; SDK NuGet 1.2.0. Complete signatures, DTOs, capability rules and examples are in [API](API.md).
 SDK 1.1 adds IHitApiV2 events/actions without changing the original interfaces or assembly identity.
 New event-using packages declare events.subscribe plus the data-specific capability and require the
 new host; old contract-1 packages remain supported. See [events and actions](API.md#additive-events-and-actions-sdk-110).
@@ -37,7 +37,7 @@ Repository-owned extension settings use the same shared layout as built-ins. Dec
 `.settings-workspace[data-hit-settings-workspace]`, a `.settings-sidebar` of `.settings-topic`
 buttons with `aria-current="page"` for the active topic, and a `.settings-content[data-hit-scroll]`
 pane with its heading and native bound form controls. The updated host automatically enhances
-selects/ranges with its three-row wheel picker, numeric values, descriptions and cleanup, and supplies
+selects/ranges with its shared 3.5-row wheel picker, numeric values, descriptions and cleanup, and supplies
 the structural CSS. Keep C# event handlers, normalization, storage and confirmation semantics in
 the extension. Native elements remain the underlying value/event boundary; no host assembly
 reference or copy of the picker implementation belongs in the module.

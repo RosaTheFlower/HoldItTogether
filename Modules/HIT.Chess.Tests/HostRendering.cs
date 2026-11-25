@@ -245,8 +245,12 @@ internal static class HostRendering
             if (identifier == "sync" && typeof(T) == typeof(int)) return ValueTask.FromResult((T)(object)owner.PresentationDuration);
             if (identifier == "connect" && args is { Length: > 1 } && args[1] is { } reference)
             {
-                owner.ChessMenus.Add((IComponent)reference.GetType().GetProperty("Value")!.GetValue(reference)!);
-                if (owner.FailConnect) throw new JSException("Deliberate JS startup failure");
+                var component = (IComponent)reference.GetType().GetProperty("Value")!.GetValue(reference)!;
+                if (component.GetType().Assembly.GetName().Name == "HIT.Chess")
+                {
+                    owner.ChessMenus.Add(component);
+                    if (owner.FailConnect) throw new JSException("Deliberate JS startup failure");
+                }
             }
             return ValueTask.FromResult(typeof(T) == typeof(IJSObjectReference) ? (T)(object)new HostModule(owner) : default!);
         }

@@ -125,7 +125,7 @@ All three compactable menus use this same placement path. See [Settings](SETTING
 
 The shell reserves a canvas while opening so the sphere animates inside a stable native window.
 It retains the largest visited dimensions until closing, avoiding native WebView shrink/repaint flashes during wheel navigation.
-The active surface is opaque. Content fades only on opening, without translation, scale or blur; switching visible menu panels does not restart an opacity animation.
+The active surface preserves its theme color alpha. Content fades only on opening, without translation, scale or blur; switching visible menu panels does not restart an opacity animation.
 The reserved canvas is released after closing finishes. Wheel input grants a short pointer-exit grace period while geometry settles.
 The native Windows region follows the surface's outer rectangle, excluding the retained canvas and padding.
 It uses [SetWindowRgn](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-setwindowrgn),
@@ -209,3 +209,18 @@ Cancel obsolete I/O, detach events and dispose JS/resources. Full conventions: [
 Page history is optional through SDK IHitMenuPages (see API). Mouse Back and Forward independently select Page history, HIT menus, or the legacy parent-then-menu behavior. System Settings topics are peer pages; visit history does not make them hierarchical parents. In configuration, actually scrollable regions retain wheel ownership at both boundaries; only clean non-scrollable areas can navigate menus. Editable widgets and modal/open-picker guards retain input ownership.
 
 Stable data-hit-view markers also identify entrance transitions. Changing a topic or reopening a hidden panel reveals its content once; live status/clock/media updates keep the same identity and do not replay the entrance. The host manages this through hit-view-transitions.js with teardown and reduced-motion cancellation.
+
+Personalization category pages use the shared Back chevron and stable Personalization/category
+history identities without adding navigation dots. The overview is a root page. AppearanceView owns the overview master switch beside its internal h2 page heading; DynamicSphere retains its menu title and the temporary Hide UI action. There is no list/category presentation action. Preview keeps Restore UI, Pin, Close and dots; concealed content/menu title
+are inert and retain their measured geometry. Escape restores preview before closing/returning.
+
+Custom font is a Personalization child page of Shape and typography; Back/M2/Escape return there first, then to the overview. The Sphere category does not create another navigation dot. Configuration page h2 headings remain visible; only extra internal Personalization headings are omitted.
+
+HIT Sphere is a System Settings topic with child pages, not a separate top-level entry/dot. Its
+legacy Placement and Personalization Sphere/Eyes routes redirect into the topic. Back from a child
+returns to the HIT Sphere overview. Sphere appearance controls retain one autosaved draft across
+those pages; the overview exposes the scoped Restore defaults action.
+
+HIT Sphere has independent Collapsed sphere and Inactive sphere child pages. The earlier Size
+and shape/Eyes/Background paths redirect to Collapsed sphere; open-menu styling remains in
+Personalization. A compact open menu is still open and never receives either closed-state style.

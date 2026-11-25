@@ -22,7 +22,8 @@ There is no HTTP API server required for extension calls. The public SDK exposes
 | `Modules/HIT.Example` | SDK-only module, Notes layout, CSS, manifest and template |
 | `Modules/HIT.Chess`, `Modules/HIT.Chess.Tests`, `Modules/HIT.Example.Tests` | Independent Chess package and module/integration test projects |
 | `wwwroot` | Public CSS/JS, HTML bootstrap, loading sphere and bundled themes |
-| `Resources/en.json` | Embedded English source-message catalog |
+| `Resources/en.json`, `Resources/pt-BR.json` | Embedded English source messages and Portuguese language catalog |
+| `Services/Localization` | Validated language imports, saved language selection and English fallback |
 | `Tools`, `Tests`, `Docs` | Authoring/validation tools, tests and all documentation |
 
 ## Data flow
@@ -98,3 +99,10 @@ Details and historical measurements: [Performance](PERFORMANCE.md).
 ## Retained configuration presentation
 
 HitMenuHost records bounded session-local stable page history through optional SDK IHitMenuPages; InfiniteMenu wraps top-level navigation only and never invents forward history. Shared SettingRange/SettingToggle and SettingsWorkspace own built-in configuration structure. DOM-only controls, highlight/entrance transitions and wheel ownership have detachable JS lifetimes. Managed image policy is enforced by HitAppearanceService and AppearanceImageFileProvider; disabled GIFs retain references for re-enabling.
+
+Personalization draft/page ownership remains in Settings/AppearanceView. HitMenuHost exposes
+internal presentation state to DynamicSphere, which alone renders header actions. This adds no
+SDK contract. HitAppearanceService owns mixed-media IDs, import limits, profiles and posters;
+DOM modules own pointer interaction, decoding/capture and visible video lifetimes.
+
+HitFontCatalog owns lazy DirectWrite installed-family discovery and releases native interfaces inside the worker. InstalledFontPicker owns its cancellable loading/search view; AppearanceView owns the selected font draft and safe CSS/profile values. DynamicSphere owns the separate global closed-sphere shrink policy without changing pin/close semantics.

@@ -28,21 +28,21 @@ internal static class BackgroundGalleryChecks
             });
             await using var renderer=new InteractiveRenderer(services,services.GetRequiredService<ILoggerFactory>());
             await renderer.Dispatcher.InvokeAsync(async()=>{
-                var (id,view)=await renderer.MountAsync<AppearanceView>(new(){[nameof(AppearanceView.ShowBack)]=false});
+                var (id,view)=await renderer.MountAsync<AppearanceView>(new(){[nameof(AppearanceView.ShowBack)]=false,[nameof(AppearanceView.Page)]="Background"});
                 async Task Click(string label,string attribute="aria-label")=>await renderer.DispatchEventAsync(renderer.Event(id,"button",attribute,label,"onclick"),null,new MouseEventArgs());
                 void Check(bool value,string message){if(!value)throw new Exception(message);}
-                await Click("Select background image 1");
-                await Click("Remove selected image");
-                Check(appearance.Current.ImageIds.Length==2,"First trash click must not delete an image.");
-                await Click("Confirm image removal");
-                Check(appearance.Current.ImageIds.SequenceEqual(new[]{second}),"Second trash click removes only the selected image.");
-                await Click("Remove all images","title");
-                await Click("Cancel removing all images");
-                await Click("Confirm removing all images");
-                Check(appearance.Current.ImageIds.Length==1,"Canceling Remove all preserves the image selection.");
-                await Click("Remove all images","title");
-                await Click("Confirm removing all images");
-                Check(appearance.Current.ImageIds.Length==0,"Confirmed Remove all clears the image selection.");
+                await Click("Select background media 1");
+                await Click("Remove selected media");
+                Check(appearance.Current.MediaIds.Length==2,"First trash click must not delete an image.");
+                await Click("Confirm media removal");
+                Check(appearance.Current.MediaIds.SequenceEqual(new[]{second}),"Second trash click removes only the selected image.");
+                await Click("Remove all media","title");
+                await Click("Cancel removing all media");
+                await Click("Confirm removing all media");
+                Check(appearance.Current.MediaIds.Length==1,"Canceling Remove all preserves the image selection.");
+                await Click("Remove all media","title");
+                await Click("Confirm removing all media");
+                Check(appearance.Current.MediaIds.Length==0,"Confirmed Remove all clears the image selection.");
                 Check(File.Exists(Path.Combine(appearance.ImageDirectory,first))&&File.Exists(Path.Combine(appearance.ImageDirectory,second)),"Removing selections must preserve assets needed by Undo and profiles.");
                 Check(renderer.Errors.Count==0,"Gallery interactions must not produce renderer errors.");
             });

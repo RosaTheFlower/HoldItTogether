@@ -141,3 +141,10 @@ Some loader/native memory can remain until exit; cooperative unload is not a gua
 Fix ownership before proposing artificial collection/trim policies.
 
 Configuration history is capped at 50 session visits per retained menu and stores stable IDs rather than serialized component/domain state. Menu entrances are event-driven, cancel on hidden/removal/reduced motion and do not restart on ordinary media/clock updates. Unlimited image import size is a file policy, not a decoded-memory guarantee; imports stream through bounded buffers and preserve the separate dimension limit.
+
+Managed personal backgrounds have a visible closed-state consumer when that state explicitly
+enables video/slideshow playback. Its existing bounded carousel timer may run while closed, but
+resource sleep, hidden documents, reduced motion, Remove animations, hidden media and zero media
+opacity suspend presentation. The DOM bridge reports visibility/motion changes to the component
+so its timer stops as well as video playback. This does not wake other consumers or override the
+global saving policy. State/class changes refresh pointer-follow preference without idle polling.

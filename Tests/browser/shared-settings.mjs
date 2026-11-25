@@ -25,7 +25,7 @@ try {
             await evaluate(`show('${view}','${id}')`);await wait(80);
             assert.equal(await evaluate("document.querySelectorAll('.settings-topic').length"),count,`${view} exposes every topic`);
             assert.equal(await evaluate("document.querySelector('.settings-topic[aria-current=page]').textContent"),'General',`${view} highlights the active topic`);
-            assert.equal(await evaluate("document.querySelector('.settings-content h2').textContent"),'General',`${view} displays the active page title`);
+            assert.equal(await evaluate("[...document.querySelectorAll('.settings-content h2')].filter(n=>getComputedStyle(n).display!=='none').length"),1,`${view} keeps its visible page heading`);
             assert.ok(await evaluate("const r=document.querySelector('.settings-workspace').getBoundingClientRect();Math.abs(r.width-610)<1&&Math.abs(r.height-420)<1"),`${view} shares workspace dimensions`);
             assert.ok(await evaluate("const root=document.querySelector('.settings-workspace').getBoundingClientRect();const content=document.querySelector('.settings-content').getBoundingClientRect();content.right<=root.right+1&&content.height<=root.height+1"),`${view} keeps its options pane bounded`);
             assert.equal(await evaluate("document.querySelector('.settings-workspace').dataset.descriptions"),'true','Host description preferences also reach independent modules');

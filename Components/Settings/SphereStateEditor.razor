@@ -1,0 +1,71 @@
+@using HoldItTogether.Services.Settings
+@using HoldItTogether.Services.Themes
+@inject HitSettingsService Settings
+
+<section class="sphere-state-editor" data-no-drag>
+    <div class="sphere-settings-heading"><h2>@Text.Get(Inactive?"Inactive sphere":"Collapsed sphere")</h2><button type="button" class="hit-button" aria-label="@Text.Format("Reset {0} appearance",Text.Get(Inactive?"Inactive sphere":"Collapsed sphere"))" @onclick="Reset">@Text.Get("Use theme defaults")</button></div>
+    @if(Inactive&&!Settings.Current.ShrinkInactiveSphere){<p class="hit-muted sphere-playback-note">@Text.Get("Enable Shrink inactive sphere in Behavior to use this state.")</p>}
+    <HitDisclosure Title="@Text.Get("Size and shape")" PanelId="@(_id+"-shape")" @bind-Expanded="_shapeExpanded"><ChildContent><fieldset class="appearance-category sphere-state-options" disabled="@(Inactive&&!Settings.Current.ShrinkInactiveSphere)">
+        <SettingRange Label="Sphere size" Value="@(_state.Size??(Inactive?32:56))" Min="@(Inactive?16:32)" Max="128" Unit="px" Disabled="false" Changed="v=>Edit(_state with{Size=(int)v})" />
+        <SettingRange Label="Sphere roundness" Value="@(_state.Roundness??50)" Min="0" Max="50" Unit="%" Disabled="false" Changed="v=>Edit(_state with{Roundness=(int)v})" />
+        <SettingRange Label="Sphere opacity" Value="@(_state.Opacity??100)" Min="10" Max="100" Unit="%" Disabled="false" Changed="v=>Edit(_state with{Opacity=(int)v})" />
+        <SettingColor Label="Sphere background" Value="@(_state.Background??Value.IdleBackground??Value.Background)" Changed="v=>Edit(_state with{Background=v})" />
+        <SettingRange Label="Sphere border width" Value="@(_state.BorderWidth??0)" Min="0" Max="4" Unit="px" Disabled="false" Changed="v=>Edit(_state with{BorderWidth=(int)v})" />
+        <label class="hit-setting-row"><span>@Text.Get("Sphere border style")</span><select aria-label="@Text.Get("Sphere border style")" value="@(_state.BorderStyle??"")" @onhitselectstart="()=>BeginEdit.InvokeAsync(Property)" @onhitselectcancel="()=>CancelEdit.InvokeAsync(Property)" @onchange="e=>Edit(_state with{BorderStyle=string.IsNullOrEmpty(e.Value?.ToString())?null:e.Value.ToString()})"><option value="">@Text.Get("Inherit")</option><option value="solid">@Text.Get("Solid")</option><option value="dashed">@Text.Get("Dashed")</option><option value="dotted">@Text.Get("Dotted")</option></select></label>
+        <SettingColor Label="Sphere border color" Value="@(_state.BorderColor??Value.Border)" Changed="v=>Edit(_state with{BorderColor=v})" />
+        <SettingRange Label="Sphere shadow strength" Value="@(_state.ShadowStrength??100)" Min="0" Max="150" Unit="%" Disabled="false" Changed="v=>Edit(_state with{ShadowStrength=(int)v})" />
+        <SettingRange Label="Sphere shadow blur" Value="@(_state.ShadowBlur??16)" Min="0" Max="60" Unit="px" Disabled="false" Changed="v=>Edit(_state with{ShadowBlur=(int)v})" />
+        <SettingRange Label="Sphere shadow offset" Value="@(_state.ShadowOffset??4)" Min="0" Max="30" Unit="px" Disabled="false" Changed="v=>Edit(_state with{ShadowOffset=(int)v})" />
+        <SettingColor Label="Sphere shadow color" Value="@(_state.ShadowColor??"#000000")" Changed="v=>Edit(_state with{ShadowColor=v})" />
+    </fieldset></ChildContent></HitDisclosure>
+    <HitDisclosure Title="@Text.Get("Eyes")" PanelId="@(_id+"-eyes")" @bind-Expanded="_eyesExpanded"><ChildContent><fieldset class="appearance-category sphere-state-options" disabled="@(Inactive&&!Settings.Current.ShrinkInactiveSphere)">
+        <SettingToggle Label="Show eyes" Description="" Value="@(_state.ShowEyes??true)" Disabled="false" Changed="v=>Edit(_state with{ShowEyes=v})" />
+        <fieldset class="appearance-category sphere-state-options" disabled="@(_state.ShowEyes is false)">
+        <SettingColor Label="Eye color" Value="@(_state.EyeColor??Value.Eyes??Value.Text)" Changed="v=>Edit(_state with{EyeColor=v})" />
+        <SettingRange Label="Eye size" Value="@(_state.EyeSize??(Inactive?5:8))" Min="3" Max="16" Unit="px" Disabled="false" Changed="v=>Edit(_state with{EyeSize=(int)v})" />
+        <SettingRange Label="Eye height" Value="@(_state.EyeHeight??(_state.EyeSize??(Inactive?5:8)))" Min="3" Max="24" Unit="px" Disabled="false" Changed="v=>Edit(_state with{EyeHeight=(int)v})" />
+        <SettingRange Label="Eye gap" Value="@(_state.EyeGap??(Inactive?5:8))" Min="0" Max="20" Unit="px" Disabled="false" Changed="v=>Edit(_state with{EyeGap=(int)v})" />
+        <SettingRange Label="Eye roundness" Value="@(_state.EyeRoundness??50)" Min="0" Max="50" Unit="%" Disabled="false" Changed="v=>Edit(_state with{EyeRoundness=(int)v})" />
+        <SettingRange Label="Eye horizontal offset" Value="@(_state.EyeOffsetX??0)" Min="-16" Max="16" Unit="px" Disabled="false" Changed="v=>Edit(_state with{EyeOffsetX=(int)v})" />
+        <SettingRange Label="Eye vertical offset" Value="@(_state.EyeOffsetY??0)" Min="-16" Max="16" Unit="px" Disabled="false" Changed="v=>Edit(_state with{EyeOffsetY=(int)v})" />
+        <SettingRange Label="Eye opacity" Value="@(_state.EyeOpacity??100)" Min="0" Max="100" Unit="%" Disabled="false" Changed="v=>Edit(_state with{EyeOpacity=(int)v})" />
+        <SettingRange Label="Eye rotation" Value="@(_state.EyeRotation??0)" Min="-180" Max="180" Unit="&#176;" Disabled="false" Changed="v=>Edit(_state with{EyeRotation=(int)v})" />
+        <SettingToggle Label="Eyes follow pointer" Description="" Value="@(_state.TrackPointer??Value.TrackPointer)" Disabled="false" Changed="v=>Edit(_state with{TrackPointer=v})" />
+        </fieldset>
+    </fieldset></ChildContent></HitDisclosure>
+    <HitDisclosure Title="@Text.Get("Background")" PanelId="@(_id+"-background")" @bind-Expanded="_backgroundExpanded"><ChildContent><fieldset class="appearance-category sphere-state-options" disabled="@(Inactive&&!Settings.Current.ShrinkInactiveSphere)">
+        <SettingToggle Label="Show background" Description="" Value="@(_state.ShowBackground??true)" Disabled="false" Changed="v=>Edit(_state with{ShowBackground=v})" />
+        <SettingToggle Label="Play videos and slideshows" Description="Continue background playback in this closed sphere state. Resource saving and reduced motion still pause playback." Value="@(_state.PlayBackground??false)" Disabled="@(_state.ShowBackground is false)" Changed="v=>Edit(_state with{PlayBackground=v})" />
+        <SettingRange Label="Background opacity" Value="@(_state.BackgroundOpacity??Value.ImageOpacity)" Min="0" Max="100" Unit="%" Disabled="@(_state.ShowBackground is false)" Changed="v=>Edit(_state with{BackgroundOpacity=(int)v})" />
+        <label class="hit-setting-row"><span>@Text.Get("Background fit")</span><select aria-label="@Text.Get("Background fit")" disabled="@(_state.ShowBackground is false)" value="@(_state.BackgroundFit??"")" @onhitselectstart="()=>BeginEdit.InvokeAsync(Property)" @onhitselectcancel="()=>CancelEdit.InvokeAsync(Property)" @onchange="e=>Edit(_state with{BackgroundFit=string.IsNullOrEmpty(e.Value?.ToString())?null:e.Value.ToString()})"><option value="">@Text.Get("Inherit")</option><option value="cover">@Text.Get("Fill")</option><option value="contain">@Text.Get("Fit")</option><option value="stretch">@Text.Get("Stretch")</option></select></label>
+        <SettingRange Label="Background horizontal position" Value="@(_state.BackgroundPositionX??Value.BackgroundPositionX)" Min="0" Max="100" Unit="%" Disabled="@(_state.ShowBackground is false)" Changed="v=>Edit(_state with{BackgroundPositionX=(int)v})" />
+        <SettingRange Label="Background vertical position" Value="@(_state.BackgroundPositionY??Value.BackgroundPositionY)" Min="0" Max="100" Unit="%" Disabled="@(_state.ShowBackground is false)" Changed="v=>Edit(_state with{BackgroundPositionY=(int)v})" />
+        <SettingRange Label="Background zoom" Value="@(_state.BackgroundZoom??Value.BackgroundZoom)" Min="100" Max="200" Unit="%" Disabled="@(_state.ShowBackground is false)" Changed="v=>Edit(_state with{BackgroundZoom=(int)v})" />
+        <SettingRange Label="Background rotation" Value="@(_state.BackgroundRotation??Value.BackgroundRotation)" Min="-180" Max="180" Unit="&#176;" Disabled="@(_state.ShowBackground is false)" Changed="v=>Edit(_state with{BackgroundRotation=(int)v})" />
+        <SettingRange Label="Background blur" Value="@(_state.BackgroundBlur??Value.BackgroundBlur)" Min="0" Max="30" Unit="px" Disabled="@(_state.ShowBackground is false)" Changed="v=>Edit(_state with{BackgroundBlur=(int)v})" />
+        <SettingRange Label="Background brightness" Value="@(_state.BackgroundBrightness??Value.BackgroundBrightness)" Min="0" Max="200" Unit="%" Disabled="@(_state.ShowBackground is false)" Changed="v=>Edit(_state with{BackgroundBrightness=(int)v})" />
+        <SettingRange Label="Background contrast" Value="@(_state.BackgroundContrast??Value.BackgroundContrast)" Min="0" Max="200" Unit="%" Disabled="@(_state.ShowBackground is false)" Changed="v=>Edit(_state with{BackgroundContrast=(int)v})" />
+        <SettingRange Label="Background saturation" Value="@(_state.BackgroundSaturation??Value.BackgroundSaturation)" Min="0" Max="200" Unit="%" Disabled="@(_state.ShowBackground is false)" Changed="v=>Edit(_state with{BackgroundSaturation=(int)v})" />
+        <SettingRange Label="Background grayscale" Value="@(_state.BackgroundGrayscale??Value.BackgroundGrayscale)" Min="0" Max="100" Unit="%" Disabled="@(_state.ShowBackground is false)" Changed="v=>Edit(_state with{BackgroundGrayscale=(int)v})" />
+        @if(_state.PlayBackground is true&&Settings.Current.AutomaticResourceSaving){<p class="hit-muted sphere-playback-note">@Text.Get("Background playback pauses during resource saving. Turn off Automatic resource saving in General to keep it playing while inactive.")</p>}
+    </fieldset></ChildContent></HitDisclosure>
+</section>
+
+@code {
+    [Parameter] public HitAppearancePreferences Value{get;set;}=new();
+    [Parameter] public bool Inactive{get;set;}
+    [Parameter] public EventCallback<HitAppearancePreferences> Changed{get;set;}
+    [Parameter] public EventCallback<string> BeginEdit{get;set;}
+    [Parameter] public EventCallback<string> CancelEdit{get;set;}
+    private HitSphereStateAppearance _state=new();
+    private bool _shapeExpanded=true,_eyesExpanded,_backgroundExpanded;
+    private readonly string _id="sphere-state-"+Guid.NewGuid().ToString("N");
+    private string Property=>Inactive?nameof(HitAppearancePreferences.InactiveSphere):nameof(HitAppearancePreferences.CollapsedSphere);
+    protected override void OnParametersSet()=>_state=Value.SphereState(Inactive);
+    private Task Edit(HitSphereStateAppearance state)
+    {
+        var next=Inactive?Value with{InactiveSphere=state}:Value with{CollapsedSphere=state};
+        return Changed.InvokeAsync((next with{Enabled=true}).WithEditsFrom(Value,Property));
+    }
+    private Task Reset()=>Changed.InvokeAsync(Value.RestoreSphereStateDefaults(Inactive));
+}

@@ -33,7 +33,9 @@ Choosing/importing/deleting a personal theme never rewrites or deletes canonical
 ## Importing, editing and removing
 
 For built-in palette/shape editing without writing CSS, use Settings -> Personalization.
-It applies a separate compiled CSS override above the selected theme, saves changes automatically and can save named visual
+It applies a separate compiled CSS override above the selected theme only for properties edited in
+Personalization. A wallpaper leaves the theme's palette, typography, borders and shadows inherited.
+It saves changes automatically and can save named visual
 profiles or export a theme-compatible CSS file including the base theme. See
 [personalization](SETTINGS.md#personalization-and-visual-profiles) for autosave/undo and artwork-color
 precedence. Disabling the override restores the existing theme rather than rewriting any theme file.
@@ -174,4 +176,29 @@ Do not add page scroll, invisible clickable controls, content-selection regressi
 
 The custom background remains the `.sphere-custom-backdrop` child of the sphere, ordered below `.sphere-audio-backdrop`. Live slides use at most two `.custom-background-frame` children; the incoming `.custom-background-enter` supports `fade`, `slide`, `zoom` or `cut`. These presentation classes do not change the menu foreground layer. Embedded exports place keyframes inside `@layer sphere` so normal theme scoping renames them. GIF and WebP exports retain their original encoded animation; CSS export still has the total 1 MB limit.
 
-Managed GIF assets obey Settings -> Images -> Allow GIF backgrounds. Disabling it suppresses their local asset URLs and embedded personal-image exports while retaining file references. Images of another supported format can still display in the selected sequence.
+When Show background when collapsed is enabled, the collapsed sphere retains its personal image even if Audio still advertises exclusive artwork. Artwork suppresses the personal layer only while the sphere is open. Collapsing settles an incoming slide to its visible end state, avoiding a blank frame when resource sleep pauses transitions; the carousel remains stopped unless playback is enabled for that closed state and resource/presentation policy permits it. Disabling the collapsed-background preference still hides the layer.
+
+Managed GIF assets obey Settings -> Background media -> Allow GIF backgrounds. Disabling it suppresses their local asset URLs and embedded personal-image exports while retaining file references. Images of another supported format can still display in the selected sequence.
+
+### RGBA and video presentation
+
+Personal colors accept #RRGGBB and #RRGGBBAA. Alpha survives public CSS tokens and the open
+surface with its retained native canvas. Foreground transparency does not use container opacity.
+Music-color precedence and media opacity remain independent. Managed videos render as muted,
+looping video elements within .custom-background-frame, beneath UI/artwork. Posters back these
+frames during reduced motion. Video/poster URLs use appearance-videos with validated IDs;
+appearance-images stays compatible. CSS cannot instantiate playback: export requires explicit
+confirmation to embed fixed posters within the existing 1 MiB theme contract.
+
+Personal visual details scope title size/weight/letter spacing to `.sphere-title`, eye height/roundness to collapsed pseudo-elements, and media position/filter to `.sphere-custom-backdrop` and its frames/video. Background filters never apply to the sphere foreground or music artwork. These values are persisted per visual profile and included in CSS exports.
+
+Keep theme default omits --hit-font/--hit-menu-font and font-family rules entirely. Named/custom fonts are explicit overrides with safely quoted family names. Sphere size rules target only closed states; background filters/transforms target only .sphere-custom-backdrop, and optional closed opacity targets only its collapsed presentation. The existing BackgroundWhenCollapsed toggle suppresses that whole layer, including video posters.
+
+Closed-sphere styling uses separate selectors: `.dynamic-sphere:not(.is-open):not(.is-idle)` for
+Away/Hovered and `.dynamic-sphere:not(.is-open).is-idle` for inactive. Their overrides never match
+an open compact menu. Nullable state properties compile only selected values; a per-state reset
+restores inheritance without touching the other state or open-menu styling. Media effects remain
+on the backdrop/frames/video, while eye adjustments target only the closed pseudo-elements.
+The backdrop publishes `data-hit-background-active` for permitted live presentation. Portable
+slideshow CSS uses `--hit-background-play-state` (running/paused); CSS exports still substitute
+video posters and retain the total 1 MiB limit. Resource sleep and reduced motion pause playback.

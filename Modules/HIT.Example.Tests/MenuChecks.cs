@@ -66,6 +66,7 @@ internal static class MenuChecks
                 await Change("Infinite menu",true);
                 Check(new HitSettingsService(Path.Combine(root,"settings.json")).Current.InfiniteMenu,"Infinite menu persists from General");
                 await Change("Infinite menu",false);
+                await view.NavigateToPageAsync("Sphere/Window placement");
                 await Change("Always on Top",false);
                 Check(HasLabel("Force Always on Top")&&!settings.Current.ForceAlwaysOnTop,"Unavailable FORCE stays discoverable");
                 await Change("Always on Top",true);
@@ -77,10 +78,10 @@ internal static class MenuChecks
                 await Change("Icon only",true);
                 Check(settings.Current.TitleDisplayMode==2,"Example radio changes the global title presentation");
                 await Change("Name and icon",true);
-                await Click("Open Interaction");await Change("Compact after",10000d,"oninput");
+                await view.NavigateToPageAsync("Sphere/Behavior");await Change("Compact after",10000d,"oninput");
                 Check(settings.Current.MenuCompactDelayMs==10000,"Compact delay persists from its topic");
-                await Change("Title hold duration",900d,"oninput");
-                await Click("Open Images");
+                await Click("Open Interaction");await Change("Title hold duration",900d,"oninput");
+                await Click("Open Background media");
                 await Change("Allow GIF backgrounds",false);
                 await Change("Maximum size per image (MB)","12");
                 Check(!new HitSettingsService(Path.Combine(root,"settings.json")).Current.AllowGifBackgrounds&&settings.Current.Appearance.BackgroundImageLimitMb==12,"Images topic persists GIF policy and the image limit");
@@ -92,33 +93,38 @@ internal static class MenuChecks
                 await Change("Menu entrance animations",false);
                 Check(!new HitSettingsService(Path.Combine(root,"settings.json")).Current.MenuEntranceAnimations,"Menu entrance preference persists independently of other animation settings");
                 await Change("Menu entrance animations",true);
-                await Change("Automatic transparency",true);
+                await view.NavigateToPageAsync("Sphere/Idle transparency");await Change("Automatic transparency",true);
                 await Change("Idle opacity",25d,"oninput");
-                await Change("Show option descriptions",false);
+                await Click("Open Accessibility");await Change("Show option descriptions",false);
                 Check(settings.Current is {IdleOpacityPercent:25,ShowSettingDescriptions:false,HideArtworkInSettings:true},"New preferences and range values persist independently");
-                await Click("Open Window placement");await Change("Snap to center",true);
+                await view.NavigateToPageAsync("Placement");await Change("Snap to center",true);
                 Check(settings.Current.WindowMagnetizeCenter,"Center magnetism saves from its disabled-aware row");
                 await Click("Open General");
                 var originalAppearance=settings.Current.Appearance;
                 Check(HasLabel("Open Personalization"),"Personalization has its own topic.");
                 await Click("Manage themes");
                 await Click("Open Personalization");
+                Check(HasLabel("Use custom appearance"),"Personalization opens with its master switch beside the internal page title.");
+                await view.NavigateToPageAsync("Personalization/General");
                 Check(HasLabel("Hide artwork in settings")&&HasLabel("Menu titles")&&HasLabel("Show artwork button in settings"),"Personalization also exposes the shared artwork/title options");
                 await Change("Show artwork button in settings",true);
                 Check(settings.Current.ShowConfigurationCoverButton,"Personalization updates the same header preference");
-                await interactive.DispatchEventAsync(interactive.Event(id,"input","aria-label","Use custom appearance","onchange"),null,new ChangeEventArgs{Value=true});
-                await interactive.DispatchEventAsync(interactive.Event(id,"input","aria-label","Custom background","oninput"),null,new ChangeEventArgs{Value="#123456"});
+                await view.SetAppearanceEnabledAsync(true);
+                await view.NavigateToPageAsync("Personalization/Colors");
+                await interactive.DispatchEventAsync(interactive.Event(id,"input","aria-label","HEX color","oninput"),null,new ChangeEventArgs{Value="#123456"});
                 Check(services.GetRequiredService<HitAppearanceService>().Current.Background=="#123456"&&!HasLabel("Apply appearance"),"Personalization must update immediately without an Apply button.");
                 await Task.Delay(400);Check(new HitSettingsService(Path.Combine(root,"settings.json")).Current.Appearance.Background=="#123456","Color changes must save automatically after the short coalescing delay.");
-                await interactive.DispatchEventAsync(interactive.Event(id,"input","aria-label","Custom background","oninput"),null,new ChangeEventArgs{Value="#654321"});
+                await interactive.DispatchEventAsync(interactive.Event(id,"input","aria-label","HEX color","oninput"),null,new ChangeEventArgs{Value="#654321"});
+                await view.NavigateToPageAsync("Personalization/");
                 await Click("Undo appearance changes");await Task.Delay(400);Check(settings.Current.Appearance==originalAppearance,"Undo must persist the appearance from editor entry.");
-                await interactive.DispatchEventAsync(interactive.Event(id,"input","aria-label","Custom background","oninput"),null,new ChangeEventArgs{Value="#654321"});
-                await view.CloseSettingsAsync();
+                await view.NavigateToPageAsync("Personalization/Colors");
+                await interactive.DispatchEventAsync(interactive.Event(id,"input","aria-label","HEX color","oninput"),null,new ChangeEventArgs{Value="#654321"});
+                await view.NavigateToPageAsync("Main");
                 await Task.Delay(100);Check(settings.Current.Appearance.Background=="#654321","Leaving the editor must flush a pending automatic save rather than cancel it.");
                 Check(HasLabel("Open Personalization")&&!HasLabel("Use custom appearance"),"Leaving Personalization returns to the topic list.");
                 await view.CloseSettingsAsync();
                 services.GetRequiredService<HitAppearanceService>().Apply(originalAppearance,settings.Current.Theme);
-                await Click("Open Window placement");
+                await view.NavigateToPageAsync("Placement");
                 await interactive.DispatchEventAsync(interactive.Event(id,"input","aria-label","Magnetize","onchange"),null,new ChangeEventArgs {Value=false});
                 await interactive.DispatchEventAsync(interactive.Event(id,"input","aria-label","Allow other monitors","onchange"),null,new ChangeEventArgs {Value=false});
                 await interactive.DispatchEventAsync(interactive.Event(id,"input","aria-label","Edge padding","onchange"),null,new ChangeEventArgs {Value="85"});
@@ -291,7 +297,8 @@ internal static class MenuChecks
                 await Save<HoldItTogether.Components.Clock.ClockSystemSettingsView>("clock-world-settings",new(){["Options"]=settings.Current.Clock});
                 await Save<WindowPlacementView>("placement",new(){["Settings"]=settings.Current});
                 await Save<TitlePresentationSettings>("title-presentation");
-                await Save<AppearanceView>("personalization",new(){["ShowBack"]=false});
+                await Save<AppearanceView>("personalization",new(){["ShowBack"]=false,["Page"]="Background"});
+                await Save<AppearanceView>("personalization-profiles",new(){["ShowBack"]=false,["Page"]="Visual profiles"});
                 await Save<HitPerformanceView>("performance");
                 await Save<HitInfoView>("info",new(){["ShowBack"]=false});
                 var infoPreview = await html.RenderComponentAsync<InfoPreview>();
@@ -390,6 +397,7 @@ public sealed class BuiltInSettingsPreview : ComponentBase
         builder.CloseComponent();
     }
     public Task OpenAsync()=>_menu!.OpenSettingsAsync();
+    public Task NavigateAsync(string page)=>((HIT.Sdk.IHitMenuPages)_menu!).NavigateToPageAsync(page);
 }
 
 public sealed class InfoPreview : ComponentBase

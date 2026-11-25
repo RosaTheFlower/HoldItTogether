@@ -1,0 +1,46 @@
+@using HoldItTogether.Services.Themes
+@using System.Runtime.InteropServices
+@implements IAsyncDisposable
+@inject HitAppearanceService Appearance
+
+<section class="installed-font-picker" aria-label="@Text.Get("Installed fonts")" data-no-drag>
+    <label class="hit-setting-row"><span>@Text.Get("Search fonts")</span><input type="search" aria-label="@Text.Get("Search fonts")" value="@_search" autofocus @oninput="Search" /></label>
+    <button type="button" class="hit-button" disabled="@_loading" @onclick="()=>Load(true)">@Text.Get("Refresh installed fonts")</button>
+    @if (_loading) { <HitSpinner Label="@Text.Get("Loading installed fonts")" /> }
+    else if (_error) { <p class="settings-error" role="alert">@Text.Get("Could not load installed fonts. Try refreshing the list.")</p> }
+    else
+    {
+        <p class="hit-muted" role="status">@Text.Format("{0} of {1} font families", _filtered.Count, _fonts.Count)</p>
+        <div class="installed-font-list">
+            @foreach (var font in _filtered)
+            {
+                <button @key="font" type="button" class="hit-link-row" aria-label="@Text.Format("Use font {0}",font)" aria-pressed="@(font==Selected?"true":"false")" @onclick="()=>Changed.InvokeAsync(font)">
+                    <span>@font</span><span class="installed-font-sample" style="@("font-family:"+HitAppearancePreferences.QuoteFont(font))" aria-hidden="true">Aa 123</span>
+                </button>
+            }
+        </div>
+    }
+</section>
+@code {
+    [Parameter] public string? Selected { get; set; }
+    [Parameter] public EventCallback<string> Changed { get; set; }
+    private IReadOnlyList<string> _fonts = [], _filtered = [];
+    private string _search = "";
+    private bool _loading, _error, _disposed;
+    private readonly CancellationTokenSource _lifetime = new();
+    private Task? _load;
+    protected override Task OnInitializedAsync() => Load(false);
+    private Task Load(bool refresh) => _loading ? _load??Task.CompletedTask : _load = LoadCore(refresh);
+    private async Task LoadCore(bool refresh)
+    {
+        if (_loading || _disposed) return;
+        _loading = true; _error = false;
+        try { var fonts = await Appearance.Fonts.GetAsync(_lifetime.Token, refresh); if (!_disposed) { _fonts = fonts; Filter(); } }
+        catch (OperationCanceledException) when (_lifetime.IsCancellationRequested) { }
+        catch (Exception error) when (error is COMException or DllNotFoundException or EntryPointNotFoundException) { _error = true; }
+        finally { _loading = false; }
+    }
+    private void Search(ChangeEventArgs args) { _search = args.Value?.ToString() ?? ""; Filter(); }
+    private void Filter() => _filtered = _fonts.Where(font => font.Contains(_search.Trim(), StringComparison.OrdinalIgnoreCase)).ToArray();
+    public async ValueTask DisposeAsync() { _disposed = true; _lifetime.Cancel(); if (_load is not null) await _load; _lifetime.Dispose(); }
+}

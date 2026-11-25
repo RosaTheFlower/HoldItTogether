@@ -8,7 +8,7 @@
      data-hit-configuration="@(_selectedId == HitMenuCatalog.SettingsId || CurrentSettings?.IsSettingsOpen == true ? "true" : "false")"
      @onpointerdown="RememberContextStart" @oncontextmenu="ReturnFromSettingsAsync"
      @oncontextmenu:preventDefault="true" @oncontextmenu:stopPropagation="true">
-    <div class="hit-menu-measure">
+    <div class="hit-menu-measure" inert="@(PersonalizationMenu?.IsPreviewHidden==true)">
         @if (Catalog.Menus.Count == 0)
         {
             <div class="hit-menu-empty">@Text.Get("No menus available.")</div>
@@ -128,6 +128,7 @@
     private HIT.Sdk.IHitMenuSettings? CurrentSettings => !_disposed && !_failedMenus.Contains(_selectedId ?? "") &&
         _components.TryGetValue(_selectedId ?? "", out var component) && component.Instance is HIT.Sdk.IHitMenuSettings settings
             ? settings : null;
+    public HoldItTogether.Components.HitMenus.HitMenuSettings? PersonalizationMenu => CurrentSettings is HoldItTogether.Components.HitMenus.HitMenuSettings {IsPersonalizing:true} settings?settings:null;
     private HIT.Sdk.IHitMenuCompact? CurrentCompact => !_disposed && !_failedMenus.Contains(_selectedId ?? "") &&
         _components.TryGetValue(_selectedId ?? "", out var component) ? component.Instance as HIT.Sdk.IHitMenuCompact : null;
     public async Task<bool> CompactCurrentAsync()
@@ -250,8 +251,12 @@
         await OnLayoutChanged.InvokeAsync(layout);
     }
 
-    private Task HandlePaginationKey(KeyboardEventArgs args) =>
-        args.Key == "Escape" ? OnCloseRequested.InvokeAsync() : Task.CompletedTask;
+    private async Task HandlePaginationKey(KeyboardEventArgs args)
+    {
+        if(args.Key!="Escape")return;
+        if(PersonalizationMenu is {IsPreviewHidden:true} menu){await menu.TogglePreviewAsync();await PublishMenuAsync();StateHasChanged();}
+        else await OnCloseRequested.InvokeAsync();
+    }
     private bool _disposed;
     private void CatalogChanged()
     {

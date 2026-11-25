@@ -27,6 +27,10 @@
     {
         <ReleaseChangelogView />
     }
+    else if (_page == InfoPage.Languages)
+    {
+        <LanguageSettingsView />
+    }
     else if (_page == InfoPage.Performance)
     {
         <HitPerformanceView />
@@ -45,6 +49,7 @@
         <div class="hit-setting-row"><span>@Text.Get("Installed extensions")</span><output>@Extensions.State.Packages.Count(item => !item.PendingDelete)</output></div>
         <div class="hit-setting-row"><span>@Text.Get("Installed themes")</span><output>@Themes.GetThemes().Count</output></div>
         <button type="button" class="hit-link-row" aria-label="@Text.Get("Open Performance")" title="@Text.Get("View memory, CPU and local diagnostics.")" @onclick="OpenPerformanceAsync"><span>@Text.Get("Performance")</span><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m8 5 5 5-5 5" /></svg></button>
+        <button type="button" class="hit-link-row" @onclick="() => _page = InfoPage.Languages"><span>@Text.Get("Languages")</span><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m8 5 5 5-5 5" /></svg></button>
         <div class="info-footer">
         <div class="info-actions">
             @if (_update is not null || _updateError is not null)
@@ -82,7 +87,7 @@
     protected override void OnParametersSet() { if (_receivedPage != Page) { _receivedPage = Page; if (Enum.TryParse<InfoPage>(Page,out var parsed) && Enum.IsDefined(parsed)) _page = parsed; } }
     [Parameter] public bool ShowBack { get; set; } = true;
     [Parameter] public EventCallback NavigationChanged { get; set; }
-    private enum InfoPage { Info, Changelog, Data, Performance }
+    private enum InfoPage { Info, Changelog, Data, Performance, Languages }
     private InfoPage _page;
     private readonly CancellationTokenSource _lifetime = new();
     private IJSObjectReference? _module;
@@ -93,7 +98,7 @@
     private HitUpdateResult? _update;
     private Task? _checkTask;
     public bool IsDetailOpen => _page != InfoPage.Info;
-    public string CurrentTitle => _page switch { InfoPage.Changelog => "Changelog", InfoPage.Data => "Manage your data", InfoPage.Performance => "Performance", _ => "Info" };
+    public string CurrentTitle => _page switch { InfoPage.Languages => "Languages", InfoPage.Changelog => "Changelog", InfoPage.Data => "Manage your data", InfoPage.Performance => "Performance", _ => "Info" };
     private InfoPage? _publishedPage;
     public Task CloseDetailAsync() => InvokeAsync(async () => { await Back(); StateHasChanged(); });
     public Task OpenPerformanceAsync() => InvokeAsync(() => { _page = InfoPage.Performance; StateHasChanged(); });

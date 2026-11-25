@@ -1,5 +1,10 @@
 # HIT design system
 
+Built-in header icons are resolved by HitTitleIcons for each feature/detail title, including
+localized titles. Info, Languages, Changelog, Performance, data management and settings topics
+use their own outline symbols. The shared gear remains the Settings root and unknown-title
+fallback. Icons remain decorative; the localized header provides the accessible name.
+
 This is the shared visual and interaction reference for built-in menus and `.hitmenu` modules.
 It consolidates the existing Clock controls, Settings rows, sphere chrome, public theme variables and Chess interactions.
 Chess references in this guide describe the separately installed [Chess extension](CHESS.md), not a built-in HIT menu. Sharing the host's design and animation rules does not make a module part of HIT.
@@ -10,17 +15,41 @@ and [Code conventions](CODE-CONVENTIONS.md) for implementation and ownership.
 
 Host-owned and Notes configuration menus use a compact 610 by 420 CSS-pixel workspace with a left
 topic sidebar, no vertical divider and a bounded right content scroller. Chess 1.1.0 adopts this workspace; older installed versions retain their compact settings UI. Info is pinned to the sidebar bottom. Themes and Personalization
-have separate topics. Wheel input outside the right pane can navigate host menus. All preference rows
-include explanatory text, controlled by Show option descriptions; action buttons use tooltips.
+have separate topics. Wheel input outside the right pane can navigate host menus. Preference rows
+include explanatory text, controlled by Show option descriptions; Personalization deliberately omits visible descriptions. Action buttons use tooltips.
 Dependent settings remain visible but disabled. Labels toggle switches over their complete row;
 sliders have plain numeric entry without a visible input box or spinner arrows. Settings comboboxes
-use a rounded continuous wheel listbox with up to three visible rows: the active row and closed label are centered, wheel/arrow input
+use a rounded continuous wheel listbox with up to 3.5 visible rows: three complete choices and
+quarter-row neighbors clipped at both edges. Short dark-to-transparent top/bottom gradients indicate
+continued scrolling; they do not intercept input. The active row and closed label are centered, wheel/arrow input
 applies the next enabled option, and the rows wrap without blank end padding. Enter/click confirms;
 Escape restores the opening selection. While open, the picker blocks wheel menu navigation across
 the interface. Its root marker is `data-hit-select-open="true"`, removed on dismissal or teardown.
 The closed control has a 16-pixel radius and its popup an 18-pixel radius. Popup opening/closing
 uses 180/140 ms fade and slight transform effects; closing content is inert. Reduced motion and
 Remove animations disable these effects. Teardown and rapid reopening release pending closing DOM.
+Standalone comboboxes, including Themes, fill their available area. A combobox alongside a text
+label fills the remaining row. In action/tool rows it reserves the width of its longest available
+label, including padding and border, and keeps that width while previewing choices. Bound all cases to the available options pane;
+longer labels truncate instead of expanding the window. Recalculate when labels, font metrics
+or the theme change. Action options marked `data-hit-select-action="true"` remain candidates during
+wheel/arrow navigation and activate only on click, Enter or Space. They emit `input` on confirmation;
+normal preview/restoration emits `change`. Escape restoration must never activate an action.
+Confirming an unchanged ordinary choice emits one change; confirming a live preview does not
+repeat it. The adapter dispatches `hit-select-start` before preview and `hit-select-cancel` after
+Escape restoration on the original select. Personalization consumes the matching Blazor events
+to restore whether that property inherited from the CSS theme as well as its displayed value.
+
+```razor
+<select aria-label="Font family" @onchange="PreviewFont" @oninput="ConfirmFontAction">
+    <option value="default">Keep theme default</option>
+    <option value="arial">Arial</option>
+    <option value="custom" data-hit-select-action="true">Custom font</option>
+</select>
+```
+
+`PreviewFont` applies ordinary selections; `ConfirmFontAction` opens the installed-font page.
+Opening the chooser keeps the applied font until a family is selected.
 Title presentation is a themed, full-width horizontal example-based radio group with three equally
 sized choices: name, name/icon, icon. Follow Clock's three-mode segments: a quiet rounded track,
 inset selected highlight and no visible radio dots, preserving native keyboard and focus behavior.
@@ -56,7 +85,7 @@ The host renders one title, an optional Back chevron immediately before it, pin,
 dots. `.sphere-heading` groups the chevron and title; `.sphere-action-back` follows the theme's
 header-action and focus styles. The chevron appears only when the menu can return one level.
 A module never duplicates this shared chrome.
-Header actions stay in this order: temporary artwork override, pin, close. The artwork override can
+Header actions stay in this order: Personalization preview (only in its editor), temporary artwork override, pin, close. The artwork override can
 be removed through Appearance or Personalization. There is no compact button.
 Only pinned Audio Player/Lyrics, the Chess board and the main Clock readout can compact after the shared pointer-departure delay.
 The default is five seconds; Settings configures 0-10 seconds. General Settings, all forms/subviews and unrelated modules never compact.
@@ -66,9 +95,7 @@ Settings and reading screens remain subviews of their owning menu, without addit
 Feature subviews have a small Back control, support Escape and follow the documented right-click return
 behavior. The Settings workspace uses its topic sidebar and the shared header instead of repeating
 Back to Settings. Its topic and Info detail views publish their own header titles. Info -> Performance
-has no inline Info button; the header chevron returns to Info. Configuration panels include h2
-headings, including Info, Extensions and Window placement. Install .hitmenu sits at the right of
-the Extensions toolbar.
+has no inline Info button; the header chevron returns to Info. Configuration pages retain their h2 page headings alongside the shell menu title. Personalization uses exactly one internal page heading, with its master switch on the overview. Modal and genuine subsection headings remain separate. Install .hitmenu stays right-aligned in the Extensions toolbar.
 
 Use the shared `HitSpinner` (`.hit-spinner`) for asynchronous loading/checking/importing/saving
 states, with a localized accessible label. The 16-pixel ring inherits the current theme color;
@@ -168,7 +195,7 @@ Dropping `.css` or `.hitmenu` anywhere on HIT imports it and opens the appropria
 Interactions respond immediately. Use the sphere's shared decelerating easing for size changes,
 reserve the final native canvas before opening and fade content without translating or blurring it.
 Never measure unstyled extension markup or repeatedly move the native window during opening.
-Keep the open surface opaque and retain its largest native canvas until closing. Switching menu panels must not fade to empty content.
+Preserve the open surface color alpha and retain its largest native canvas until closing. Switching menu panels must not fade to empty content.
 Configuration screens offer a temporary cover toggle beside Pin/Close; it is never saved and resets on leaving the screen.
 
 Chess moves take 250 ms, hide the destination piece before animation starts and include both castling pieces.
@@ -226,3 +253,21 @@ Menu entrance animations add a 180 ms opacity/4 px reveal when a menu becomes vi
 Editable text/search/number fields and textareas have the same thin theme-derived outline as other interactive controls. Slider numeric values remain borderless. Clock primary actions on transparent surfaces use the Clock foreground, including Timer and Pomodoro. Title hold pills use 2 px vertical and 8 px horizontal padding, mirrored exactly by the inverse-text layer.
 
 Configuration scroll regions with actual overflow retain wheel ownership even at their first/last position. Non-scrollable blank areas can navigate HIT. Info actions use a bottom-aligned footer; update feedback is muted inline text above it. Configuration titles do not offer held-M1 progress pills.
+
+## Personalization controls
+
+Personalization retains the shared 610 by 420 CSS-pixel workspace and normal, spacious rows (at least 48 pixels in its option sections). Its category links use the shared full-width link rows with 8-pixel gaps. Do not shrink the native menu window to compact the editor. Categories occupy the bounded right pane with no nested scroller. Keep one internal h2 per editor page; the overview keeps that title left and Undo, Restore theme defaults and the master switch grouped at the right, before its categories. Use compact actions with icons, visible Undo/Restore labels, independent accessible names and tooltips. Descriptions stay hidden within the editor. Category changes share the draft, autosave and session Undo. The former all-options action stays removed and its old preference is ignored. SettingColor replaces native color inputs
+with a checkerboard swatch and themed modal picker, accessible saturation/brightness plane and
+shared SettingRange controls. Hue uses a full-spectrum track and a narrow rectangular marker; opacity follows beneath on a checkerboard track. The picker is at most 280 pixels wide, with a thin panel border and compact RGBA/HEX fields. Its neutral surface remains opaque and theme-derived for readability;
+the application/background retains the requested alpha. Preview conceals measured layout with
+visibility and inertness. Header actions are Personalization preview (only in that editor),
+artwork override, Pin, Close. The shell menu title and internal page headings remain distinct. Do not suppress page headings through the shared controls adapter. System Settings topics are ordered as configuration (General, HIT Sphere, Interaction, Scroll, Accessibility), customization (Themes, Personalization), customization configuration (Appearance, Background media), then utilities (Extensions, Info). Use 10-pixel gaps before customization/utilities and a 4-pixel gap before customization configuration. Info stays pinned to the bottom.
+
+Installed-font selection is a child of Shape and typography. Its search and installed-family list use the existing options scroller. Load the system font catalogue only on demand, retain native family names, and show font samples without creating a second combobox implementation.
+
+HIT Sphere customization separates Collapsed sphere (Away/Hovered) and Inactive sphere (Idle).
+Each has Size and shape, Eyes and Background disclosures and a scoped inheritance reset. Keep
+open-menu appearance in Personalization; closed selectors must also exclude open compact menus.
+Use shared sliders, switches, comboboxes and RGBA controls. Keep dependent inactive controls
+visible but disabled when shrinking is off, and explain resource-saving precedence when closed
+playback is enabled.

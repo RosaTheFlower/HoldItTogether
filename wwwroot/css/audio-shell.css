@@ -89,5 +89,6 @@
 
 /* Exclusive artwork keeps the personal image mounted, ready for its return fade. */
 .sphere-custom-backdrop{transition:opacity 650ms ease-in-out;}
-.dynamic-sphere[data-audio-cover=true]:not([data-audio-background-blend=true]):not([data-audio-reading-hidden=true]):not([data-audio-cover-hiding=true]):not([data-audio-lyrics-neutral=true])>.sphere-custom-backdrop{opacity:0!important;}
+.dynamic-sphere.is-open[data-audio-cover=true]:not([data-audio-background-blend=true]):not([data-audio-reading-hidden=true]):not([data-audio-cover-hiding=true]):not([data-audio-lyrics-neutral=true])>.sphere-custom-backdrop{opacity:0!important;}
+.dynamic-sphere:not(.is-open)>.sphere-custom-backdrop{transition:none;}
 @media(prefers-reduced-motion:reduce){.sphere-custom-backdrop{transition:none!important;}}

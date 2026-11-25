@@ -1,5 +1,21 @@
 # Build, test, package and release
 
+## 3v2511 review
+
+The isolated Release solution build passed with zero warnings/errors. The host --ui-checks,
+--personalization-checks, --language-checks and --navigation-checks harnesses passed, as did the
+Chess harness and the settings-design, navigation and personalization browser suites.
+Documentation checks, diff --check and a source conflict-marker scan also passed.
+
+Review fixed resetting settings before a Languages directory exists, isolated test language
+profiles from the user's selected language, and restricted the Chess failure-injection fixture
+to the Chess component rather than shared background JS. Current-build release notes are embedded
+for offline reading; published GitHub notes remain separately fetched.
+
+No installer was built, no GitHub release was published, and no live fullscreen or real-audio
+acceptance was performed for this review. Generated fixtures and isolated outputs remain ignored;
+new source files must be included when a commit is prepared. Nothing was staged or committed.
+
 Run commands from the repository root on Windows. A .NET SDK that targets .NET 8 is required.
 Use a Visual Studio/SDK version that understands `.slnx`, or build the individual `.csproj` files below.
 Node and Google Chrome are needed only for the included browser test, not for running HIT.
@@ -191,9 +207,9 @@ The same browser fixture verifies the Audio Space shortcut across reading/config
 Settings design checks use `node Tests/browser/settings-design.mjs` after the host harness emits
 `obj/menu-tests/` fixtures. They cover the topic sidebar, bottom Info, centered wheel selection and
 wrapping, live option changes, Escape restoration, open-picker wheel blocking and hidden-view
-cleanup, three-row rounded popup layout, opening/closing animation cleanup, rapid reopening,
+cleanup, 3.5-row rounded popup layout and gradient scroll hints, opening/closing animation cleanup, rapid reopening,
 reduced motion/Remove animations, plain editable ranges, CSS-import click targets, Edge padding alignment and percentage
-suffix, configuration headings, right-aligned extension installation, Clock-style
+suffix, restored configuration page headings, right-aligned extension installation, Clock-style
 title segments, real wheel scrolling to Personalization's final profile controls, separate Performance,
 upward update feedback without layout shifts, the shared loading spinner, no idle DOM churn and
 listener teardown. The menu harness verifies shared appearance preferences, header-button persistence
@@ -201,7 +217,7 @@ and single-level Changelog/Performance return. Host checks verify title/Back pub
 return from Performance through Info to General, and no Back action at the root. Update checking/feedback fixtures validate presentation
 without relying on a live GitHub response.
 `shared-settings.mjs` uses the emitted Audio/Clock/Notes workspaces and the Chess harness's settings
-fixture. It checks repository-owned sidebars, active headings, fixed workspace bounds, automatic
+fixture. It checks repository-owned sidebars, visible page headings, fixed workspace bounds, automatic
 extension controls, theme consistency, description propagation, feature sliders and cleanup. Build
 and pack the current Example first; the host harness loads the actual `.hitmenu` rather than source.
 Prepare Chess fixtures with its module harness before running shared settings/browser checks.
@@ -301,7 +317,7 @@ If offering Chess alongside a host release, label the package as an optional ext
 Commit `.slnx`, all project files, Modules, source, manifest/template, public assets, Resources, Tools, Tests and Docs.
 The ignore rules exclude bin/obj/artifacts, .vs, logs, temporary profiles and generated menus.css.
 Do not force-add .hitmenu/.nupkg/executable output from artifacts to the source commit.
-Application release label is 2v2910; set HitReleaseGeneration and HitReleaseDate for the next NvDDMM release. SDK 1.2.0/assembly 1.0.0.0 and package contract 1 are separate.
+Application release label is 3v2511; set HitReleaseGeneration and HitReleaseDate for the next NvDDMM release. SDK 1.2.0/assembly 1.0.0.0 and package contract 1 are separate.
 Before release, read [Release scope](VERSION-1.0.md), run relevant checks and record the validation/limitations in the commit or release notes.
 
 Lyrics provider checks use deterministic HTTP fixtures for video title/channel normalization, duration-safe plain fallback, Lyrics.ovh attribution, cache reuse and cancellation. Browser checks distinguish plain paragraphs from timestamped seek controls. Live provider availability and startup foreground behavior require desktop/network acceptance beyond those fixtures.
@@ -310,7 +326,7 @@ Focused package lifecycle checks: `dotnet run --project Modules/HIT.Example.Test
 
 The focused UI harness also verifies background-mode persistence/normalization, GIF serving/export, portable slideshow CSS and the actual CustomBackground component advancing, pausing on resource sleep, resuming and disposing. Appearance and Settings browser checks verify portable slideshow compilation, the retained layer under artwork, the visible Image opacity title, style-picker placement and the image-preview carousel. Real GIF/WebP playback and final transition appearance remain interactive acceptance.
 
-Image-size checks exercise the exact decimal 250 KB minimum, preserved unlimited preferences, a streamed 3 MB import beyond the former cap and removal of temporary files on size rejection. Browser checks confirm the size controls remain reachable in Settings -> Images.
+Image-size checks exercise the exact decimal 250 KB minimum, preserved unlimited preferences, a streamed 3 MB import beyond the former cap and removal of temporary files on size rejection. Browser checks confirm the size controls remain reachable in Settings -> Background media.
 
 The --ui-checks harness covers independent Back/Forward page history, peer Settings topics without a header parent, nested Info restore, cleared forward branches, and persisted 0/100% artwork coverage. settings-design.mjs verifies intermediate sidebar-highlight positions, final alignment, transparent controls, full action rows, live slider-fill values and directional wheel-boundary ownership. The generated SDK 1.2.0 package and Notes/Chess 1.0.2 packages were built; this does not establish installer or live desktop acceptance.
 
@@ -331,3 +347,48 @@ The solution groups Application, SDK, Extensions and Tests without moving projec
 Run dotnet run --project Modules/HIT.Example.Tests/HIT.Example.Tests.csproj -c Release -- --navigation-checks for bounded/infinite navigation and generation/date release-order checks without the package fixture.
 
 Gesture refinements verify configuration titles cannot create a hold pill, Lyrics title settings select Lyrics, configuration scroll regions retain wheel at both boundaries, and Info actions sit at the pane bottom with static muted update status.
+
+### Personalization categories, alpha and video checks
+
+Run the standalone focused harness without a packaged example:
+
+```powershell
+dotnet run --project Modules/HIT.Example.Tests/HIT.Example.Tests.csproj -c Release -- --personalization-checks
+node Tests/browser/personalization.mjs
+```
+
+C# covers legacy profiles/media, RGBA/HSV, invalid typed HEX, alpha persistence, video signatures,
+byte limits, asset isolation, fixed-frame export confirmation, category return, master-switch
+persistence and transient preview. It emits obj/personalization-tests fixtures. Browser checks
+computed alpha under the retained canvas, preview dimensions/focus/controls, SV pointer input,
+Escape, generated WebM decoding/poster extraction, silent looping, sleep/wake, reduced motion
+and decoder-source cleanup. Existing appearance, settings-design, navigation, mouse-navigation
+and resource-saving checks remain relevant. Native WebView2 codecs, desktop alpha composition
+and final mixed-media transitions still require interactive Windows acceptance.
+
+Personalization checks use actual category/workspace fixtures: unchanged 610 x 420 workspace bounds, restored page headings, one internal Personalization title and its master switch, comfortable spacing, grouped sidebar order, hidden editor descriptions, draft/Undo and custom-font parent navigation. ExpandedAppearanceChecks verifies actual DirectWrite enumeration, installed-family search/selection, theme-default font behavior, custom font persistence/export, larger galleries, policy changes without truncation and real shell close/shrink/pin transitions through the component lifecycle. Browser checks also cover expanded media effects and collapsed opacity/visibility.
+
+Shared combobox regressions compare standalone/remaining-row/intrinsic widths, unchanged intrinsic width across short/long/action candidates, recalculation after label changes, the centered 3.5-row clipped list and non-interactive gradient hints. They retain ordinary live previews, deferred Custom font navigation, explicit confirmation, repeated activation and Escape restoration without action dispatch. The host harness checks that Font preview/restoration stays on typography and only the confirmed action opens installed fonts.
+
+SelectiveAppearanceChecks covers wallpaper-only overrides over an imported green CSS theme, explicit
+edits equal to editor defaults, allowlisted property tracking, legacy inference, restart/profile
+persistence and portable export/reimport. The browser compares computed palette, font, borders,
+shadow and title styling before/after wallpaper and export/reimport, then verifies that editing
+background changes only that property. C# and browser checks cover explicit unchanged-choice
+confirmation and picker start/cancel events; Escape restores inherited values while retaining an
+unrelated media import. Overview checks verify right-aligned Undo/Reset/switch order.
+
+SphereSettingsChecks exercises the centralized controls, legacy route redirects, one-level Back,
+retained appearance edits and persisted scoped default restoration without losing theme/font/media.
+Personalization browser fixtures include every HIT Sphere child in Dark/OLED/Light, visible reset
+labels, unchanged workspace bounds, and the compact RGB picker with full-spectrum/alpha tracks,
+rectangular markers, readable neutral colors, pointer/keyboard interaction and focus restoration.
+
+ClosedSphereChecks validates state bounds, legacy inheritance, independent reset, profile/restart
+persistence, export and a real closed carousel advancing while awake, pausing in inactive state
+when disabled, suspending for DOM visibility/motion and honoring resource sleep. Browser fixtures
+compare open/compact-open styles before/after closed-only overrides, exercise independent geometry,
+eyes and media effects, and play generated WebM while closed/inactive with per-state permissions.
+They retain resource/reduced-motion/hidden-document and decoder teardown checks.
+
+Language import/selection: run the standalone host harness with --language-checks. See [Localization](LOCALIZATION.md) for the contract and coverage.

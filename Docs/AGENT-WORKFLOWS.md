@@ -80,4 +80,4 @@ refer to a repository checkout, as other source-code links do.
 
 ## Current maintenance baseline
 
-The application label is 2v2910; SDK and extension-package versions remain independent. UI work uses the shared inline controls, page/history identities, Images policy and reduced-motion-aware DOM transitions from Design/Menus. Release review checks tracked and untracked source together; keep the local roadmap, profiles, bin/obj/artifacts and IDE state out of commits. Read the matching domain workflow rather than duplicating runtime specifications in skills.
+The application label is 3v2511; SDK and extension-package versions remain independent. UI work uses the shared inline controls, page/history identities, Images policy and reduced-motion-aware DOM transitions from Design/Menus. Release review checks tracked and untracked source together; keep the local roadmap, profiles, bin/obj/artifacts and IDE state out of commits. Read the matching domain workflow rather than duplicating runtime specifications in skills.

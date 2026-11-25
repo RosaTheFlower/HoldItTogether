@@ -17,7 +17,10 @@ using Microsoft.JSInterop;
 using Microsoft.AspNetCore.Components.RenderTree;
 using HoldItTogether.Components;
 
+HoldItTogether.Services.Localization.HitLanguageStore.ConfigureTestProfile(Path.Combine(Environment.CurrentDirectory,"obj","test-languages",Guid.NewGuid().ToString("N")));
+if(args.Contains("--language-checks")){LanguageChecks.Run();return;}
 if(args.Contains("--update-checks")){await ExtensionUpdateChecks.RunAsync();return;}
+if(args.Contains("--personalization-checks")){await PersonalizationChecks.RunAsync(Environment.CurrentDirectory);return;}
 if(args.Contains("--package-checks")){await PackageLifecycleChecks.RunAsync();return;}
 if(args.Contains("--placement-checks")){PlacementChecks.Run();return;}
 if(args.Contains("--navigation-checks")){NavigationChecks.Run();PlacementChecks.Run();return;}

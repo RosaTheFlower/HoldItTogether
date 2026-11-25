@@ -7,28 +7,28 @@
 @implements HIT.Sdk.IHitMenuPages
 @inject HoldItTogether.Services.Extensions.ExtensionUi Extensions
 @inject HitSettingsService Settings
-<section class="settings-menu settings-workspace" data-hit-settings-workspace data-descriptions="@(Settings.Current.ShowSettingDescriptions?"true":"false")" data-hit-view="@_view.ToString().ToLowerInvariant()" data-no-drag @onclick:stopPropagation="true" @onkeydown="HandleKey" @onkeydown:stopPropagation="true">
+<section class="settings-menu settings-workspace @(IsPersonalizing?"is-personalization":"")" data-hit-settings-workspace data-descriptions="@(Settings.Current.ShowSettingDescriptions?"true":"false")" data-hit-view="@ViewKey" data-no-drag @onclick:stopPropagation="true" @onkeydown="HandleKey" @onkeydown:stopPropagation="true">
 <nav class="settings-sidebar" aria-label="Settings topics"><button type="button" class="settings-topic " aria-label="Open General" aria-current="@(_view==SettingsView.Main?"page":null)" @onclick="()=>Open(SettingsView.Main)">@Text.Get("General")</button>
-<button type="button" class="settings-topic" aria-label="Open Appearance" aria-current="@(_view==SettingsView.Appearance?"page":null)" @onclick="()=>Open(SettingsView.Appearance)">@Text.Get("Appearance")</button>
-<button type="button" class="settings-topic " aria-label="Manage themes" aria-current="@(_view==SettingsView.Themes?"page":null)" @onclick="()=>Open(SettingsView.Themes)">@Text.Get("Themes")</button>
-<button type="button" class="settings-topic" aria-label="Open Personalization" aria-current="@(_view==SettingsView.Personalization?"page":null)" @onclick="()=>Open(SettingsView.Personalization)">@Text.Get("Personalization")</button>
-<button type="button" class="settings-topic" aria-label="@Text.Get("Open Images")" aria-current="@(_view==SettingsView.Images?"page":null)" @onclick="()=>Open(SettingsView.Images)">@Text.Get("Images")</button>
-<button type="button" class="settings-topic " aria-label="Open Extensions" aria-current="@(_view==SettingsView.Extensions?"page":null)" @onclick="()=>Open(SettingsView.Extensions)">@Text.Get("Extensions")</button>
+<button type="button" class="settings-topic" aria-label="@Text.Get("Open HIT Sphere")" aria-current="@(_view==SettingsView.Sphere?"page":null)" @onclick="()=>Open(SettingsView.Sphere)">@Text.Get("HIT Sphere")</button>
 <button type="button" class="settings-topic " aria-label="Open Interaction" aria-current="@(_view==SettingsView.Interaction?"page":null)" @onclick="()=>Open(SettingsView.Interaction)">@Text.Get("Interaction")</button>
 <button type="button" class="settings-topic " aria-label="Open Scroll speed" aria-current="@(_view==SettingsView.Scroll?"page":null)" @onclick="()=>Open(SettingsView.Scroll)">@Text.Get("Scroll")</button>
 <button type="button" class="settings-topic " aria-label="Open Accessibility" aria-current="@(_view==SettingsView.Accessibility?"page":null)" @onclick="()=>Open(SettingsView.Accessibility)">@Text.Get("Accessibility")</button>
-<button type="button" class="settings-topic " aria-label="Open Window placement" aria-current="@(_view==SettingsView.Placement?"page":null)" @onclick="()=>Open(SettingsView.Placement)">@Text.Get("Window placement")</button>
+<button type="button" class="settings-topic settings-topic-group-start" aria-label="Manage themes" aria-current="@(_view==SettingsView.Themes?"page":null)" @onclick="()=>Open(SettingsView.Themes)">@Text.Get("Themes")</button>
+<button type="button" class="settings-topic" aria-label="Open Personalization" aria-current="@(_view==SettingsView.Personalization?"page":null)" @onclick="()=>Open(SettingsView.Personalization)">@Text.Get("Personalization")</button>
+<button type="button" class="settings-topic settings-topic-customization-config" aria-label="Open Appearance" aria-current="@(_view==SettingsView.Appearance?"page":null)" @onclick="()=>Open(SettingsView.Appearance)">@Text.Get("Appearance")</button>
+<button type="button" class="settings-topic" aria-label="@Text.Get("Open Background media")" aria-current="@(_view==SettingsView.Images?"page":null)" @onclick="()=>Open(SettingsView.Images)">@Text.Get("Background media")</button>
+<button type="button" class="settings-topic settings-topic-group-start" aria-label="Open Extensions" aria-current="@(_view==SettingsView.Extensions?"page":null)" @onclick="()=>Open(SettingsView.Extensions)">@Text.Get("Extensions")</button>
 <button type="button" class="settings-topic settings-topic-info" aria-label="Open Info" aria-current="@(_view==SettingsView.Info?"page":null)" @onclick="()=>Open(SettingsView.Info)">@Text.Get("Info")</button></nav>
 <div class="settings-content" data-hit-scroll tabindex="0">
 @if(_view==SettingsView.Themes){<h2>@Text.Get("Themes")</h2><HitThemePicker /><HitThemePicker @ref="_themePicker" Detailed="true" ShowSections="false" ShowBack="false" BackRequested="CloseSettingsAsync" />}
+else if(_view==SettingsView.Sphere){<AppearanceView @key="SettingsView.Sphere" @ref="_sphereAppearance" SphereMode="true" ShowBack="false" Active="@(MenuContext?.IsVisible??true)" Page="@_spherePage" PageChanged="SetSpherePage" />}
 else if(_view==SettingsView.Appearance){<h2>@Text.Get("Appearance")</h2><TitlePresentationSettings />}
 else if(_view==SettingsView.Images){<ImageSettingsView />}
-else if(_view==SettingsView.Personalization){<AppearanceView ShowBack="false" BackRequested="CloseSettingsAsync" />}
+else if(_view==SettingsView.Personalization){<AppearanceView @key="SettingsView.Personalization" @ref="_appearance" SphereMode="false" ShowBack="false" Active="@(MenuContext?.IsVisible??true)" Page="@_personalizationPage" PageChanged="SetPersonalizationPage" BackRequested="CloseSettingsAsync" />}
 else if(_view==SettingsView.Extensions){<HoldItTogether.Components.Extensions.ExtensionsView ShowBack="false" BackRequested="CloseSettingsAsync" />}
 else if(_view==SettingsView.Info){<HitInfoView @ref="_infoView" ShowBack="false" Page="@_infoPage" PageChanged="p=>_infoPage=p" NavigationChanged="Refresh" BackRequested="CloseSettingsAsync" />}
 else if(_view==SettingsView.Placement){<WindowPlacementView Settings="Settings.Current" ShowBack="false" Changed="SavePlacement" BackRequested="CloseSettingsAsync" />}
-else if(_view==SettingsView.Interaction){
-<h2>@Text.Get("Interaction")</h2>
+else if(_view==SettingsView.Interaction){<h2>@Text.Get("Interaction")</h2>
 <SettingToggle Label="Mouse side-button navigation" Description="Use the side mouse buttons to move back and forward through menus." Value="Settings.Current.MouseSideButtonsEnabled" Disabled="false" Changed="v=>Save(s=>s with {MouseSideButtonsEnabled=v})" />
 @foreach(var direction in new[]{"Back","Forward"})
 {
@@ -38,33 +38,21 @@ else if(_view==SettingsView.Interaction){
 
 <SettingToggle Label="Hold title to configure" Description="Hold the left mouse button on a menu title to open its settings." Value="Settings.Current.TitleHoldEnabled" Disabled="false" Changed="v=>Save(s=>s with {TitleHoldEnabled=v})" />
 <SettingRange Label="Title hold duration" Description="How long to hold the title before its settings open." Value="Settings.Current.TitleHoldDelayMs" Min="300" Max="1500" Step="100" Unit="ms" Disabled="!Settings.Current.TitleHoldEnabled" Changed="v=>Save(s=>s with {TitleHoldDelayMs=(int)v})" />
-<SettingRange Label="Compact after" Description="Time after the pointer leaves HIT before supported pinned views compact." Value="Settings.Current.MenuCompactDelayMs" Min="0" Max="10000" Step="500" Unit="ms" Disabled="false" Changed="v=>Save(s=>s with {MenuCompactDelayMs=(int)v})" />
 }
-else if(_view==SettingsView.Scroll){
-<h2>@Text.Get("Scroll")</h2>
+else if(_view==SettingsView.Scroll){<h2>@Text.Get("Scroll")</h2>
 <SettingToggle Label="Enable scroll cooldown" Description="Wait between wheel gestures when changing menus." Value="Settings.Current.ScrollCooldownEnabled" Disabled="false" Changed="v=>Save(s=>s with {ScrollCooldownEnabled=v})" />
 <SettingRange Label="Scroll sensitivity" Description="Multiplier applied to wheel movements for menu navigation." Value="Settings.Current.ScrollSensitivity" Min="0.25" Max="3" Step="0.25" Unit="x" Disabled="false" Changed="v=>Save(s=>s with {ScrollSensitivity=v})" />
 <SettingRange Label="Cooldown duration" Description="Minimum interval between menu changes triggered by scrolling." Value="Settings.Current.ScrollCooldownMs" Min="0" Max="2000" Step="50" Unit="ms" Disabled="!Settings.Current.ScrollCooldownEnabled" Changed="v=>Save(s=>s with {ScrollCooldownMs=(int)v})" />
 }
-else if(_view==SettingsView.Accessibility){
-<h2>@Text.Get("Accessibility")</h2>
+else if(_view==SettingsView.Accessibility){<h2>@Text.Get("Accessibility")</h2>
 <SettingToggle Label="Show option descriptions" Description="Display explanatory text underneath every setting." Value="Settings.Current.ShowSettingDescriptions" Disabled="false" Changed="v=>Save(s=>s with {ShowSettingDescriptions=v})" />
 <SettingToggle Label="Show tooltips" Description="Show hints when hovering over controls; accessible names stay available." Value="Settings.Current.ShowTooltips" Disabled="false" Changed="v=>Save(s=>s with {ShowTooltips=v})" />
 <SettingToggle Label="Menu entrance animations" Description="Gently reveal menus and configuration pages when opened." Value="Settings.Current.MenuEntranceAnimations" Disabled="Settings.Current.RemoveAnimations" Changed="v=>Save(s=>s with{MenuEntranceAnimations=v})" />
 <SettingToggle Label="Remove animations" Description="Skip movement and decorative transitions throughout HIT." Value="Settings.Current.RemoveAnimations" Disabled="false" Changed="v=>Save(s=>s with {RemoveAnimations=v})" />
-<SettingToggle Label="Automatic transparency" Description="Reduce opacity after inactivity in the selected presentation states." Value="Settings.Current.IdleOpacityEnabled" Disabled="false" Changed="v=>Save(s=>s with {IdleOpacityEnabled=v})" />
-<SettingToggle Label="Fade collapsed sphere" Description="Apply automatic transparency while HIT is a collapsed sphere." Value="Settings.Current.IdleOpacitySphere" Disabled="!Settings.Current.IdleOpacityEnabled" Changed="v=>Save(s=>s with {IdleOpacitySphere=v})" />
-<SettingToggle Label="Fade compact menu" Description="Apply automatic transparency to a visible compact menu." Value="Settings.Current.IdleOpacityCompact" Disabled="!Settings.Current.IdleOpacityEnabled" Changed="v=>Save(s=>s with {IdleOpacityCompact=v})" />
-<SettingToggle Label="Fade inactive open panel" Description="Apply automatic transparency to an open panel after the pointer leaves." Value="Settings.Current.IdleOpacityOpen" Disabled="!Settings.Current.IdleOpacityEnabled" Changed="v=>Save(s=>s with {IdleOpacityOpen=v})" />
-<SettingRange Label="Transparency delay" Description="Idle time before transparency starts." Value="Settings.Current.IdleOpacityDelayMs" Min="0" Max="60000" Step="500" Unit="ms" Disabled="!Settings.Current.IdleOpacityEnabled" Changed="v=>Save(s=>s with {IdleOpacityDelayMs=(int)v})" />
-<SettingRange Label="Idle opacity" Description="Opacity while inactive; interacting restores full opacity." Value="Settings.Current.IdleOpacityPercent" Min="10" Max="90" Step="1" Unit="%" Disabled="!Settings.Current.IdleOpacityEnabled" Changed="v=>Save(s=>s with {IdleOpacityPercent=(int)v})" />
-<SettingRange Label="Transparency fade duration" Description="Duration of the fade into the inactive opacity." Value="Settings.Current.IdleOpacityTransitionMs" Min="0" Max="3000" Step="50" Unit="ms" Disabled="!Settings.Current.IdleOpacityEnabled" Changed="v=>Save(s=>s with {IdleOpacityTransitionMs=(int)v})" />
 }
 else {
 <h2>@Text.Get("General")</h2>
 <SettingToggle Label="Infinite menu" Description="Wrap from the last HIT menu to the first, and from the first to the last, when navigating." Value="Settings.Current.InfiniteMenu" Changed="v=>Save(s=>s with{InfiniteMenu=v})" />
-<SettingToggle Label="Always on Top" Description="Keep HIT above ordinary desktop windows." Value="Settings.Current.AlwaysOnTop" Disabled="false" Changed="v=>Save(s=>s with {AlwaysOnTop=v})" />
-<SettingToggle Label="Force Always on Top" Description="Experimental repeated topmost recovery; exclusive fullscreen may remain unsupported." Value="Settings.Current.ForceAlwaysOnTop" Disabled="!Settings.Current.AlwaysOnTop || !OperatingSystem.IsWindows()" Changed="v=>Save(s=>s with {ForceAlwaysOnTop=v})" />
 <SettingToggle Label="System Tray" Description="Keep a HIT icon in the Windows notification area with application actions." Value="Settings.Current.SystemTray" Disabled="!OperatingSystem.IsWindows()" Changed="v=>Save(s=>s with {SystemTray=v})" />
 <SettingToggle Label="Start with Windows" Description="Launch HIT when the current Windows user signs in." Value="Settings.Current.StartWithWindows" Disabled="!OperatingSystem.IsWindows()" Changed="v=>Save(s=>s with {StartWithWindows=v})" />
 <SettingToggle Label="Automatic resource saving" Description="Pause presentation work in the resting sphere or when fully covered without FORCE." Value="Settings.Current.AutomaticResourceSaving" Disabled="false" Changed="v=>Save(s=>s with {AutomaticResourceSaving=v})" />
@@ -76,9 +64,23 @@ else {
 @code {
     private void SetTitleMode(int mode)=>Save(s=>s with {TitleDisplayMode=mode});
     [CascadingParameter(Name = "HitMenu")] public HitMenuContext? MenuContext { get; set; }
-    private enum SettingsView { Main, Scroll, Info, Extensions, Themes, Placement, Interaction, Accessibility, Appearance, Personalization, Images }
+    private enum SettingsView { Main, Scroll, Info, Extensions, Themes, Placement, Interaction, Accessibility, Appearance, Personalization, Images, Sphere }
     private HitThemePicker? _themePicker;
     private HitInfoView? _infoView;
+    private AppearanceView? _appearance,_sphereAppearance;
+    private string _spherePage="";
+    private string _personalizationPage="";
+    public bool IsPersonalizing=>_view==SettingsView.Personalization;
+    public bool IsPersonalizationOverview=>IsPersonalizing&&_personalizationPage.Length==0;
+    public bool AppearanceEnabled=>_appearance?.Enabled??Settings.Current.Appearance.Enabled;
+    public Task SetAppearanceEnabledAsync(bool enabled)=>InvokeAsync(async()=>{if(!IsPersonalizing)return;if(_appearance is not null)await _appearance.SetEnabledAsync(enabled);StateHasChanged();});
+    public bool IsPreviewHidden{get;private set;}
+    private string ViewKey=>_view==SettingsView.Sphere?"sphere/"+_spherePage.ToLowerInvariant().Replace(' ','-'):IsPersonalizing?"personalization/"+_personalizationPage.ToLowerInvariant().Replace(' ','-'):_view.ToString().ToLowerInvariant();
+    public void ResetPreview()=>IsPreviewHidden=false;
+    public Task TogglePreviewAsync()=>InvokeAsync(()=>{if(IsPersonalizing){IsPreviewHidden=!IsPreviewHidden;StateHasChanged();}});
+    private void SetSpherePage(string page){if(!SphereSettingsView.Pages.Contains(page))return;_spherePage=page;_title=null;}
+    private void SetPersonalizationPage(string page){if(!AppearanceView.ValidPage(page))return;IsPreviewHidden=false;_personalizationPage=page;_title=null;}
+    protected override void OnParametersSet(){if(MenuContext?.IsVisible!=true){ResetPreview();_appearance?.Flush();_sphereAppearance?.Flush();}}
     private SettingsView _view;
     private double? _sensitivityPreview;
     private int? _cooldownPreview;
@@ -88,18 +90,22 @@ else {
     private int Cooldown => _cooldownPreview ?? Settings.Current.ScrollCooldownMs;
     public bool IsSettingsOpen => true;
     private string _infoPage = "Info";
-    public bool CanGoBack => (_view == SettingsView.Info && _infoPage != "Info") || (_view == SettingsView.Themes && _themePicker?.IsPersonalizing == true);
+    public bool CanGoBack => (_view==SettingsView.Sphere&&_spherePage.Length>0)||(IsPersonalizing&&_personalizationPage.Length>0)||(_view == SettingsView.Info && _infoPage != "Info") || (_view == SettingsView.Themes && _themePicker?.IsPersonalizing == true);
     public bool CanReturnToParent => CanGoBack;
-    public string CurrentPage => _view == SettingsView.Info ? "Info/" + _infoPage : _view.ToString();
+    public string CurrentPage => _view==SettingsView.Sphere?"Sphere/"+_spherePage:IsPersonalizing?"Personalization/"+_personalizationPage:_view == SettingsView.Info ? "Info/" + _infoPage : _view.ToString();
     public Task NavigateToPageAsync(string page) => InvokeAsync(() => {
         var parts = page.Split('/');
         if (!Enum.TryParse<SettingsView>(parts[0],out var view) || !Enum.IsDefined(view)) return;
-        Open(view); _infoPage = view == SettingsView.Info && parts.Length == 2 ? parts[1] : "Info";
+        if(view==SettingsView.Placement){view=SettingsView.Sphere;parts=["Sphere","Window placement"];}
+        if(view==SettingsView.Personalization&&parts.Length==2&&parts[1] is "Sphere" or "Eyes"){view=SettingsView.Sphere;parts=["Sphere","Collapsed sphere"];}
+        Open(view);if(view==SettingsView.Sphere)_spherePage=parts.Length==2?SphereSettingsView.CanonicalPage(parts[1]):"";
+        _infoPage = view == SettingsView.Info && parts.Length == 2 ? parts[1] : "Info";
+        if(view==SettingsView.Personalization)_personalizationPage=parts.Length==2&&AppearanceView.ValidPage(parts[1])?parts[1]:"";
         StateHasChanged();
     });
     public Task OpenSettingsAsync() => Task.CompletedTask;
-    public Task CloseSettingsAsync() => InvokeAsync(async () => { if(_view==SettingsView.Info&&_infoView?.IsDetailOpen==true){await _infoView.CloseDetailAsync();return;} if(_view==SettingsView.Themes&&_themePicker?.IsPersonalizing==true){await _themePicker.ClosePersonalizationAsync();return;} _view = SettingsView.Main; Extensions.ShowThemes = Extensions.ShowExtensions = false; StateHasChanged(); });
-    private void Open(SettingsView view) { _infoPage = "Info"; _view = view; Extensions.ShowExtensions = view == SettingsView.Extensions; Extensions.ShowThemes = view == SettingsView.Themes; }
+    public Task CloseSettingsAsync() => InvokeAsync(async () => { if(IsPreviewHidden){ResetPreview();StateHasChanged();return;} if(_view==SettingsView.Sphere&&_spherePage.Length>0){_spherePage="";_title=null;StateHasChanged();return;} if(IsPersonalizing&&_personalizationPage.Length>0){_personalizationPage=AppearanceView.ParentPage(_personalizationPage);_title=null;StateHasChanged();return;} if(_view==SettingsView.Info&&_infoView?.IsDetailOpen==true){await _infoView.CloseDetailAsync();return;} if(_view==SettingsView.Themes&&_themePicker?.IsPersonalizing==true){await _themePicker.ClosePersonalizationAsync();return;} Open(SettingsView.Main);StateHasChanged(); });
+    private void Open(SettingsView view) { ResetPreview();if(IsPersonalizing&&view!=_view)_appearance?.Flush();if(_view==SettingsView.Sphere&&view!=_view)_sphereAppearance?.Flush();_infoPage = "Info"; _view = view; Extensions.ShowExtensions = view == SettingsView.Extensions; Extensions.ShowThemes = view == SettingsView.Themes; }
     private void OpenExtensions() => Open(SettingsView.Extensions);
     private void Requested() { if (!_disposed) _ = InvokeAsync(() => { Open(Extensions.ShowThemes ? SettingsView.Themes : SettingsView.Extensions); StateHasChanged(); }); }
     protected override void OnInitialized() { Settings.Changed += Refresh; Extensions.OpenRequested += Requested; _view = Extensions.ShowThemes ? SettingsView.Themes : Extensions.ShowExtensions ? SettingsView.Extensions : SettingsView.Main; }
@@ -108,10 +114,10 @@ else {
     {
         if (MenuContext?.IsActive != true) { _title = null; return; }
         var title = Text.Get(_view switch {
-            SettingsView.Placement => "Window placement", SettingsView.Scroll => "Scroll",
+            SettingsView.Sphere => _spherePage.Length==0?"HIT Sphere":_spherePage, SettingsView.Placement => "Window placement", SettingsView.Scroll => "Scroll",
             SettingsView.Info => _infoView?.CurrentTitle ?? "Info", SettingsView.Themes => "Themes",
             SettingsView.Extensions => "Extensions", SettingsView.Appearance => "Appearance",
-            SettingsView.Images => "Images", SettingsView.Personalization => "Personalization", SettingsView.Interaction => "Interaction",
+            SettingsView.Images => "Background media", SettingsView.Personalization => _personalizationPage.Length==0?"Personalization":_personalizationPage, SettingsView.Interaction => "Interaction",
             SettingsView.Accessibility => "Accessibility", _ => "Settings"
         });
         if (_title != title) { _title = title; await MenuContext.TitleRequested.InvokeAsync(title); }

@@ -8,6 +8,11 @@ public sealed record HitSettings
 {
     public bool AlwaysOnTop { get; init; } = true;
     public bool InfiniteMenu { get; init; }
+    public bool ShrinkInactiveSphere {get;init;}=true;
+    public int SphereShrinkDelayMs {get;init;}=10000;
+    public int BackgroundMediaLimit {get;init;}=8;
+    public bool PersonalizationListView { get; init; }
+    public double BackgroundVideoLimitMb { get; init; } = 100;
     public bool ShowConfigurationCoverButton {get;init;}=true;
     public bool HideArtworkInSettings {get;init;}
     public bool ShowSettingDescriptions {get;init;}=true;
@@ -94,6 +99,9 @@ public sealed record HitSettings
     public HitSettings Normalize() => this with
     {
         Appearance=(Appearance??new()).Normalize(),
+        BackgroundMediaLimit=Math.Clamp(BackgroundMediaLimit,1,HitAppearanceService.MaxMediaItems),
+        SphereShrinkDelayMs=Math.Clamp(SphereShrinkDelayMs,0,60000),
+        BackgroundVideoLimitMb=double.IsFinite(BackgroundVideoLimitMb)?Math.Clamp(BackgroundVideoLimitMb,.25,100_000):100,
         TitleDisplayMode=Math.Clamp(TitleDisplayMode,0,2),
         MouseBackBehavior=MouseBackBehavior is "pages" or "menus"?MouseBackBehavior:"legacy",
         MouseForwardBehavior=MouseForwardBehavior is "pages" or "menus"?MouseForwardBehavior:"legacy",
