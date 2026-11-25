@@ -27,12 +27,14 @@ For a release distribution, keep the complete published directory together and s
 Do not distribute the executable alone. CSS, JavaScript, SDK/runtime dependencies and native libraries are required.
 Release publication commands are in [Testing and release](TESTING-RELEASE.md).
 
+Select English or built-in Brazilian Portuguese under Settings -> Info -> Languages, or import a JSON translation. Apply and restart HIT saves the choice. Missing translations use English; see [Localization](LOCALIZATION.md).
+
 ## The sphere and menu navigation
 
 Hovering opens the sphere temporarily. Clicking keeps it open until explicitly closed or unpinned.
 The pin button controls this state; Close collapses and unpins. Clicking outside does not unpin a clicked-open menu.
 Drag a free area to reposition HIT. Screen-edge anchoring and magnetism keep the menu usable near monitor edges.
-HIT restores its last position at startup. Settings -> Window placement controls Magnetize, Allow other monitors,
+HIT restores its last position at startup. Settings -> HIT Sphere -> Window placement controls Magnetize, Allow other monitors,
 and Edge padding (98% by default; 100% is flush, 85% leaves more space).
 Do not drag through sliders, text inputs or other controls.
 
@@ -52,14 +54,14 @@ If the tray is disabled, hiding the native window is not offered by that tray.
 | Option | Default / behavior |
 | --- | --- |
 | Infinite menu | Off; wraps top-level navigation at both ends when enabled |
-| Images | File size limit (2 MB default or unlimited) and managed GIF permission |
+| Background media | Image/video import size limits, gallery limits and managed GIF permission |
 | Menu entrance animations | On; optional short menu/topic reveals, also suppressed by Remove animations |
 | Always on Top | On; keeps HIT above ordinary windows |
 | System Tray | Off; optional Windows notification-area icon |
 | Remove animations | Off; disables CSS animation, transitions and smooth scrolling |
 | Show tooltips | On; native hover descriptions, independent of accessible names |
 | Scroll speed | Sensitivity 1; cooldown enabled, 350 ms |
-| Info | Version/counts, update checking, Changelog, GitHub, Performance (RAM/CPU/diagnostics) and confirmed data reset/deletion |
+| Info | Version/counts, Languages, update checking, offline/published Changelog, GitHub, Performance and confirmed data reset/deletion |
 | Extensions | Dedicated installation/order/enable/remove topic |
 | Themes | Dedicated topic; full-width combobox for activation plus list selection/import/delete |
 

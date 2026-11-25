@@ -1,210 +1,187 @@
 <div align="center">
 
-HIT — Hold It Together
-A small space for the things you use every day.
+# HIT · Hold It Together
 
-A lightweight, customizable desktop companion for Windows. Control your music, follow lyrics, stay focused, and bring your favorite tools together in one expandable interface.
+**Your music. Your time. Your desktop.**
+
+A customizable Windows desktop companion that brings music, lyrics, clocks and focus tools into one compact, expandable sphere.
+
 <p>
-  <img alt="Windows 10 and 11" src="https://img.shields.io/badge/Windows-10%20%7C%2011-0078D4?style=flat-square&logo=windows&logoColor=white" />
-  <img alt=".NET 8" src="https://img.shields.io/badge/.NET-8-512BD4?style=flat-square&logo=dotnet&logoColor=white" />
-  <img alt="Photino and Blazor" src="https://img.shields.io/badge/Photino%20%2B%20Blazor-Desktop-555?style=flat-square" />
-  <img alt="HIT release 2v2910" src="https://img.shields.io/badge/Release-2v2910-333?style=flat-square" />
+  <img alt="Windows 10 and 11" src="https://img.shields.io/badge/Windows-10%20%7C%2011-0078D4?style=flat-square" />
+  <img alt="HIT 3v2511" src="https://img.shields.io/badge/HIT-3v2511-555?style=flat-square" />
+  <img alt="Built with .NET 8" src="https://img.shields.io/badge/.NET-8-512BD4?style=flat-square" />
+  <img alt="English and Brazilian Portuguese" src="https://img.shields.io/badge/Languages-EN%20%7C%20PT--BR-39766A?style=flat-square" />
 </p>
 
+[**Releases**](https://github.com/RosaTheFlower/HoldItTogether/releases) · [**Get started**](GETTING-STARTED.md) · [**What's new**](CHANGELOG.md) · [**Build an extension**](EXTENSIONS.md)
 
-[**Get started**](GETTING-STARTED.md)
+<img src="https://github.com/user-attachments/assets/2b161490-7227-4917-94af-80c789f389dd" alt="HIT desktop interface showing its compact expandable menus" width="100%" />
 
-<img src="https://github.com/user-attachments/assets/2b161490-7227-4917-94af-80c789f389dd" alt="HIT desktop interface" width="100%" />
+<sub>A small space for the things you use every day.</sub>
 
-<sub>One compact companion. Music, time, and more, right where you need them.</sub>
 </div>
 
-Meet HIT
-HIT starts as a discreet, borderless sphere on your desktop. Hover to open it, click to keep it open, and scroll to switch between menus. Move it around your screen, pin it when needed, or let it return to its compact form.
+## Meet HIT
 
-It includes an audio player, clocks and focus tools, plus deep appearance customization. Install additional .hitmenu extensions to make HIT work the way you do, without rebuilding the app.
-- Out of the way until you need it. A compact desktop surface that stays off the taskbar.
-- Made to feel personal. Themes, artwork, backgrounds, animations, and visual profiles.
-- Designed to grow. Independently installed menus powered by a public .NET SDK.
-- Built for daily use. Persistent timers, configurable navigation, and resource-aware behavior.
-Features
-Music and synchronized lyrics
-Control compatible Windows media sessions without constantly switching apps. View track information and artwork, manage playback, and follow lyrics with layouts made for different listening styles.
-- Play/pause, previous/next, seeking, and supported shuffle/repeat controls.
-- Synchronized lyrics from multiple providers, with unsynchronized reading when timestamps are unavailable.
-- Six lyric layouts: Down, Up, Left, Right, Spotlight, and Word Rise.
-- Audio-reactive visualizers with adjustable styles, positioning, and opacity.
-- Press Space to play or pause while HIT's Audio menu is visible.
-Clock, timers, and focus
-Keep the time nearby, wherever you're working.
-- Local and configurable world clocks.
-- A timer with pause, resume, and reset controls.
-- Pomodoro sessions with customizable focus and break durations.
-- Compact pinned readouts and timers that continue independently of the visible UI.
-A desktop companion that adapts
-- Reorder or disable menus, navigate with the mouse wheel, and enable Infinite Menu wrapping.
-- Configure mouse-button gestures, menu transitions, and window placement.
-- Snap to screen edges or optionally to the center; use multiple monitors.
-- Adjust animation, tooltip, and accessibility preferences.
+HIT stays nearby as a borderless sphere, off the taskbar. Hover to open it, click to keep it open, and scroll to switch menus. Drag a free area to move it; pin the tools you need and let supported views become compact when idle.
+
+Audio, Clock and Settings come built in. Themes, visual profiles and installable `.hitmenu` extensions let you make the rest your own.
+
+| Listen | Keep time | Make it yours |
+| --- | --- | --- |
+| Playback controls, artwork, synchronized lyrics and audio-reactive visualizers | System/world clocks, persistent timers and customizable Pomodoro sessions | Dark, OLED and Light themes, live appearance editing, backgrounds and extensions |
+
+## What's new in 3v2511
+
+- **Languages:** English by default, Brazilian Portuguese built in, and validated JSON translation imports under Info → Languages.
+- **Personalization:** RGBA colors, installed fonts, visual profiles, local video backgrounds and selective theme overrides.
+- **HIT Sphere:** grouped behavior, placement, closed/inactive appearance and background playback preferences.
+- **Interface:** page-specific header icons, refined shared controls and clearer language installation feedback.
+- **Release notes:** current-build changelog available offline, alongside notes from the latest published release.
+
+Read the [complete changelog](CHANGELOG.md) for compatibility details and release notes.
+
+## Music without switching windows
+
+Control compatible Windows media sessions, see the current artwork and follow the lyrics while you work.
+
+- Play/pause, previous/next, seeking and supported shuffle/repeat controls.
+- Synchronized lyrics with six layouts: Down, Up, Left, Right, Spotlight and Word rise.
+- Plain lyric reading when synchronized timestamps are unavailable.
+- Visualizer styles, artwork effects and music-derived interface colors.
+- Space to play/pause while the Audio menu is visible and keyboard focus permits it.
+
+Playback commands depend on the media application's capabilities. Online lyrics depend on provider availability; the visualizer captures the default output mix.
+
 <details>
-<summary><strong>See more of HIT</strong></summary>
-<br />
+<summary><strong>Explore the interface</strong></summary>
+
 <p align="center">
   <img src="https://github.com/user-attachments/assets/5e46ab7b-d647-4331-abd2-9aff1eafa39e" alt="Additional HIT desktop interface preview" width="100%" />
 </p>
 <p align="center">
-  <img src="https://github.com/user-attachments/assets/55b8afad-1f89-4887-bbc6-f8a69fc1cb35" alt="Additional HIT desktop interface and menu preview" width="100%" />
+  <img src="https://github.com/user-attachments/assets/55b8afad-1f89-4887-bbc6-f8a69fc1cb35" alt="Additional HIT menus and appearance preview" width="100%" />
 </p>
+
 </details>
 
-Personalization
-Go beyond choosing a light or dark theme. HIT lets you edit its appearance live, save visual profiles, and export your customizations as CSS.
+## Time to focus
+
+Keep local and world clocks nearby, run a timer or start a Pomodoro session with your own focus and break durations. Timer deadlines survive restarts, and background clock work continues independently of the visible menu.
+
+Choose compact pinned readouts, notification sounds and an optional secondary clock. [Explore Clock →](CLOCK.md)
+
+## A desktop that feels like yours
+
+Start with **Dark**, **OLED** or **Light**, import CSS, or edit your appearance live. Change colors, typography, borders and shadows; blend album artwork with your background; use images, slideshows or silent local videos.
+
+Save independent visual profiles, undo session edits and export CSS. Video exports use confirmed fixed frames. Closed and inactive sphere states have their own appearance and playback preferences, subject to resource-saving and reduced-motion rules.
+
 <p align="center">
-  <img src="https://github.com/user-attachments/assets/a5c7cb29-5479-40d3-a4e6-95c72a404c48" alt="HIT live personalization settings" width="657" />
+  <img src="https://github.com/user-attachments/assets/a5c7cb29-5479-40d3-a4e6-95c72a404c48" alt="HIT personalization settings preview" width="657" />
 </p>
 
+[Personalization settings](SETTINGS.md#personalization-and-visual-profiles) · [Themes and CSS](THEMES.md) · [Languages and translations](LOCALIZATION.md)
 
-Choose from the bundled Dark, OLED, and Light themes, import custom CSS, or personalize the interface using backgrounds, album artwork blending, slideshows, animated images, and independent opacity controls. Changes to installed custom theme files can be reflected without rebuilding HIT.
+## Add your own tools
 
-[Explore themes and styling →](THEMES.md) · [Personalization settings →](SETTINGS.md)
-Extensions
-HIT is designed around modular menus. Add features using .hitmenu packages, install them from the app or by drag-and-drop, and manage their order and enabled state from Settings.
+Install `.hitmenu` packages from Settings, by drag-and-drop or through the documented Inbox workflow. Reorder menus and manage their enabled state without rebuilding HIT.
+
 <table>
   <tr>
     <td valign="top" width="55%">
-      <h3>Chess: an optional extension</h3>
-      <p>Chess is distributed as its own <code>.hitmenu</code> package rather than being built into HIT. It demonstrates how independent modules can share the same window, navigation, and design system as the built-in features.</p>
-      <p>HIT also supports extension version management and GitHub-based update discovery.</p>
+      <h3>Chess, when you want it</h3>
+      <p>Play inside the same compact workspace. Chess is a separate optional extension with its own package, settings and saved game state.</p>
+      <p>It is installed separately or selected as an optional installer component.</p>
       <p><a href="CHESS.md">Explore Chess</a> · <a href="EXTENSIONS.md">Extension guide</a></p>
     </td>
     <td align="center" valign="middle" width="45%">
-      <img src="https://github.com/user-attachments/assets/4880afb4-45f3-4c9d-9c83-4dc2aa6cf361" alt="Chess extension running inside HIT" width="300" />
+      <img src="https://github.com/user-attachments/assets/4880afb4-45f3-4c9d-9c83-4dc2aa6cf361" alt="Optional Chess extension running inside HIT" width="300" />
     </td>
   </tr>
 </table>
 
-Build your own menus
-The public HIT SDK lets developers create independent .NET extensions with their own views and assets, using documented APIs for supported host integrations. Packages include compiled components, a manifest, and resources; end users don't need the .NET SDK or project source to install them.
+For developers, the public **HIT SDK** provides versioned APIs for independent .NET extensions with their own views, assets and storage. Start with the Notes example in <code>Modules/HIT.Example</code>. Extensions execute trusted code in the host process; install packages from authors you trust.
 
 [Create an extension](EXTENSIONS.md) · [SDK reference](API.md) · [Menu design contract](MENUS.md)
-Get started
-Platform: Windows 10 (version 1809 or later) or Windows 11, x64.
 
-The recommended installation method is the Windows installer, which bundles the application and .NET runtime. It also handles the WebView2 prerequisite when needed.
-Installer option	What's included
-Release	HIT and everything needed for normal use.
-Dev	Release plus the SDK package, example extension, source, documentation, and development tools.
-Chess (optional)	Installs the separate Chess extension with either profile.
+## Get started
 
+**Windows 10 version 1809 or later / Windows 11 · x64 · WebView2**
 
-For installation steps and requirements, read the [Getting started guide](GETTING-STARTED.md) or [Windows installer guide](INSTALLER.md).
+Open [Releases](https://github.com/RosaTheFlower/HoldItTogether/releases) to find published downloads. The source version shown here may be newer than the latest published build.
+
+The Windows installer includes the .NET runtime and handles a missing WebView2 prerequisite. Installing WebView2 requires an Internet connection when it is absent.
+
+| Installer choice | Includes |
+| --- | --- |
+| **Release** | HIT for normal use, with the .NET runtime |
+| **Dev** | Release plus the SDK package, example, source, documentation and development tools |
+| **Chess** (optional) | The separate Chess extension, available with either profile |
+
+Portable builds must keep their complete published folder together. Framework-dependent builds additionally need the .NET 8 and ASP.NET Core 8 x64 runtimes.
+
+**Updating:** Info → Check for updates compares the installed version with the latest published GitHub release. When a newer version is found, Open release opens its download page; HIT does not automatically download or install the application update.
+
+[Installation and first steps](GETTING-STARTED.md) · [Installer details](INSTALLER.md) · [Troubleshooting](TROUBLESHOOTING.md)
+
 <details>
 <summary><strong>Run from source</strong></summary>
 
+Install a .NET SDK capable of targeting .NET 8, plus WebView2. From the repository root on Windows:
 
-From the repository root, with a suitable .NET SDK installed:
+```powershell
 dotnet restore HoldItTogether.csproj
 dotnet run --project HoldItTogether.csproj
-See [Getting started](GETTING-STARTED.md) for prerequisites and [Testing and release](TESTING-RELEASE.md) for publishing instructions.
-</details>
+```
 
-Built with
-.NET 8 · Blazor · Photino · Windows WebView2
-
-The host provides the sphere interface, navigation, settings, and extension lifecycle. Built-in menus use application services, while external modules use a versioned SDK. CSS themes change presentation without changing application behavior.
-
-For implementation details, see [Architecture](ARCHITECTURE.md), [Design system](DESIGN.md), and [Performance](PERFORMANCE.md).
-Documentation
-The guides below cover setup, features, design conventions, extension development, and maintenance. All maintained technical documentation lives in this directory. Repository agent instructions live in AGENTS.md and .agents/skills/; documentation and public code examples use English, matching the application. Unless stated otherwise, commands run from the repository root.
-<details open>
-<summary><strong>User guides</strong></summary>
-
-Goal	Guide
-Install, run, navigate and configure HIT	[Getting started](GETTING-STARTED.md)
-Build and distribute the Release/Dev installation wizard	[Windows installer](INSTALLER.md)
-Understand release versions, implemented features and limits	[Release scope](VERSION-1.0.md)
-Manage settings, themes, updates and personal data	[Settings](SETTINGS.md)
-Create a theme or follow the visual design system	[Themes and design](THEMES.md)
-Understand the music player, lyrics and capture	[Audio](AUDIO.md)
-Style the player, artwork, lyrics and visualizer	[Audio theme reference](AUDIO-THEMES.md)
-Understand clocks, timer, Pomodoro and persistence	[Clock](CLOCK.md)
-Style full/compact/world clocks	[Clock theme reference](CLOCK-THEMES.md)
-Build, install and play the independent chess menu	[Chess extension](CHESS.md)
-Diagnose installation, media, CSS and startup problems	[Troubleshooting](TROUBLESHOOTING.md)
-
-
-| Goal | Guide |
-| --- | --- |
-| Install, run, navigate and configure HIT | [Getting started](GETTING-STARTED.md) |
-| Build and distribute the Release/Dev installation wizard | [Windows installer](INSTALLER.md) |
-| Understand release versions, implemented features and limits | [Release scope](VERSION-1.0.md) |
-| Understand components, services, persistence and startup | [Architecture](ARCHITECTURE.md) |
-| Follow the shared interaction/layout contract | [Menus](MENUS.md) |
-| Apply shared controls, confirmations, spacing and theme rules | [Design system](DESIGN.md) |
-| Manage settings, themes, updates and personal data | [Settings](SETTINGS.md) |
-| Add a menu compiled into the application | [Internal menus](INTERNAL-MENUS.md) |
-| Build, install and distribute an independent `.hitmenu` | [Extensions](EXTENSIONS.md) |
-| Call the public SDK: media, clock, storage, theme and window | [API reference](API.md) |
-| Follow code, naming, threading and resource conventions | [Code conventions](CODE-CONVENTIONS.md) |
-| Use and maintain repository agent instructions and skills | [Agent workflows](AGENT-WORKFLOWS.md) |
-| Create a theme or follow the visual design system | [Themes and design](THEMES.md) |
-| Understand the music player, lyrics and capture | [Audio](AUDIO.md) |
-| Style the player, artwork, lyrics and visualizer | [Audio theme reference](AUDIO-THEMES.md) |
-| Understand clocks, timer, Pomodoro and persistence | [Clock](CLOCK.md) |
-| Build, install and play the independent chess menu | [Chess extension](CHESS.md) |
-| Style full/compact/world clocks | [Clock theme reference](CLOCK-THEMES.md) |
-| Respect memory budgets and interpret measurements | [Performance](PERFORMANCE.md) |
-| Add English messages and prepare translation support | [Localization](LOCALIZATION.md) |
-| Build, test, package, publish and prepare a commit | [Testing and release](TESTING-RELEASE.md) |
-| Diagnose installation, media, CSS and startup problems | [Troubleshooting](TROUBLESHOOTING.md) |
-
-<details>
-<summary><strong>Development and maintainer guides</strong></summary>
-
-Goal	Guide
-Understand components, services, persistence and startup	[Architecture](ARCHITECTURE.md)
-Follow the shared interaction/layout contract	[Menus](MENUS.md)
-Apply shared controls, confirmations, spacing and theme rules	[Design system](DESIGN.md)
-Add a menu compiled into the application	[Internal menus](INTERNAL-MENUS.md)
-Build, install and distribute an independent .hitmenu	[Extensions](EXTENSIONS.md)
-Call the public SDK: media, clock, storage, theme and window	[API reference](API.md)
-Follow code, naming, threading and resource conventions	[Code conventions](CODE-CONVENTIONS.md)
-Use and maintain repository agent instructions and skills	[Agent workflows](AGENT-WORKFLOWS.md)
-Respect memory budgets and interpret measurements	[Performance](PERFORMANCE.md)
-Add English messages and prepare translation support	[Localization](LOCALIZATION.md)
-Build, test, package, publish and prepare a commit	[Testing and release](TESTING-RELEASE.md)
-
+See [Testing and release](TESTING-RELEASE.md) for build, verification and publication workflows. The application uses .NET 8, Blazor, Photino and Windows WebView2.
 
 </details>
 
-Recommended reading paths
-- Users: Getting started → Audio / Clock → Troubleshooting.
-- Extension authors: Menus → Extensions → API → Code conventions → Themes. Start with Modules/HIT.Example and HIT.Sdk.
-- Theme authors: Themes → Audio themes → Clock themes. Themes alter presentation, not app behavior.
-- Maintainers: Architecture → Code conventions → Performance → Testing and release. Built-in menu source is the integration reference; the SDK is the public extension contract.
-Versions and compatibility
-Component or contract	Version
-HIT application	2v2910 (29 October)
-Built-in Audio / Clock	1.2.0 / 1.2.0 (bundled with HIT)
-Optional Chess package	1.1.1
-Public SDK package	1.2.0
-SDK assembly identity	1.0.0.0
-.hitmenu format / hitContractVersion	1 / "1"
-Imported CSS theme contract	1
+## Documentation
 
+Technical guides live in `Docs/` and use English as the canonical source language. Commands run from the repository root unless stated otherwise. Repository instructions live in `AGENTS.md` and `.agents/skills/`.
 
-| Item | Version |
+### Use and customize HIT
+
+| Guide | Covers |
 | --- | --- |
-| Application release | 2v2910 (29 October) |
-| Built-in Audio / Clock | 1.2.0 / 1.2.0 (bundled with HIT) |
+| [Getting started](GETTING-STARTED.md) | Installation, navigation and first steps |
+| [Settings](SETTINGS.md) | Preferences, personalization, updates and personal data |
+| [Audio](AUDIO.md) | Playback, lyrics, capture and effects |
+| [Clock](CLOCK.md) | World clocks, timers and Pomodoro |
+| [Themes](THEMES.md) | CSS imports and appearance contracts |
+| [Languages](LOCALIZATION.md) | Built-in languages and JSON translation imports |
+| [Chess](CHESS.md) | Optional extension, packaging and gameplay |
+| [Changelog](CHANGELOG.md) | Current-build changes |
+| [Troubleshooting](TROUBLESHOOTING.md) | Common problems and diagnostics |
+
+### Build and maintain
+
+| Guide | Covers |
+| --- | --- |
+| [Architecture](ARCHITECTURE.md) | Components, services, startup and ownership |
+| [Code conventions](CODE-CONVENTIONS.md) | Naming, threading, persistence and resources |
+| [Design system](DESIGN.md) · [Menus](MENUS.md) | Shared controls, navigation, accessibility and lifecycle |
+| [Internal menus](INTERNAL-MENUS.md) | Built-in feature entry points |
+| [Extensions](EXTENSIONS.md) · [API reference](API.md) | Packages, SDK contracts and examples |
+| [Audio CSS](AUDIO-THEMES.md) · [Clock CSS](CLOCK-THEMES.md) | Feature styling references |
+| [Performance](PERFORMANCE.md) | Resource ownership, measurement and diagnostics |
+| [Release scope](VERSION-1.0.md) | Implemented features, compatibility and limitations |
+| [Testing and release](TESTING-RELEASE.md) · [Installer](INSTALLER.md) | Validation and distribution |
+| [Agent workflows](AGENT-WORKFLOWS.md) | Repository instructions and skill maintenance |
+
+### Versions and compatibility
+
+| Component or contract | Version |
+| --- | --- |
+| **HIT application** | **3v2511 · 25 November 2026** |
+| Built-in Audio / Clock | 1.2.0 / 1.2.0 |
 | Optional Chess package | 1.1.1 |
 | Public SDK package | 1.2.0 |
 | SDK assembly identity | 1.0.0.0 |
-| `.hitmenu` format / `hitContractVersion` | `1` / `"1"` |
-| Imported CSS theme contract | 1 |
+| `.hitmenu` format / `hitContractVersion` | 1 / `"1"` |
+| Imported CSS theme / language JSON format | 1 / 1 |
 
-
-The documentation is copied into the build/publish output under Docs/. Source-code links target a repository checkout. The published guides are self-contained; source projects, examples, and test harnesses are obtained from the repository, rather than shipped as executable output.
-
-When changing a public API, preference, lifecycle, selector, attribute, manifest field, limit, or interaction, update the canonical reference and corresponding example. Avoid duplicating conflicting instructions, preserve historical measurement conditions, and run documentation checks after moving or renaming a guide.
-</details>
+Application labels, SDK/package versions and persisted identities have independent compatibility rules. The guides are copied into build/publish output under `Docs/`; source examples and test harnesses come from the repository.
